@@ -151,7 +151,8 @@
       excludeSurplus: Array.isArray(d.excludeSurplus) ? d.excludeSurplus.map(String).filter(a => d.accounts.map(String).includes(a)) : [],
       hiddenAccounts: Array.isArray(d.hiddenAccounts) ? d.hiddenAccounts.map(String).filter(a => d.accounts.map(String).includes(a)) : [],
       income: Array.isArray(d.income) && d.income.length ? d.income.map(i => ({ id: i.id || uid('i'), name: String(i.name), day: i.day, amount: i.amount == null ? null : Number(i.amount), hidden: !!i.hidden, shift: validShift(i.shift, 'before') }))
-        : []
+        : [],
+      transfers: Array.isArray(d.transfers) ? d.transfers.filter(t => t && t.from && t.to && Number(t.amount) > 0).map(t => ({ id: t.id || uid('t'), at: t.at || null, from: String(t.from), to: String(t.to), amount: Number(t.amount), fee: Number(t.fee) || 0, feeFrom: t.feeFrom === 'amount' ? 'amount' : 'source', undone: !!t.undone })).slice(0, 30) : []
     };
     for (const a of out.accounts) {
       const b = (d.balances || {})[a] || {};
@@ -267,6 +268,7 @@
       '<h3>期限と期間</h3><p>「いつまでに必要か」の期限を2つ設定できます（初期設定は10日と月末）。期限1が締め日で、確認日から次の締め日までの引落で不足と余りを判定します。期限2の分は参考として表示します。「設定 → 帳簿」で、それぞれ1〜28日または月末と、休日に当たったときの扱い（後ろ・前・ずらさない）に変えられます。確認日（今日）から次の締め日までの引落で、不足と余りを判定します。</p>' +
       '<h3>休日のずれ</h3><p>土日・祝日・年末年始（12/31〜1/3）に当たる日は、項目ごとに「後ろにずらす／前にずらす／ずらさない」を選べます。初期値は、支出が後ろ（翌営業日）、収入が前（前営業日）です。</p>' +
       '<h3>帳簿</h3><p>家族のお金なども、人ごとに別の帳簿で管理できます。画面上の名前をタップすると切り替わり、「＋ 帳簿」で追加できます。バックアップは全部の帳簿をまとめて保存します。</p>' +
+      '<h3>口座間の移動</h3><p>準備ページの「ほかの口座から移す」「口座間で移す」で、実際に移したお金を記録すると、両方の残高が書きかわります。不足している口座から開くと、不足額が最初から入ります。手数料は「移動元から別に引く」か「移す金額から引く」を選べ、口座の組み合わせごとに前回の手数料を覚えます。間違えたときは「最近の移動」から取り消せます。</p>' +
       '<h3>1回のみの引落</h3><p>年払いの保険や税金など、決まった日に1回だけ引き落とされるものは、「設定 → 支出 → 1回のみ」で日付を指定して追加します。変動費ページの下に並び、日付が過ぎると「済み」にまとまります。</p>' +
       '<h3>非表示</h3><p>使わなくなった項目・口座・収入は非表示にできます。非表示にしたものは計算に含みません。</p>' +
       '<h3>データの保存</h3><p>入力した内容は変更するたびに自動で、この端末の中だけに保存され、外部には送信しません（アプリ版でiCloudがオンの場合は、あなたのiCloudにも自動でバックアップします）。入力を間違えたときは「設定 → 保存」の自動の履歴から、前の日の状態に戻せます。機種変更やブラウザのデータ削除に備えて、ときどき「ファイル」アプリ（iCloud Driveなど）にバックアップを保存してください。お知らせの間隔は変えられます。</p>' +
@@ -348,13 +350,14 @@
       '<div class="bank-amts">' + r.windows.map(w => '<div class="' + (w.inClose ? '' : 'after') + '"><span class="k">' + w.label + (w.inClose ? '' : '（参考）') + '</span><span class="v num" data-bsum="' + w.key + '">' + yen(b.sums[w.key]) + '</span></div>').join('') + '</div>' +
       (b.unentered ? '<div class="flag">金額未入力の引落が' + b.unentered + '件あります（0円として数えていません）</div>' : '') +
       '<div class="bank-foot"><label for="bal-' + esc(b.name) + '">現在残高</label><input class="amount' + (b.balance == null ? ' empty' : '') + '" inputmode="numeric" enterkeyhint="done" autocomplete="off" id="bal-' + esc(b.name) + '" data-bal="' + esc(b.name) + '" value="' + yenTxt(b.balance) + '" placeholder="未入力">' + statusHTML(b, r) + '</div>' + afterHTML(b, r) +
-      '<details class="lines"><summary>引落の内訳</summary><div class="line-list">' + linesInner(b, r.windows) + '</div></details>' +
+      '<div class="cardacts"><details class="lines"><summary>引落の内訳</summary><div class="line-list">' + linesInner(b, r.windows) + '</div></details>' +
+      '<button class="small' + (b.shortfall > 0 ? ' primary' : '') + '" data-act="xfer-to" data-acc="' + esc(b.name) + '">' + (b.shortfall > 0 ? 'ほかの口座から移す' : '口座間で移す') + '</button></div>' +
       '</article>').join('');
     const idleTxt = idle.length ? '<div class="idle-head">この期間に引落のない口座<span class="sub">残高を入れると余りに入ります</span></div>' + idle.map(b => '<article class="bank idlebank" data-bank="' + esc(b.name) + '">' +
       '<div class="bank-head"><span class="bank-name">' + esc(b.name) + '</span><span class="next">' + nextHTML(b) + '</span></div>' +
       '<div class="bank-foot"><label for="bal-' + esc(b.name) + '">現在残高</label><input class="amount' + (b.balance == null ? ' empty' : '') + '" inputmode="numeric" enterkeyhint="done" autocomplete="off" id="bal-' + esc(b.name) + '" data-bal="' + esc(b.name) + '" value="' + yenTxt(b.balance) + '" placeholder="未入力">' + statusHTML(b, r) + '</div>' + afterHTML(b, r) + '</article>').join('') : '';
-    return '<section id="banksSec" aria-label="銀行別の入金準備表"><div class="section-head"><h2>銀行別の入金準備</h2><span class="sub">' + r.activeCount + '口座</span></div>' +
-      '<div class="banks">' + (cards || '<div class="idle">この期間の引落はありません</div>') + idleTxt + '</div>' +
+    return '<section id="banksSec" aria-label="銀行別の入金準備表"><div class="section-head"><h2>銀行別の入金準備</h2><span class="head-right"><span class="sub">' + r.activeCount + '口座</span><button class="small" data-act="xfer-to" data-acc="">口座間で移す</button></span></div>' +
+      '<div class="banks">' + (cards || '<div class="idle">この期間の引落はありません</div>') + idleTxt + '</div>' + transfersHTML() +
       '<p class="note">集計は確認日以降の引落だけです。土日・祝日・年末年始（12/31〜1/3）に当たる日は、項目ごとの設定（初期値は支出が後ろ、収入が前）でずらしています。締め日が休日の場合は、設定に合わせて締め日もずらします。</p></section>';
   }
 
@@ -647,6 +650,7 @@
         state.balances[n] = state.balances[old] || { amount: null, updatedAt: null }; delete state.balances[old];
         state.hiddenAccounts = hiddenAcc().map(a => a === old ? n : a);
         state.excludeSurplus = exclSurplus().map(a => a === old ? n : a);
+        (state.transfers || []).forEach(t => { if (t.from === old) t.from = n; if (t.to === old) t.to = n; });
         if (meta.qacc === old) { meta.qacc = n; saveMeta(); }
         save(); renderKeep(); toast('「' + n + '」に変更しました（引落' + cnt + '件）');
       });
@@ -768,6 +772,16 @@
     }));
     main.querySelectorAll('[data-act="backup"]').forEach(b => b.addEventListener('click', doBackup));
     bindCloud();
+    main.querySelectorAll('[data-act="xfer-to"]').forEach(b => b.addEventListener('click', () => {
+      if (visibleAccounts().length < 2) { toast('口座が2つ以上必要です'); return; }
+      openTransfer(b.dataset.acc);
+    }));
+    main.querySelectorAll('[data-act="xfer-undo"]').forEach(b => b.addEventListener('click', () => {
+      const t = (state.transfers || []).find(x => x.id === b.closest('[data-xid]').dataset.xid); if (!t) return;
+      confirmSheet('この移動を取り消しますか？', '<p class="sub" style="margin:0">' + esc(t.from) + ' → ' + esc(t.to) + '　' + nf.format(t.amount) + '円' + (t.fee ? '（手数料 ' + nf.format(t.fee) + '円）' : '') + '<br>両方の口座の残高を、移動する前に戻します。</p>', '取り消す', () => {
+        applyTransfer(t, -1); t.undone = true; save(); renderKeep(); toast('取り消しました');
+      });
+    }));
     main.querySelectorAll('[data-act="snooze"]').forEach(b => b.addEventListener('click', () => { meta.snoozeUntil = new Date(Date.now() + 7 * 86400000).toISOString(); saveMeta(); renderKeep(); toast('1週間後にまたお知らせします'); }));
     const be = $('#backup-every'); if (be) be.addEventListener('change', () => { meta.backupEvery = Number(be.value); meta.snoozeUntil = null; saveMeta(); toast(meta.backupEvery ? 'お知らせ：' + be.options[be.selectedIndex].text : 'バックアップのお知らせを止めました'); });
     main.querySelectorAll('[data-act="hist-restore"]').forEach(b => b.addEventListener('click', () => {
@@ -840,6 +854,92 @@
     m.onclick = e => { if (e.target === m) close(); };
     if (okLabel) $('#mOk').onclick = () => { close(); onOk(); };
     $('#mCancel').focus();
+  }
+
+  /* ---------- 口座間の移動 ---------- */
+  function transfersHTML() {
+    const list = (state.transfers || []).filter(t => !t.undone).slice(0, 5);
+    if (!list.length) return '';
+    return '<div class="xferlog"><b>最近の移動</b>' + list.map(t => '<div class="xrow" data-xid="' + esc(t.id) + '"><span class="grow"><span class="sub">' + (t.at ? stampText(t.at).replace('更新：', '') : '') + '</span><br>' +
+      esc(t.from) + ' → ' + esc(t.to) + '　<b class="num">' + nf.format(t.amount) + '円</b>' + (t.fee ? '<span class="sub">（手数料 ' + nf.format(t.fee) + '円' + (t.feeFrom === 'amount' ? '・移動額から' : '') + '）</span>' : '') + '</span>' +
+      '<button class="small" data-act="xfer-undo">取り消す</button></div>').join('') + '</div>';
+  }
+  function applyTransfer(t, sign) {
+    const bal = a => state.balances[a] || (state.balances[a] = { amount: null, updatedAt: null });
+    const out = t.amount + (t.feeFrom === 'source' ? t.fee : 0);
+    const inn = t.amount - (t.feeFrom === 'amount' ? t.fee : 0);
+    const now = new Date().toISOString();
+    const A = bal(t.from), B = bal(t.to);
+    A.amount = (A.amount || 0) - sign * out; A.updatedAt = now;
+    B.amount = (B.amount || 0) + sign * inn; B.updatedAt = now;
+  }
+  function openTransfer(toName) {
+    const r = C.compute(state, today());
+    const vis = visibleAccounts();
+    const by = n => r.banks.find(b => b.name === n);
+    const to = toName && vis.includes(toName) ? toName : '';
+    const need = to && by(to) ? by(to).shortfall || 0 : 0;
+    // 移動元の候補：余りの多い順（合計に含めない口座も選べる）
+    const srcs = vis.filter(a => a !== to).map(a => ({ a, b: by(a) })).sort((x, y) => ((y.b && y.b.surplus) || 0) - ((x.b && x.b.surplus) || 0));
+    const from = srcs.length && srcs[0].b && srcs[0].b.surplus > 0 ? srcs[0].a : '';
+    const lbl = a => { const b = by(a); return esc(a) + (b && b.balance != null ? '（残高 ' + nf.format(b.balance) + '円' + (b.surplus > 0 ? '・余り ' + nf.format(b.surplus) + '円' : '') + '）' : '（残高未入力）'); };
+    const opt = (list, sel) => '<option value="">選ぶ</option>' + list.map(a => '<option value="' + esc(a) + '"' + (a === sel ? ' selected' : '') + '>' + lbl(a) + '</option>').join('');
+    const fees = meta.fees || {};
+    const fee0 = from && to ? (fees[from + '→' + to] || 0) : 0;
+    const m = $('#modal');
+    m.innerHTML = '<div class="sheet form xsheet" role="dialog" aria-modal="true" aria-labelledby="mt"><h2 id="mt">口座間で移す</h2>' +
+      '<p class="sub" style="margin:0">実際に振り込んだ・移した後に記録すると、両方の口座の残高が書きかわります。</p>' +
+      '<label>移動元<select id="x-from">' + opt(srcs.map(x => x.a), from) + '</select></label>' +
+      '<label>移動先<select id="x-to">' + opt(vis, to) + '</select></label>' +
+      '<label>移す金額' + (need ? '<span class="sub">（' + md(r.closing) + 'までの不足 ' + nf.format(need) + '円）</span>' : '') + '<input class="amount wide" id="x-amt" inputmode="numeric" enterkeyhint="done" autocomplete="off" value="' + (need ? yenTxt(need) : '') + '" placeholder="0"></label>' +
+      '<div class="two"><label>手数料<input class="amount wide" id="x-fee" inputmode="numeric" enterkeyhint="done" autocomplete="off" value="' + (fee0 ? yenTxt(fee0) : '') + '" placeholder="0"></label>' +
+      '<label>手数料の引かれ方<select id="x-feefrom"><option value="source"' + (meta.feeFrom !== 'amount' ? ' selected' : '') + '>移動元から引く</option><option value="amount"' + (meta.feeFrom === 'amount' ? ' selected' : '') + '>移す額から引く</option></select></label></div>' +
+      '<div class="xprev" id="x-prev"></div>' +
+      '<div class="btnrow"><button id="mCancel">やめる</button><button id="mOk" class="primary">移した残高を記録</button></div></div>';
+    m.hidden = false;
+    const close = () => { m.hidden = true; m.innerHTML = ''; };
+    $('#mCancel').onclick = close;
+    m.onclick = e => { if (e.target === m) close(); };
+    const read = () => {
+      const f = $('#x-from').value, t = $('#x-to').value;
+      const amt = parseAmount($('#x-amt').value), fee = parseAmount($('#x-fee').value);
+      return { from: f, to: t, amount: amt, fee: fee == null ? 0 : fee, feeFrom: $('#x-feefrom').value === 'amount' ? 'amount' : 'source' };
+    };
+    const prev = () => {
+      const x = read(); const el = $('#x-prev');
+      if (!x.from || !x.to || x.from === x.to || !(x.amount > 0) || Number.isNaN(x.fee)) { el.innerHTML = '<span class="sub">移動元・移動先・金額を入れると、移動後の残高が出ます</span>'; return x; }
+      const out = x.amount + (x.feeFrom === 'source' ? x.fee : 0), inn = x.amount - (x.feeFrom === 'amount' ? x.fee : 0);
+      const bf = by(x.from), bt = by(x.to);
+      const fb = bf && bf.balance != null ? bf.balance : null, tb = bt && bt.balance != null ? bt.balance : 0;
+      const after = fb == null ? null : fb - out;
+      const fNeed = bf ? bf.due : 0, tNeed = bt ? bt.due : 0;
+      const judge = (bal, due) => bal == null ? '' : bal - due >= 0 ? '<span class="okc">' + md(r.closing) + 'まで 余り ' + nf.format(bal - due) + '円</span>' : '<span class="ngc">' + md(r.closing) + 'まで 不足 ' + nf.format(due - bal) + '円</span>';
+      el.innerHTML = '<div><b>' + esc(x.from) + '</b>：' + (fb == null ? '残高未入力' : nf.format(fb) + ' → <b class="num">' + nf.format(after) + '円</b>') + '（−' + nf.format(out) + '）<br>' + judge(after, fNeed) + '</div>' +
+        '<div><b>' + esc(x.to) + '</b>：' + nf.format(tb) + ' → <b class="num">' + nf.format(tb + inn) + '円</b>（＋' + nf.format(inn) + '）<br>' + judge(tb + inn, tNeed) + '</div>' +
+        (fb == null ? '<p class="flag" style="margin:0">移動元の残高が未入力です。先に残高を入力してください。</p>' : '') + (after != null && after < 0 ? '<p class="flag" style="margin:0">移動元の残高がマイナスになります。</p>' : '');
+      return x;
+    };
+    ['#x-from', '#x-to', '#x-feefrom'].forEach(id => $(id).addEventListener('change', () => {
+      if (id !== '#x-feefrom') { const f = $('#x-from').value, t = $('#x-to').value; const fv = (meta.fees || {})[f + '→' + t]; if (f && t && fv != null) $('#x-fee').value = yenTxt(fv); }
+      prev();
+    }));
+    ['#x-amt', '#x-fee'].forEach(id => $(id).addEventListener('input', prev));
+    prev();
+    $('#mOk').onclick = () => {
+      const x = prev();
+      if (!x.from || !x.to) { toast('移動元と移動先を選んでください'); return; }
+      if (x.from === x.to) { toast('移動元と移動先が同じです'); return; }
+      if (Number.isNaN(x.amount) || !(x.amount > 0)) { toast('移す金額を数字で入力してください'); return; }
+      if (Number.isNaN(x.fee)) { toast('手数料は数字で入力してください'); return; }
+      if (x.feeFrom === 'amount' && x.fee >= x.amount) { toast('手数料が移す金額以上です'); return; }
+      const bf = by(x.from); if (!bf || bf.balance == null) { toast('移動元の残高を先に入力してください'); return; }
+      const t = Object.assign({ id: uid('t'), at: new Date().toISOString(), undone: false }, x);
+      applyTransfer(t, 1);
+      state.transfers = [t].concat(state.transfers || []).slice(0, 30);
+      meta.fees = Object.assign({}, meta.fees, { [x.from + '→' + x.to]: x.fee }); meta.feeFrom = x.feeFrom; saveMeta();
+      save(); close(); renderKeep(); toast(x.from + ' → ' + x.to + '：' + nf.format(x.amount) + '円を記録しました');
+    };
+    (to ? $('#x-amt') : $('#x-to')).focus();
   }
 
   /* ---------- バックアップ ---------- */
