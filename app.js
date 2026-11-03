@@ -93,6 +93,7 @@
       variable: d.variable.map(x => item(x, false)),
       fixed: d.fixed.map(x => item(x, true)),
       balances: {},
+      settings: (() => { const cs = C.closeSettings(d); return { closeDay: cs.d1.day, closeShift: cs.d1.shift, close2Day: cs.d2.day, close2Shift: cs.d2.shift }; })(),
       hiddenAccounts: Array.isArray(d.hiddenAccounts) ? d.hiddenAccounts.map(String).filter(a => d.accounts.map(String).includes(a)) : [],
       income: Array.isArray(d.income) && d.income.length ? d.income.map(i => ({ id: i.id || uid('i'), name: String(i.name), day: i.day, amount: i.amount == null ? null : Number(i.amount), hidden: !!i.hidden, shift: validShift(i.shift, 'before') }))
         : []
@@ -146,7 +147,7 @@
   function welcomeHTML() {
     return '<section class="welcome">' +
       '<h2>はじめに</h2>' +
-      '<p>口座ごとに「次の締め日（毎月10日）までに、いくら入れておけばよいか」を計算するアプリです。給料日や引落日が休日に当たる場合のずれも計算します。</p>' +
+      '<p>口座ごとに「次の締め日（初期設定は毎月10日。変更できます）までに、いくら入れておけばよいか」を計算するアプリです。給料日や引落日が休日に当たる場合のずれも計算します。</p>' +
       '<p class="sub" style="margin:0">入力した内容はこの端末の中だけに保存され、外部には送信しません。ログインも不要です。</p>' +
       '<div class="btnrow col"><button class="primary" data-act="start-empty">空の状態ではじめる</button>' +
       '<button data-act="start-sample">サンプルデータで試してみる</button>' +
@@ -155,7 +156,7 @@
       '<button class="ghost small" data-act="help">使い方を見る</button></section>';
   }
 
-  function emptyState() { return { app: 'kakeibo', version: 1, source: '', accounts: [], variable: [], fixed: [], balances: {}, hiddenAccounts: [], income: [] }; }
+  function emptyState() { return { app: 'kakeibo', version: 1, source: '', settings: { closeDay: 10, closeShift: 'after', close2Day: 'end', close2Shift: 'none' }, accounts: [], variable: [], fixed: [], balances: {}, hiddenAccounts: [], income: [] }; }
 
   /** 架空のサンプル（人名・実在の口座名は使わない） */
   function sampleState() {
@@ -193,7 +194,7 @@
   function helpHTML() {
     return '<div class="help">' +
       '<h3>できること</h3><p>登録した毎月の引落をもとに、口座ごとに「締め日までに必要な金額」を計算します。残高を入力すると、不足している口座と余っている口座がわかります。</p>' +
-      '<h3>締め日と期間</h3><p>締め日は毎月10日です。10日が休日なら翌営業日まで延ばします。確認日（今日）から次の締め日までの引落で、不足と余りを判定します。締め日の後から月末までの分は「締め後」として参考に表示します。</p>' +
+      '<h3>期限と期間</h3><p>「いつまでに必要か」の期限を2つ設定できます（初期設定は10日と月末）。期限1が締め日で、確認日から次の締め日までの引落で不足と余りを判定します。期限2の分は参考として表示します。「設定」の一番上で、それぞれ1〜28日または月末と、休日に当たったときの扱い（後ろ・前・ずらさない）に変えられます。確認日（今日）から次の締め日までの引落で、不足と余りを判定します。</p>' +
       '<h3>休日のずれ</h3><p>土日・祝日・年末年始（12/31〜1/3）に当たる日は、項目ごとに「後ろにずらす／前にずらす／ずらさない」を選べます。初期値は、支出が後ろ（翌営業日）、収入が前（前営業日）です。</p>' +
       '<h3>非表示</h3><p>使わなくなった項目・口座・収入は非表示にできます。非表示にしたものは計算に含みません。</p>' +
       '<h3>データの保存</h3><p>入力した内容はこの端末のブラウザの中だけに保存され、外部には送信しません。ブラウザのデータを消すと失われるので、「設定 → 保存」からバックアップを「ファイル」アプリなどに保存してください。</p>' +
@@ -226,7 +227,7 @@
   }
 
   function summaryHTML(r) {
-    const per = r.windows.map(w => '<div class="period' + (w.inClose ? '' : ' after') + '"><span class="lab">' + w.label + 'に必要' + (w.inClose ? '' : '<span class="tag">締め後</span>') + '</span><span class="rng">' + md(w.from) + '〜' + md(w.to) + (w.key === 'w10' && w.to.d !== 10 ? '<br>10日が休日のため' + w.to.d + '日締め' : '') + '</span><span class="val num" data-sum="' + w.key + '">' + yen(r.totals[w.key]) + '</span></div>').join('');
+    const per = r.windows.map((w, i) => '<div class="period' + (w.inClose ? '' : ' after') + '"><span class="lab">' + w.label + 'に必要' + (w.inClose ? '' : '<span class="tag">参考</span>') + (i === 0 ? '<button class="linkish" data-act="go-close" aria-label="期限を変更">変更</button>' : '') + '</span><span class="rng">' + md(w.from) + '〜' + md(w.to) + (w.nominal ? '<br>' + md(w.nominal) + 'が休日のため' + md(w.to) + 'まで' : '') + '</span><span class="val num" data-sum="' + w.key + '">' + yen(r.totals[w.key]) + '</span></div>').join('');
     const inc = r.income.map(i => '<div class="income-row"><span class="who">' + esc(i.name) + '</span><span class="when">' + (i.next ? '<span class="' + (isWeekend(i.next) ? 'wkend' : '') + '">' + mdw(i.next) + '</span> 予定' + shiftNote(i.next) : '') + '</span>' +
       '<input class="amount' + (i.amount == null ? ' empty' : '') + '" inputmode="numeric" enterkeyhint="done" autocomplete="off" id="inc-' + esc(i.id) + '" data-inc="' + esc(i.id) + '" value="' + yenTxt(i.amount) + '" placeholder="金額（任意）" aria-label="' + esc(i.name) + 'の収入予定額"></div>').join('');
     return '<section class="summary" id="sec-top" aria-label="要約">' +
@@ -256,7 +257,7 @@
     const active = r.banks.filter(b => b.active), idle = r.banks.filter(b => !b.active);
     const cards = active.map(b => '<article class="bank' + (b.shortfall > 0 ? ' is-short' : '') + '" data-bank="' + esc(b.name) + '">' +
       '<div class="bank-head"><span class="bank-name">' + esc(b.name) + '</span><span class="next">' + nextHTML(b) + '</span></div>' +
-      '<div class="bank-amts">' + r.windows.map(w => '<div class="' + (w.inClose ? '' : 'after') + '"><span class="k">' + w.label + (w.inClose ? '' : '（締め後）') + '</span><span class="v num" data-bsum="' + w.key + '">' + yen(b.sums[w.key]) + '</span></div>').join('') + '</div>' +
+      '<div class="bank-amts">' + r.windows.map(w => '<div class="' + (w.inClose ? '' : 'after') + '"><span class="k">' + w.label + (w.inClose ? '' : '（参考）') + '</span><span class="v num" data-bsum="' + w.key + '">' + yen(b.sums[w.key]) + '</span></div>').join('') + '</div>' +
       (b.unentered ? '<div class="flag">金額未入力の引落が' + b.unentered + '件あります（0円として数えていません）</div>' : '') +
       '<div class="bank-foot"><label for="bal-' + esc(b.name) + '">現在残高</label><input class="amount' + (b.balance == null ? ' empty' : '') + '" inputmode="numeric" enterkeyhint="done" autocomplete="off" id="bal-' + esc(b.name) + '" data-bal="' + esc(b.name) + '" value="' + yenTxt(b.balance) + '" placeholder="未入力">' + statusHTML(b) + '</div>' +
       '<details class="lines"><summary>引落の内訳</summary><div class="line-list">' + linesInner(b, r.windows) + '</div></details>' +
@@ -264,7 +265,7 @@
     const idleTxt = idle.length ? '<div class="idle">この期間に引落のない口座：<b>' + idle.map(b => esc(b.name)).join('、') + '</b></div>' : '';
     return '<section id="banksSec" aria-label="銀行別の入金準備表"><div class="section-head"><h2>銀行別の入金準備</h2><span class="sub">' + r.activeCount + '口座</span></div>' +
       '<div class="banks">' + (cards || '<div class="idle">この期間の引落はありません</div>') + idleTxt + '</div>' +
-      '<p class="note">集計は確認日以降の引落だけです。土日・祝日・年末年始（12/31〜1/3）に当たる日は、項目ごとの設定（初期値は支出が後ろ、収入が前）でずらしています。締め日の10日が休日なら、締め日も翌営業日に延ばします。</p></section>';
+      '<p class="note">集計は確認日以降の引落だけです。土日・祝日・年末年始（12/31〜1/3）に当たる日は、項目ごとの設定（初期値は支出が後ろ、収入が前）でずらしています。締め日が休日の場合は、設定に合わせて締め日もずらします。</p></section>';
   }
 
   function daySelect(id, d) {
@@ -350,7 +351,13 @@
     else if (st === 'in') body = inHTML();
     else if (st === 'acc') body = accHTML();
     else body = backupHTML();
-    return '<section id="sec-settings" aria-label="設定"><div class="section-head"><h2>設定</h2></div>' + seg + '<div class="stab-body">' + body + '</div></section>';
+    const cs = C.closeSettings(state);
+    const dayOpts = sel => { let o = ''; for (let i = 1; i <= 28; i++) o += '<option value="' + i + '"' + (i === sel ? ' selected' : '') + '>毎月' + i + '日</option>'; return o + '<option value="end"' + (sel === 'end' ? ' selected' : '') + '>毎月 月末</option>'; };
+    const sh = (id, v) => shiftSelect(id, v, '休日のとき').replace(SHIFT_LABEL.after, '後ろ（翌営業日）').replace(SHIFT_LABEL.before, '前（前営業日）');
+    const closeCard = '<div class="card form closecard" id="closecard"><div class="shead">いつまでに必要か（期限）<span class="sub">準備ページの2つの期間になります。期限1は締め日として、不足と余りの判定に使います</span></div>' +
+      '<div class="dl"><b>期限1（締め日）</b><div class="two"><label>日付<select id="close-day">' + dayOpts(cs.d1.day) + '</select></label><label>休日のとき' + sh('close-shift', cs.d1.shift) + '</label></div></div>' +
+      '<div class="dl"><b>期限2（参考）</b><div class="two"><label>日付<select id="close2-day">' + dayOpts(cs.d2.day) + '</select></label><label>休日のとき' + sh('close2-shift', cs.d2.shift) + '</label></div></div></div>';
+    return '<section id="sec-settings" aria-label="設定"><div class="section-head"><h2>設定</h2></div>' + closeCard + seg + '<div class="stab-body">' + body + '</div></section>';
   }
 
   function visibleAccounts() { return state.accounts.filter(a => !hiddenAcc().includes(a)); }
@@ -406,6 +413,16 @@
   }
 
   function bindSettings() {
+    const cd = $('#close-day');
+    if (cd) {
+      const dv = v => v === 'end' ? 'end' : Number(v);
+      const lab = d => d === 'end' ? '月末' : d + '日';
+      const upd = () => {
+        state.settings = { closeDay: dv(cd.value), closeShift: validShift($('#close-shift').value, 'after'), close2Day: dv($('#close2-day').value), close2Shift: validShift($('#close2-shift').value, 'none') };
+        save(); renderKeep(); toast('期限1：' + lab(state.settings.closeDay) + '／期限2：' + lab(state.settings.close2Day));
+      };
+      ['#close-day', '#close-shift', '#close2-day', '#close2-shift'].forEach(id => $(id).addEventListener('change', upd));
+    }
     main.querySelectorAll('[data-stab]').forEach(b => b.addEventListener('click', () => { meta.stab = b.dataset.stab; meta.reorder = null; saveMeta(); renderAll(); window.scrollTo(0, 0); }));
     // 支出の追加
     main.querySelectorAll('[data-qkind]').forEach(b => b.addEventListener('click', () => { meta.qkind = b.dataset.qkind; saveMeta(); keepForm(() => renderKeep()); }));
@@ -580,6 +597,7 @@
     main.querySelectorAll('[data-act="go-acc"]').forEach(b => b.addEventListener('click', () => go('acc')));
     main.querySelectorAll('[data-act="go-out"]').forEach(b => b.addEventListener('click', () => go('out')));
     main.querySelectorAll('[data-act="go-in"]').forEach(b => b.addEventListener('click', () => go('in')));
+    main.querySelectorAll('[data-act="go-close"]').forEach(b => b.addEventListener('click', () => { go(meta.stab || 'out'); const c = $('#close-day'); if (c) c.focus(); }));
     main.querySelectorAll('[data-act="sample-clear"]').forEach(b => b.addEventListener('click', () => confirmSheet('サンプルを消しますか？', '<p class="sub" style="margin:0">サンプルの口座・支出・収入をすべて消して、空の状態からはじめます。</p>', '消してはじめる', () => {
       state = emptyState(); meta.page = 'prep'; saveMeta(); save(); renderAll(); window.scrollTo(0, 0); toast('空の状態になりました');
     }, true)));

@@ -81,26 +81,57 @@
 
   /**
    * 集計期間（重複なし・確認日から連続）
-   * 締め日は毎月10日。10日が休日なら翌営業日まで延ばす（例：10/10(土)・10/12祝 → 10/13締め）
-   *  確認日が締め日以前 : ①確認日〜当月の締め日  ②締め日の翌日〜月末
-   *  確認日が締め日より後: ①確認日〜当月末      ②翌月1日〜翌月の締め日
-   * 過不足は確認日から次の締め日までの引落で判定する（inClose）
+   * 締め日は設定で変更できる（初期値：毎月10日・休日なら翌営業日）
+   *  次の締め日が今月中   : ①確認日〜締め日（判定に使う）  ②締め日の翌日〜その月末（参考）
+   *  次の締め日が翌月以降 : ①確認日〜今月末（判定に使う）  ②翌月1日〜締め日（判定に使う）
    */
-  function closingOf(y, m) { return shiftDate({ y, m, d: 10 }, 'after'); }
-  function windows(T) {
-    const ld = lastDay(T.y, T.m);
-    const c = closingOf(T.y, T.m);
-    if (T.d <= c.d) {
-      return [
-        { key: 'w10', label: '10日まで', from: T, to: c, inClose: true },
-        { key: 'wEnd', label: '月末まで', from: addDays(c, 1), to: { y: T.y, m: T.m, d: ld }, inClose: false }
-      ];
+  /**
+   * 期限は2つまで自由に設定できる（期限1は不足・余りの判定に使う締め日）
+   * 初期値：期限1＝毎月10日（休日なら後ろ）、期限2＝月末（ずらさない）
+   */
+  function validDayVal(v, def) { return v === 'end' || (Number.isInteger(v) && v >= 1 && v <= 28) ? v : def; }
+  function closeSettings(data) {
+    const s = (data && data.settings) || {};
+    const d1 = { day: validDayVal(s.closeDay, 10), shift: SHIFTS.includes(s.closeShift) ? s.closeShift : 'after' };
+    const d2 = { day: validDayVal(s.close2Day, 'end'), shift: SHIFTS.includes(s.close2Shift) ? s.close2Shift : 'none' };
+    return { d1, d2, day: d1.day, shift: d1.shift };
+  }
+  function nominalClosing(y, m, cs) { return { y, m, d: cs.day === 'end' ? lastDay(y, m) : cs.day }; }
+  function closingOf(y, m, cs) { cs = cs || { day: 10, shift: 'after' }; const n = nominalClosing(y, m, cs); const a = shiftDate(n, cs.shift); return serial(a) === serial(n) ? n : Object.assign({ nominal: n }, a); }
+  function nextClosing(T, cs) {
+    let best = null;
+    for (let i = -1; i <= 2; i++) {
+      const ym = addMonth(T.y, T.m, i); const c = closingOf(ym.y, ym.m, cs);
+      if (serial(c) >= serial(T) && (!best || serial(c) < serial(best))) best = c;
     }
-    const n = addMonth(T.y, T.m, 1);
-    return [
-      { key: 'wEnd', label: '月末まで', from: T, to: { y: T.y, m: T.m, d: ld }, inClose: true },
-      { key: 'w10', label: '翌10日まで', from: { y: n.y, m: n.m, d: 1 }, to: closingOf(n.y, n.m), inClose: true }
+    return best;
+  }
+  function deadlineLabel(dl, c, T) {
+    const n = c.nominal || c; const next = n.y * 12 + n.m > T.y * 12 + T.m;
+    return (next ? '翌' : '') + (dl.day === 'end' ? '月末まで' : dl.day + '日まで');
+  }
+  /**
+   * 集計期間（重複なし・確認日から連続）
+   *  ①確認日〜次に来る期限  ②その翌日〜その次の期限
+   *  判定（inClose）は、期限1（締め日）の次の到来日までの期間
+   */
+  function windows(T, cs) {
+    cs = cs && cs.d1 ? cs : { d1: cs || { day: 10, shift: 'after' }, d2: { day: 'end', shift: 'none' } };
+    const c1 = nextClosing(T, cs.d1), c2 = nextClosing(T, cs.d2);
+    const firstIs1 = serial(c1) <= serial(c2);
+    const first = firstIs1 ? c1 : c2, firstDl = firstIs1 ? cs.d1 : cs.d2;
+    const s = addDays(first, 1);
+    const n1 = nextClosing(s, cs.d1), n2 = nextClosing(s, cs.d2);
+    const secondIs1 = serial(n1) <= serial(n2);
+    const second = secondIs1 ? n1 : n2, secondDl = secondIs1 ? cs.d1 : cs.d2;
+    const plain = x => ({ y: x.y, m: x.m, d: x.d });
+    const W = [
+      { key: 'w1', which: firstIs1 ? 1 : 2, label: deadlineLabel(firstDl, first, T), from: T, to: plain(first), nominal: first.nominal || null },
+      { key: 'w2', which: secondIs1 ? 1 : 2, label: deadlineLabel(secondDl, second, T), from: s, to: plain(second), nominal: second.nominal || null }
     ];
+    for (const w of W) w.inClose = serial(w.to) <= serial(c1);
+    if (W[0].label === W[1].label) W[1].label = '翌' + W[1].label.replace(/^翌/, '');
+    return W;
   }
 
   /** 期間内の引落（1項目につき月1回。休日でずれて月をまたぐ分も拾うため前後1か月も見る） */
@@ -130,7 +161,8 @@
   }
 
   function compute(data, T) {
-    const W = windows(T);
+    const cs = closeSettings(data);
+    const W = windows(T, cs);
     // 非表示の項目・口座・収入は計算に含めない
     const hiddenAcc = new Set(data.hiddenAccounts || []);
     const items = []
@@ -166,9 +198,9 @@
     const totals = {};
     for (const w of W) totals[w.key] = banks.reduce((s, b) => s + b.sums[w.key], 0);
     const entered = banks.filter(b => b.dueActive && b.balance != null);
-    const closeWin = W.find(w => w.key === 'w10');
+    const closeWin = W.filter(w => w.inClose).pop();
     return {
-      T, windows: W, banks, totals, closing: closeWin.to,
+      T, windows: W, banks, totals, closing: closeWin.to, closeDay: cs.day, closeShift: cs.shift,
       dueTotal: banks.reduce((s, b) => s + b.due, 0),
       dueCount: banks.filter(b => b.dueActive).length,
       grandTotal: banks.reduce((s, b) => s + b.total, 0),
@@ -183,7 +215,7 @@
     };
   }
 
-  const api = { closingOf, holidays, holidayName, isBusinessDay, shiftDate, shiftMode, actual, addDays, WD, lastDay, serial, addMonth, weekday, fromDate, occurrence, activeIn, windows, occurrencesIn, nextDate, compute };
+  const api = { deadlineLabel, closeSettings, nextClosing, closingOf, holidays, holidayName, isBusinessDay, shiftDate, shiftMode, actual, addDays, WD, lastDay, serial, addMonth, weekday, fromDate, occurrence, activeIn, windows, occurrencesIn, nextDate, compute };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.KCalc = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

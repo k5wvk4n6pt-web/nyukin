@@ -204,7 +204,8 @@ section[id], #sec-top { scroll-margin-top: calc(env(safe-area-inset-top, 0px) + 
 .card .pad h2 { font-size: 17px; }
 .form { padding: 14px; display: grid; gap: 12px; }
 .form label { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
-.form .shead { padding: 0; }
+.form .shead { padding: 0; display: grid; gap: 2px; font-weight: 700; }
+.shead .sub { font-weight: 400; }
 .form select { width: 100%; }
 .addform { border-top: 1px solid var(--line); }
 .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -257,6 +258,10 @@ button.mv:disabled { opacity: .3; }
 .guide li.done .stept b { color: var(--muted); }
 .stept { flex: 1; min-width: 0; display: grid; }
 .stept small { color: var(--muted); font-size: 12px; }
+.closecard { margin-bottom: 14px; }
+.dl { display: grid; gap: 6px; padding-top: 10px; border-top: 1px dashed var(--line); }
+.dl b { font-size: 14px; }
+.linkish { border: 0; background: transparent; color: var(--accent); font-size: 12px; font-weight: 600; min-height: 0; padding: 0 0 0 6px; text-decoration: underline; }
 .restore-line { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; border-top: 1px dashed var(--line); padding-top: 12px; }
 .danger-zone { border-top: 1px dashed var(--line); padding-top: 14px; display: grid; gap: 8px; }
 .sheet dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0; font-size: 14px; }
