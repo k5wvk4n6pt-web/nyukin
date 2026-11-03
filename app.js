@@ -221,7 +221,7 @@
   function helpHTML() {
     return '<div class="help">' +
       '<h3>できること</h3><p>登録した毎月の引落をもとに、口座ごとに「締め日までに必要な金額」を計算します。残高を入力すると、不足している口座と余っている口座がわかります。</p>' +
-      '<h3>期限と期間</h3><p>「いつまでに必要か」の期限を2つ設定できます（初期設定は10日と月末）。期限1が締め日で、確認日から次の締め日までの引落で不足と余りを判定します。期限2の分は参考として表示します。「設定」の一番上で、それぞれ1〜28日または月末と、休日に当たったときの扱い（後ろ・前・ずらさない）に変えられます。確認日（今日）から次の締め日までの引落で、不足と余りを判定します。</p>' +
+      '<h3>期限と期間</h3><p>「いつまでに必要か」の期限を2つ設定できます（初期設定は10日と月末）。期限1が締め日で、確認日から次の締め日までの引落で不足と余りを判定します。期限2の分は参考として表示します。「設定 → 帳簿」で、それぞれ1〜28日または月末と、休日に当たったときの扱い（後ろ・前・ずらさない）に変えられます。確認日（今日）から次の締め日までの引落で、不足と余りを判定します。</p>' +
       '<h3>休日のずれ</h3><p>土日・祝日・年末年始（12/31〜1/3）に当たる日は、項目ごとに「後ろにずらす／前にずらす／ずらさない」を選べます。初期値は、支出が後ろ（翌営業日）、収入が前（前営業日）です。</p>' +
       '<h3>帳簿</h3><p>家族のお金なども、人ごとに別の帳簿で管理できます。画面上の名前をタップすると切り替わり、「＋ 帳簿」で追加できます。バックアップは全部の帳簿をまとめて保存します。</p>' +
       '<h3>非表示</h3><p>使わなくなった項目・口座・収入は非表示にできます。非表示にしたものは計算に含みません。</p>' +
@@ -386,10 +386,11 @@
     const cs = C.closeSettings(state);
     const dayOpts = sel => { let o = ''; for (let i = 1; i <= 28; i++) o += '<option value="' + i + '"' + (i === sel ? ' selected' : '') + '>毎月' + i + '日</option>'; return o + '<option value="end"' + (sel === 'end' ? ' selected' : '') + '>毎月 月末</option>'; };
     const sh = (id, v) => shiftSelect(id, v, '休日のとき').replace(SHIFT_LABEL.after, '後ろ（翌営業日）').replace(SHIFT_LABEL.before, '前（前営業日）');
-    const closeCard = '<div class="card form closecard" id="closecard"><div class="shead">いつまでに必要か（期限）<span class="sub">準備ページの2つの期間になります。期限1は締め日として、不足と余りの判定に使います</span></div>' +
+    const closeCard = '<div class="card form closecard" id="closecard"><div class="shead">いつまでに必要か（期限）<span class="sub">帳簿「' + esc(curBook() ? curBook().name : '') + '」の設定です。準備ページの2つの期間になり、期限1は締め日として不足と余りの判定に使います</span></div>' +
       '<div class="dl"><b>期限1（締め日）</b><div class="two"><label>日付<select id="close-day">' + dayOpts(cs.d1.day) + '</select></label><label>休日のとき' + sh('close-shift', cs.d1.shift) + '</label></div></div>' +
       '<div class="dl"><b>期限2（参考）</b><div class="two"><label>日付<select id="close2-day">' + dayOpts(cs.d2.day) + '</select></label><label>休日のとき' + sh('close2-shift', cs.d2.shift) + '</label></div></div></div>';
-    return '<section id="sec-settings" aria-label="設定"><div class="section-head"><h2>設定</h2></div>' + closeCard + seg + '<div class="stab-body">' + body + '</div></section>';
+    if (st === 'books') body = body + closeCard;
+    return '<section id="sec-settings" aria-label="設定"><div class="section-head"><h2>設定</h2></div>' + seg + '<div class="stab-body">' + body + '</div></section>';
   }
 
   function visibleAccounts() { return state.accounts.filter(a => !hiddenAcc().includes(a)); }
@@ -677,7 +678,7 @@
     main.querySelectorAll('[data-act="go-acc"]').forEach(b => b.addEventListener('click', () => go('acc')));
     main.querySelectorAll('[data-act="go-out"]').forEach(b => b.addEventListener('click', () => go('out')));
     main.querySelectorAll('[data-act="go-in"]').forEach(b => b.addEventListener('click', () => go('in')));
-    main.querySelectorAll('[data-act="go-close"]').forEach(b => b.addEventListener('click', () => { go(meta.stab || 'out'); const c = $('#close-day'); if (c) c.focus(); }));
+    main.querySelectorAll('[data-act="go-close"]').forEach(b => b.addEventListener('click', () => { go('books'); const c = $('#closecard'); if (c) c.scrollIntoView({ block: 'start' }); }));
     main.querySelectorAll('[data-act="sample-clear"]').forEach(b => b.addEventListener('click', () => confirmSheet('サンプルを消しますか？', '<p class="sub" style="margin:0">サンプルの口座・支出・収入をすべて消して、空の状態からはじめます。</p>', '消してはじめる', () => {
       state = emptyState(); meta.page = 'prep'; saveMeta(); save(); renderAll(); window.scrollTo(0, 0); toast('空の状態になりました');
     }, true)));
