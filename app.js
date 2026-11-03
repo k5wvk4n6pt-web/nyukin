@@ -173,7 +173,8 @@
   function sampleBannerHTML() {
     if (!state.sample) return '';
     return '<div class="notice"><div><b>サンプルデータを表示しています。</b><br>口座名や金額はすべて架空です。自由に触って試してみてください。</div>' +
-      '<div class="btnrow"><button class="primary" data-act="sample-clear">サンプルを消して自分のデータではじめる</button></div></div>';
+      '<div class="btnrow"><button class="primary" data-act="sample-clear">サンプルを消して自分のデータではじめる</button>' +
+      '<label class="fileBtn">バックアップから復元<input type="file" id="restoreFile" accept=".json,application/json"></label></div></div>';
   }
   function needsSetup() { return !state.sample && (state.accounts.length === 0 || state.variable.length + state.fixed.length === 0); }
   function setupGuideHTML() {
@@ -184,7 +185,9 @@
       step(hasItem, 2, '支出を登録', '毎月の引落（カード・ローン・公共料金など）', '登録する', 'go-out') +
       step(state.income.length > 0, 3, '収入を登録（任意）', '給料日などの予定を表示します', '登録する', 'go-in') +
       step(false, 4, '口座の残高を入力', 'このページの各口座に入力すると、不足と余りが出ます', '', '') +
-      '</ol></section>';
+      '</ol>' +
+      '<div class="restore-line"><span class="sub">以前のデータがある場合は</span><label class="fileBtn">バックアップから復元<input type="file" id="restoreFile" accept=".json,application/json"></label></div>' +
+      '</section>';
   }
 
   function helpHTML() {
