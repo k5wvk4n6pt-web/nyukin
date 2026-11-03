@@ -262,6 +262,17 @@ button.mv:disabled { opacity: .3; }
 .dl { display: grid; gap: 6px; padding-top: 10px; border-top: 1px dashed var(--line); }
 .dl b { font-size: 14px; }
 .linkish { border: 0; background: transparent; color: var(--accent); font-size: 12px; font-weight: 600; min-height: 0; padding: 0 0 0 6px; text-decoration: underline; }
+.idle-head { display: grid; gap: 2px; font-weight: 700; font-size: 14px; margin-top: 6px; }
+.bank.idlebank { padding: 12px 14px; gap: 8px; background: transparent; border-style: dashed; }
+.srow.sub-row { border-top: 0; padding-top: 0; }
+.srow[data-acc-i] { border-bottom: 0; }
+.check { display: flex; align-items: center; gap: 8px; flex: 1; font-size: 14px; min-height: 44px; }
+.check input { width: 22px; height: 22px; accent-color: var(--accent); }
+.books { display: flex; gap: 6px; overflow-x: auto; margin: -12px 0 -8px; padding: 2px 0; scrollbar-width: none; }
+.books::-webkit-scrollbar { display: none; }
+.book { flex: 0 0 auto; min-height: 38px; padding: 6px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font-size: 15px; font-weight: 600; }
+.book.on { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+.book.add { color: var(--accent); background: transparent; border-style: dashed; font-weight: 500; }
 .restore-line { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; border-top: 1px dashed var(--line); padding-top: 12px; }
 .danger-zone { border-top: 1px dashed var(--line); padding-top: 14px; display: grid; gap: 8px; }
 .sheet dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0; font-size: 14px; }
@@ -285,6 +296,7 @@ button.mv:disabled { opacity: .3; }
       <div class="saved" id="saved" aria-live="polite"></div>
     </div>
   </header>
+  <div id="books" class="books" role="navigation" aria-label="帳簿の切り替え" hidden></div>
   <noscript>このアプリはJavaScriptを使います。</noscript>
   <div id="main"></div>
 </div>

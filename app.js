@@ -58,13 +58,33 @@
   }
 
   /* ---------- 保存 ---------- */
+  /* 帳簿：人ごとに別のデータ。最初の帳簿（id: main）は以前からの保存場所をそのまま使う */
+  const BOOKS = 'kakeibo.books.v1';
+  let books = null; // { current, list: [{ id, name }] }
+  function dataKey(id) { return id === 'main' ? KEY : KEY + ':' + id; }
+  function readBook(id) { try { const s = localStorage.getItem(dataKey(id)); return s ? normalize(JSON.parse(s)) : null; } catch (e) { return null; } }
+  function saveBooks() { try { localStorage.setItem(BOOKS, JSON.stringify(books)); } catch (e) { /* 次の保存で再試行 */ } }
+  function ensureBooks() { if (!books) { books = { current: 'main', list: [{ id: 'main', name: 'メイン' }] }; saveBooks(); } }
+  function curBook() { return books && books.list.find(b => b.id === books.current); }
   function load() {
-    try { const s = localStorage.getItem(KEY); state = s ? normalize(JSON.parse(s)) : null; } catch (e) { state = null; }
     try { meta = JSON.parse(localStorage.getItem(META) || '{}') || {}; } catch (e) { meta = {}; }
+    try { books = JSON.parse(localStorage.getItem(BOOKS) || 'null'); } catch (e) { books = null; }
+    if (books && (!Array.isArray(books.list) || !books.list.length)) books = null;
+    if (!books && localStorage.getItem(KEY)) ensureBooks(); // 以前の版のデータ
+    if (books && !curBook()) books.current = books.list[0].id;
+    state = books ? (readBook(books.current) || emptyState()) : null;
+  }
+  function switchBook(id) {
+    if (!books || id === books.current) return;
+    books.current = id; saveBooks();
+    state = readBook(id) || emptyState();
+    meta.page = 'prep'; meta.reorder = null; saveMeta();
+    renderAll(); window.scrollTo(0, 0); toast('「' + curBook().name + '」の帳簿を開きました');
   }
   function save() {
     try {
-      localStorage.setItem(KEY, JSON.stringify(state));
+      ensureBooks();
+      localStorage.setItem(dataKey(books.current), JSON.stringify(state));
       lastSavedAt = new Date();
       $('#saved').textContent = '自動保存 ' + timeText(lastSavedAt);
     } catch (e) {
@@ -94,6 +114,7 @@
       fixed: d.fixed.map(x => item(x, true)),
       balances: {},
       settings: (() => { const cs = C.closeSettings(d); return { closeDay: cs.d1.day, closeShift: cs.d1.shift, close2Day: cs.d2.day, close2Shift: cs.d2.shift }; })(),
+      excludeSurplus: Array.isArray(d.excludeSurplus) ? d.excludeSurplus.map(String).filter(a => d.accounts.map(String).includes(a)) : [],
       hiddenAccounts: Array.isArray(d.hiddenAccounts) ? d.hiddenAccounts.map(String).filter(a => d.accounts.map(String).includes(a)) : [],
       income: Array.isArray(d.income) && d.income.length ? d.income.map(i => ({ id: i.id || uid('i'), name: String(i.name), day: i.day, amount: i.amount == null ? null : Number(i.amount), hidden: !!i.hidden, shift: validShift(i.shift, 'before') }))
         : []
@@ -109,6 +130,12 @@
   function renderAll() {
     const T = today(); todayKey = keyOf(T);
     $('#nav').hidden = !state;
+    const bk = $('#books');
+    bk.hidden = !state;
+    if (state && books) {
+      bk.innerHTML = books.list.map(b => '<button class="book' + (b.id === books.current ? ' on' : '') + '" data-book="' + esc(b.id) + '"' + (b.id === books.current ? ' aria-current="true"' : '') + '>' + esc(b.name) + '</button>').join('') +
+        '<button class="book add" data-act="book-add" aria-label="帳簿を追加">＋ 帳簿</button>';
+    }
     $('#today').textContent = T.y + '年' + T.m + '月' + T.d + '日(' + C.WD[C.weekday(T)] + ')';
     if (!state) { main.innerHTML = welcomeHTML(); bindWelcome(); return; }
     const r = C.compute(state, T);
@@ -129,7 +156,7 @@
     main.querySelectorAll('[data-sum]').forEach(el => { el.innerHTML = yen(r.totals[el.dataset.sum]); });
     const sb = $('#shortbox'); if (sb) sb.outerHTML = shortboxHTML(r);
     if (!$('#banksSec')) return;
-    const shown = [...main.querySelectorAll('.bank')].map(c => c.dataset.bank).join('|');
+    const shown = [...main.querySelectorAll('.bank:not(.idlebank)')].map(c => c.dataset.bank).join('|');
     if (shown !== r.banks.filter(b => b.active).map(b => b.name).join('|')) {
       const sec = $('#banksSec'); sec.outerHTML = banksHTML(r); bindBalances(); return;
     }
@@ -196,6 +223,7 @@
       '<h3>できること</h3><p>登録した毎月の引落をもとに、口座ごとに「締め日までに必要な金額」を計算します。残高を入力すると、不足している口座と余っている口座がわかります。</p>' +
       '<h3>期限と期間</h3><p>「いつまでに必要か」の期限を2つ設定できます（初期設定は10日と月末）。期限1が締め日で、確認日から次の締め日までの引落で不足と余りを判定します。期限2の分は参考として表示します。「設定」の一番上で、それぞれ1〜28日または月末と、休日に当たったときの扱い（後ろ・前・ずらさない）に変えられます。確認日（今日）から次の締め日までの引落で、不足と余りを判定します。</p>' +
       '<h3>休日のずれ</h3><p>土日・祝日・年末年始（12/31〜1/3）に当たる日は、項目ごとに「後ろにずらす／前にずらす／ずらさない」を選べます。初期値は、支出が後ろ（翌営業日）、収入が前（前営業日）です。</p>' +
+      '<h3>帳簿</h3><p>家族のお金なども、人ごとに別の帳簿で管理できます。画面上の名前をタップすると切り替わり、「＋ 帳簿」で追加できます。バックアップは全部の帳簿をまとめて保存します。</p>' +
       '<h3>非表示</h3><p>使わなくなった項目・口座・収入は非表示にできます。非表示にしたものは計算に含みません。</p>' +
       '<h3>データの保存</h3><p>入力した内容はこの端末のブラウザの中だけに保存され、外部には送信しません。ブラウザのデータを消すと失われるので、「設定 → 保存」からバックアップを「ファイル」アプリなどに保存してください。</p>' +
       '<h3>ご注意</h3><p>計算結果は目安です。実際の引落日・金額は、金融機関やカード会社の案内で確認してください。</p></div>';
@@ -212,7 +240,7 @@
   }
 
   function shortboxHTML(r) {
-    if (r.dueCount > 0 && r.balanceMissing === r.dueCount) {
+    if (!r.banks.some(b => b.balance != null)) {
       return '<div id="shortbox"><div class="shortbox none"><span>残高を入力すると、不足と余りの合計が出ます<small>' + md(r.closing) + '締め</small></span></div></div>';
     }
     const box = (cls, title, count, amount, sub) => '<div class="tot ' + cls + '"><span class="tl">' + title + '</span>' +
@@ -223,7 +251,7 @@
       r.surplusCount ? r.surplusCount + '口座' : '余りの口座はありません');
     const miss = r.balanceMissing > 0 ? '<div class="flag">残高未入力：' + r.balanceMissing + '口座（どちらの合計にも含みません）</div>' : '';
     return '<div id="shortbox"><div class="tots">' + short + plus + '</div>' +
-      '<p class="note" style="margin:6px 0 0">' + md(r.closing) + '締めまでの引落と、入力した残高を口座ごとに比べた合計です。口座間でお金を移すときの目安にしてください。</p>' + miss + '</div>';
+      '<p class="note" style="margin:6px 0 0">' + md(r.closing) + '締めまでの引落と、入力した残高を口座ごとに比べた合計です。余りには、締めまで引落のない口座の残高も入ります（設定で「余りに含めない」にした口座を除く）。口座間でお金を移すときの目安にしてください。</p>' + miss + '</div>';
   }
 
   function summaryHTML(r) {
@@ -238,10 +266,10 @@
   function nextHTML(b) { return b.next ? '次の引落 <span class="' + (isWeekend(b.next) ? 'wkend' : '') + '">' + mdw(b.next) + '</span>' : '予定なし'; }
 
   function statusHTML(b) {
-    if (!b.dueActive) return '<span class="pill ok" data-status>締めまで引落なし</span>';
-    if (b.balance == null) return '<span class="pill none" data-status>残高未入力</span>';
+    const ex = b.excluded ? '・合計外' : '';
+    if (b.balance == null) return '<span class="pill none" data-status>' + (b.dueActive ? '残高未入力' : '残高未入力（締めまで引落なし）') + '</span>';
     if (b.shortfall > 0) return '<span class="pill short num" data-status>不足 ' + nf.format(b.shortfall) + '円</span>';
-    return '<span class="pill ok num" data-status>足りています（余り ' + nf.format(b.surplus) + '円）</span>';
+    return '<span class="pill ' + (b.excluded ? 'none' : 'ok') + ' num" data-status>' + (b.dueActive ? '足りています（余り ' : '余り（') + nf.format(b.surplus) + '円' + ex + '）</span>';
   }
 
   function linesInner(b, W) {
@@ -262,7 +290,9 @@
       '<div class="bank-foot"><label for="bal-' + esc(b.name) + '">現在残高</label><input class="amount' + (b.balance == null ? ' empty' : '') + '" inputmode="numeric" enterkeyhint="done" autocomplete="off" id="bal-' + esc(b.name) + '" data-bal="' + esc(b.name) + '" value="' + yenTxt(b.balance) + '" placeholder="未入力">' + statusHTML(b) + '</div>' +
       '<details class="lines"><summary>引落の内訳</summary><div class="line-list">' + linesInner(b, r.windows) + '</div></details>' +
       '</article>').join('');
-    const idleTxt = idle.length ? '<div class="idle">この期間に引落のない口座：<b>' + idle.map(b => esc(b.name)).join('、') + '</b></div>' : '';
+    const idleTxt = idle.length ? '<div class="idle-head">この期間に引落のない口座<span class="sub">残高を入れると余りに入ります</span></div>' + idle.map(b => '<article class="bank idlebank" data-bank="' + esc(b.name) + '">' +
+      '<div class="bank-head"><span class="bank-name">' + esc(b.name) + '</span><span class="next">' + nextHTML(b) + '</span></div>' +
+      '<div class="bank-foot"><label for="bal-' + esc(b.name) + '">現在残高</label><input class="amount' + (b.balance == null ? ' empty' : '') + '" inputmode="numeric" enterkeyhint="done" autocomplete="off" id="bal-' + esc(b.name) + '" data-bal="' + esc(b.name) + '" value="' + yenTxt(b.balance) + '" placeholder="未入力">' + statusHTML(b) + '</div></article>').join('') : '';
     return '<section id="banksSec" aria-label="銀行別の入金準備表"><div class="section-head"><h2>銀行別の入金準備</h2><span class="sub">' + r.activeCount + '口座</span></div>' +
       '<div class="banks">' + (cards || '<div class="idle">この期間の引落はありません</div>') + idleTxt + '</div>' +
       '<p class="note">集計は確認日以降の引落だけです。土日・祝日・年末年始（12/31〜1/3）に当たる日は、項目ごとの設定（初期値は支出が後ろ、収入が前）でずらしています。締め日が休日の場合は、設定に合わせて締め日もずらします。</p></section>';
@@ -312,6 +342,7 @@
   }
 
   function hiddenAcc() { return state.hiddenAccounts || (state.hiddenAccounts = []); }
+  function exclSurplus() { return state.excludeSurplus || (state.excludeSurplus = []); }
   function hideBtn(isHidden, act) { return '<button class="small' + (isHidden ? ' primary' : '') + '" data-act="' + act + '">' + (isHidden ? '表示する' : '非表示') + '</button>'; }
 
   /* 見出し＋並び替えボタン */
@@ -342,7 +373,7 @@
     if (row) { row.scrollIntoView({ block: 'nearest' }); const btn = row.querySelector('[data-mv="' + dir + '"]'); if (btn && !btn.disabled) btn.focus({ preventScroll: true }); }
   }
 
-  const STABS = [['out', '支出'], ['in', '収入'], ['acc', '口座'], ['backup', '保存']];
+  const STABS = [['out', '支出'], ['in', '収入'], ['acc', '口座'], ['books', '帳簿'], ['backup', '保存']];
   function settingsHTML() {
     const st = STABS.some(t => t[0] === meta.stab) ? meta.stab : 'out';
     const seg = '<div class="seg" role="tablist">' + STABS.map(t => '<button role="tab" aria-selected="' + (t[0] === st) + '" class="' + (t[0] === st ? 'on' : '') + '" data-stab="' + t[0] + '">' + t[1] + '</button>').join('') + '</div>';
@@ -350,6 +381,7 @@
     if (st === 'out') body = outHTML();
     else if (st === 'in') body = inHTML();
     else if (st === 'acc') body = accHTML();
+    else if (st === 'books') body = booksHTML();
     else body = backupHTML();
     const cs = C.closeSettings(state);
     const dayOpts = sel => { let o = ''; for (let i = 1; i <= 28; i++) o += '<option value="' + i + '"' + (i === sel ? ' selected' : '') + '>毎月' + i + '日</option>'; return o + '<option value="end"' + (sel === 'end' ? ' selected' : '') + '>毎月 月末</option>'; };
@@ -404,7 +436,9 @@
     const list = on ? orderRows('accounts', state.accounts.map(a => ({ key: a, label: a, sub: used(a) + '件' + (hiddenAcc().includes(a) ? '・非表示' : '') }))) :
       state.accounts.map((a, i) => '<div class="srow' + (hiddenAcc().includes(a) ? ' is-hidden' : '') + '" data-acc-i="' + i + '">' +
         '<input class="text" id="accname-' + i + '" value="' + esc(a) + '" aria-label="口座名">' +
-        '<span class="sub nowrap">' + used(a) + '件</span>' +
+        '<span class="sub nowrap">' + used(a) + '件</span></div>' +
+        '<div class="srow sub-row' + (hiddenAcc().includes(a) ? ' is-hidden' : '') + '" data-acc-j="' + i + '">' +
+        '<label class="check"><input type="checkbox" data-act="accsurplus"' + (exclSurplus().includes(a) ? '' : ' checked') + '>余りの合計に含める</label>' +
         hideBtn(hiddenAcc().includes(a), 'acchide') +
         '<button class="danger small" data-act="accdel">削除</button></div>').join('');
     return '<div class="card">' + '<div class="pad">' + headHTML('口座', state.accounts.length + '口座', 'accounts') +
@@ -412,7 +446,46 @@
       list + (on ? '' : '<div class="srow add-row"><input class="text" id="accnew" placeholder="新しい口座名" aria-label="新しい口座名"><button class="small" data-act="accadd">追加</button></div>') + '</div>';
   }
 
+  function booksHTML() {
+    const rows = books.list.map(b => '<div class="srow" data-book-id="' + esc(b.id) + '">' +
+      '<input class="text" id="bookname-' + esc(b.id) + '" value="' + esc(b.name) + '" aria-label="帳簿の名前">' +
+      (b.id === books.current ? '<span class="pill ok">表示中</span>' : '<button class="small" data-act="book-open">開く</button>') +
+      (books.list.length > 1 ? '<button class="danger small" data-act="book-del">削除</button>' : '') + '</div>').join('');
+    return '<div class="card"><div class="pad"><div class="section-head"><h2>帳簿</h2><span class="sub">' + books.list.length + '冊</span></div>' +
+      '<p class="sub" style="margin:0">人ごとに別の帳簿で管理できます。口座・支出・収入・残高・期限は帳簿ごとに別々です。画面上の名前をタップすると切り替わります。</p></div>' +
+      rows +
+      '<div class="srow add-row"><input class="text" id="booknew" placeholder="新しい帳簿の名前（例：母）" aria-label="新しい帳簿の名前"><button class="small" data-act="book-add-do">追加</button></div></div>';
+  }
+  function addBook(name) {
+    ensureBooks();
+    if (books.list.some(b => b.name === name)) { toast('同じ名前の帳簿があります'); return false; }
+    save(); // 今の帳簿を確実に保存
+    const id = uid('b');
+    books.list.push({ id, name });
+    try { localStorage.setItem(dataKey(id), JSON.stringify(emptyState())); } catch (e) { /* 開いた時に空で作る */ }
+    saveBooks(); switchBook(id); return true;
+  }
+
   function bindSettings() {
+    main.querySelectorAll('[data-book-id]').forEach(row => {
+      const id = row.dataset.bookId; const bk = books.list.find(b => b.id === id);
+      row.querySelector('input').addEventListener('change', e => {
+        const n = e.target.value.trim();
+        if (!n) { e.target.value = bk.name; toast('帳簿の名前を入力してください'); return; }
+        if (books.list.some(b => b.id !== id && b.name === n)) { e.target.value = bk.name; toast('同じ名前の帳簿があります'); return; }
+        bk.name = n; saveBooks(); renderKeep(); toast('「' + n + '」に変更しました');
+      });
+      const op = row.querySelector('[data-act="book-open"]'); if (op) op.addEventListener('click', () => switchBook(id));
+      const del = row.querySelector('[data-act="book-del"]');
+      if (del) del.addEventListener('click', () => confirmSheet('帳簿「' + bk.name + '」を削除しますか？', '<p class="flag" style="margin:0">この帳簿の口座・支出・収入・残高がすべて消え、元に戻せません。必要なら先にバックアップを保存してください。</p>', '削除する', () => {
+        try { localStorage.removeItem(dataKey(id)); } catch (e) { /* 一覧からは外す */ }
+        books.list = books.list.filter(b => b.id !== id);
+        if (books.current === id) { books.current = books.list[0].id; state = readBook(books.current) || emptyState(); }
+        saveBooks(); renderKeep(); toast('削除しました');
+      }, true));
+    });
+    const ba = main.querySelector('[data-act="book-add-do"]');
+    if (ba) ba.addEventListener('click', () => { const n = $('#booknew').value.trim(); if (!n) { toast('帳簿の名前を入力してください'); return; } addBook(n); });
     const cd = $('#close-day');
     if (cd) {
       const dv = v => v === 'end' ? 'end' : Number(v);
@@ -475,8 +548,14 @@
       });
     }
     // 口座
-    main.querySelectorAll('[data-acc-i]').forEach(row => {
-      const i = Number(row.dataset.accI); const old = state.accounts[i];
+    main.querySelectorAll('[data-acc-i]').forEach(row0 => {
+      const i = Number(row0.dataset.accI); const old = state.accounts[i];
+      const row = { querySelector: q => row0.querySelector(q) || main.querySelector('[data-acc-j="' + i + '"] ' + q) };
+      row.querySelector('[data-act="accsurplus"]').addEventListener('change', e => {
+        const ex = exclSurplus();
+        state.excludeSurplus = e.target.checked ? ex.filter(a => a !== old) : ex.concat(old);
+        save(); toast(e.target.checked ? '「' + old + '」を余りの合計に含めます' : '「' + old + '」を余りの合計に含めません');
+      });
       row.querySelector('input').addEventListener('change', e => {
         const n = e.target.value.trim();
         if (n === old) return;
@@ -487,6 +566,7 @@
         for (const it of state.variable.concat(state.fixed)) if (it.account === old) { it.account = n; cnt++; }
         state.balances[n] = state.balances[old] || { amount: null, updatedAt: null }; delete state.balances[old];
         state.hiddenAccounts = hiddenAcc().map(a => a === old ? n : a);
+        state.excludeSurplus = exclSurplus().map(a => a === old ? n : a);
         if (meta.qacc === old) { meta.qacc = n; saveMeta(); }
         save(); renderKeep(); toast('「' + n + '」に変更しました（引落' + cnt + '件）');
       });
@@ -502,7 +582,7 @@
           return;
         }
         confirmSheet('「' + old + '」を削除しますか？', '<p class="sub" style="margin:0">入力した残高も消えます。</p>', '削除する', () => {
-          state.accounts = state.accounts.filter(a => a !== old); delete state.balances[old]; state.hiddenAccounts = hiddenAcc().filter(a => a !== old); save(); renderKeep(); toast('削除しました');
+          state.accounts = state.accounts.filter(a => a !== old); delete state.balances[old]; state.hiddenAccounts = hiddenAcc().filter(a => a !== old); state.excludeSurplus = exclSurplus().filter(a => a !== old); save(); renderKeep(); toast('削除しました');
         }, true);
       });
     });
@@ -530,7 +610,7 @@
       '<div class="btnrow"><button class="primary" data-act="backup">バックアップを保存</button>' +
       '<label class="fileBtn">バックアップから復元<input type="file" id="restoreFile" accept=".json,application/json"></label></div>' +
       '<p class="note">保存先で「“ファイル”に保存」を選んでください。復元すると、今の内容は確認のあと上書きされます。</p>' +
-      '<div class="danger-zone"><b>すべてのデータを消す</b><p class="sub" style="margin:0">口座・支出・収入・残高をすべて消して、最初の画面に戻ります。元に戻せないので、先にバックアップを保存してください。</p><button class="danger" data-act="wipe">すべてのデータを消す</button></div></section>';
+      '<div class="danger-zone"><b>すべてのデータを消す</b><p class="sub" style="margin:0">すべての帳簿の口座・支出・収入・残高を消して、最初の画面に戻ります。元に戻せないので、先にバックアップを保存してください。</p><button class="danger" data-act="wipe">すべてのデータを消す</button></div></section>';
   }
 
   /* ---------- 操作 ---------- */
@@ -602,7 +682,8 @@
       state = emptyState(); meta.page = 'prep'; saveMeta(); save(); renderAll(); window.scrollTo(0, 0); toast('空の状態になりました');
     }, true)));
     main.querySelectorAll('[data-act="wipe"]').forEach(b => b.addEventListener('click', () => confirmSheet('すべてのデータを消しますか？', '<p class="flag" style="margin:0">口座・支出・収入・残高がすべて消え、元に戻せません。</p>', 'すべて消す', () => {
-      try { localStorage.removeItem(KEY); } catch (e) { /* 消せなくても画面は初期化する */ }
+      try { (books ? books.list : [{ id: 'main' }]).forEach(b => localStorage.removeItem(dataKey(b.id))); localStorage.removeItem(BOOKS); } catch (e) { /* 消せなくても画面は初期化する */ }
+      books = null;
       state = null; meta = { lastBackupAt: meta.lastBackupAt }; saveMeta(); renderAll(); window.scrollTo(0, 0); $('#saved').textContent = ''; toast('すべてのデータを消しました');
     }, true)));
     bindSettings();
@@ -617,8 +698,8 @@
   }
   function bindWelcome() {
     bindRestore();
-    const se = main.querySelector('[data-act="start-empty"]'); if (se) se.addEventListener('click', () => { state = emptyState(); meta.page = 'prep'; saveMeta(); save(); renderAll(); });
-    const ss = main.querySelector('[data-act="start-sample"]'); if (ss) ss.addEventListener('click', () => { state = sampleState(); meta.page = 'prep'; saveMeta(); save(); renderAll(); toast('サンプルデータを表示しました'); });
+    const se = main.querySelector('[data-act="start-empty"]'); if (se) se.addEventListener('click', () => { ensureBooks(); state = emptyState(); meta.page = 'prep'; saveMeta(); save(); renderAll(); });
+    const ss = main.querySelector('[data-act="start-sample"]'); if (ss) ss.addEventListener('click', () => { ensureBooks(); state = sampleState(); meta.page = 'prep'; saveMeta(); save(); renderAll(); toast('サンプルデータを表示しました'); });
     main.querySelectorAll('[data-act="help"]').forEach(b => b.addEventListener('click', showHelp));
   }
   function bindRestore() { const f = $('#restoreFile'); if (f) f.addEventListener('change', onRestoreFile); }
@@ -649,7 +730,9 @@
   function stampFile(t) { const p = n => String(n).padStart(2, '0'); return t.getFullYear() + p(t.getMonth() + 1) + p(t.getDate()) + '-' + p(t.getHours()) + p(t.getMinutes()); }
   async function doBackup() {
     const now = new Date();
-    const data = Object.assign({}, state, { exportedAt: now.toISOString() });
+    save();
+    const data = { app: 'kakeibo', kind: 'books', version: 2, exportedAt: now.toISOString(), current: books.current,
+      books: books.list.map(b => ({ id: b.id, name: b.name, data: b.id === books.current ? state : (readBook(b.id) || emptyState()) })) };
     const name = '家計バックアップ_' + stampFile(now) + '.json';
     const blob = new Blob([JSON.stringify(data, null, 1)], { type: 'application/json' });
     const done = () => { meta.lastBackupAt = now.toISOString(); saveMeta(); renderKeep(); toast('バックアップを作りました'); };
@@ -673,18 +756,41 @@
     if (!f) return;
     const rd = new FileReader();
     rd.onload = () => {
-      let d;
-      try { d = normalize(JSON.parse(String(rd.result))); } catch (err) { toast('読み込めませんでした：' + (err.message || 'ファイルの形式が違います')); return; }
+      let raw;
+      try { raw = JSON.parse(String(rd.result)); } catch (err) { toast('読み込めませんでした：ファイルの形式が違います'); return; }
       const sum = a => a.reduce((s, x) => s + (x.amount || 0), 0);
-      const raw = JSON.parse(String(rd.result));
       const when = raw.exportedAt ? stampText(raw.exportedAt).replace('更新：', '') : (raw.source ? raw.source + ' から作成' : '不明');
+      if (raw && raw.kind === 'books' && Array.isArray(raw.books)) {
+        // すべての帳簿のバックアップ
+        let list;
+        try {
+          if (!raw.books.length) throw new Error('帳簿が入っていません');
+          list = raw.books.map((b, i) => ({ id: i === 0 ? 'main' : String(b.id && b.id !== 'main' ? b.id : uid('b')), name: String(b.name || '帳簿' + (i + 1)), data: normalize(b.data) }));
+        } catch (err) { toast('読み込めませんでした：' + (err.message || 'ファイルの形式が違います')); return; }
+        const body = '<dl><dt>ファイル</dt><dd>' + esc(f.name) + '</dd><dt>作成</dt><dd>' + esc(when) + '</dd>' +
+          list.map(b => '<dt>' + esc(b.name) + '</dt><dd>口座' + b.data.accounts.length + '・支出' + (b.data.variable.length + b.data.fixed.length) + '件</dd>').join('') + '</dl>' +
+          (state ? '<p class="flag" style="margin:0">今アプリに入っているすべての帳簿は上書きされ、元に戻せません。</p>' : '');
+        confirmSheet('すべての帳簿（' + list.length + '冊）を復元しますか？', body, state ? '上書きして復元' : '読み込む', () => {
+          try { if (books) books.list.forEach(b => localStorage.removeItem(dataKey(b.id))); } catch (e2) { /* 上書きで置きかわる */ }
+          const curIdx = Math.max(0, raw.books.findIndex(b => b.id === raw.current));
+          books = { current: list[curIdx].id, list: list.map(b => ({ id: b.id, name: b.name })) };
+          list.forEach(b => { try { localStorage.setItem(dataKey(b.id), JSON.stringify(b.data)); } catch (e2) { toast('保存できませんでした'); } });
+          saveBooks(); state = readBook(books.current) || emptyState();
+          meta.page = 'prep'; saveMeta(); renderAll(); window.scrollTo(0, 0); toast('読み込みました');
+        }, !!state);
+        return;
+      }
+      // 1冊分のデータ（以前の版のバックアップ・初期データ）→ 今の帳簿へ
+      let d;
+      try { d = normalize(raw); } catch (err) { toast('読み込めませんでした：' + (err.message || 'ファイルの形式が違います')); return; }
+      const bn = curBook() ? curBook().name : 'メイン';
       const body = '<dl><dt>ファイル</dt><dd>' + esc(f.name) + '</dd><dt>作成</dt><dd>' + esc(when) + '</dd>' +
         '<dt>変動費</dt><dd>' + d.variable.length + '件・' + nf.format(sum(d.variable)) + '円</dd>' +
         '<dt>固定費</dt><dd>' + d.fixed.length + '件・' + nf.format(sum(d.fixed)) + '円</dd>' +
-        '<dt>口座</dt><dd>' + d.accounts.length + '口座</dd></dl>' +
-        (state ? '<p class="flag" style="margin:0">今アプリに入っている内容（変動費' + state.variable.length + '件・固定費' + state.fixed.length + '件、口座残高を含む）は上書きされ、元に戻せません。</p>' : '');
-      confirmSheet(state ? 'このバックアップで上書きしますか？' : 'このデータを読み込みますか？', body, state ? '上書きして復元' : '読み込む', () => {
-        state = d; meta.page = 'prep'; saveMeta(); save(); renderAll(); window.scrollTo(0, 0); toast('読み込みました');
+        '<dt>口座</dt><dd>' + d.accounts.length + '口座</dd><dt>読み込み先</dt><dd>帳簿「' + esc(bn) + '」</dd></dl>' +
+        (state && (state.accounts.length || state.variable.length || state.fixed.length) ? '<p class="flag" style="margin:0">帳簿「' + esc(bn) + '」の今の内容は上書きされ、元に戻せません。ほかの帳簿はそのままです。</p>' : '');
+      confirmSheet('帳簿「' + bn + '」に読み込みますか？', body, '読み込む', () => {
+        ensureBooks(); state = d; meta.page = 'prep'; saveMeta(); save(); renderAll(); window.scrollTo(0, 0); toast('読み込みました');
       }, !!state);
     };
     rd.onerror = () => toast('ファイルを読めませんでした');
@@ -693,7 +799,7 @@
 
   /* ---------- 移動ボタン ---------- */
   const PAGES = ['prep', 'variable', 'fixed', 'settings'];
-  const TYPING = 'input:not([type="file"]):not([type="button"]), select, textarea';
+  const TYPING = 'input:not([type="file"]):not([type="button"]):not([type="checkbox"]):not([type="radio"]), select, textarea';
   // 指が触れている間は下のタブを出し入れしない（ボタンを押した瞬間にタブが重なるのを防ぐ）
   let pointerDown = false;
   document.addEventListener('pointerdown', () => { pointerDown = true; }, true);
@@ -718,6 +824,10 @@
   window.addEventListener('pageshow', () => syncTyping());
 
   $('#helpBtn').addEventListener('click', showHelp);
+  $('#books').addEventListener('click', e => {
+    const b = e.target.closest('[data-book]'); if (b) { switchBook(b.dataset.book); return; }
+    if (e.target.closest('[data-act="book-add"]')) { meta.page = 'settings'; meta.stab = 'books'; meta.reorder = null; saveMeta(); renderAll(); window.scrollTo(0, 0); const n = $('#booknew'); if (n) n.focus(); }
+  });
 
   /* ---------- 起動 ---------- */
   load();
