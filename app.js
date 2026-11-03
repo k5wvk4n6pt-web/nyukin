@@ -195,7 +195,8 @@
       const card = main.querySelector('.bank[data-bank="' + CSS.escape(b.name) + '"]');
       if (!card) continue;
       card.querySelectorAll('[data-bsum]').forEach(el => { el.innerHTML = yen(b.sums[el.dataset.bsum]); });
-      const st = card.querySelector('[data-status]'); if (st) st.outerHTML = statusHTML(b);
+      const st = card.querySelector('[data-status]'); if (st) st.outerHTML = statusHTML(b, r);
+      const af = card.querySelector('[data-after]'); if (af) af.outerHTML = afterHTML(b, r);
       card.classList.toggle('is-short', b.shortfall > 0);
       const ln = card.querySelector('.line-list'); if (ln) ln.innerHTML = linesInner(b, r.windows);
       const nx = card.querySelector('.next'); if (nx) nx.innerHTML = nextHTML(b);
@@ -284,13 +285,16 @@
     }
     const box = (cls, title, count, amount, sub) => '<div class="tot ' + cls + '"><span class="tl">' + title + '</span>' +
       '<span class="big num">' + nf.format(amount) + '<span class="yen">円</span></span><small>' + sub + '</small></div>';
-    const short = box(r.shortfallTotal > 0 ? 'short' : 'zero', '不足している口座の合計', r.shortCount, r.shortfallTotal,
+    const cl = md(r.closing);
+    const short = box(r.shortfallTotal > 0 ? 'short' : 'zero', cl + 'までに不足', r.shortCount, r.shortfallTotal,
       r.shortCount ? r.shortCount + '口座・入金が必要' : '不足の口座はありません');
-    const plus = box(r.surplusTotal > 0 ? 'plus' : 'zero', '余っている口座の合計', r.surplusCount, r.surplusTotal,
+    const plus = box(r.surplusTotal > 0 ? 'plus' : 'zero', cl + 'までの引落後の余り', r.surplusCount, r.surplusTotal,
       r.surplusCount ? r.surplusCount + '口座' : '余りの口座はありません');
+    const showAll = serial2(r.endAll) > serial2(r.closing);
+    const allLine = showAll ? '<div class="allline"><span>' + md(r.endAll) + 'まで見ると</span><span class="num">不足 <b>' + nf.format(r.shortTotalAll) + '円</b></span><span class="num">余り <b>' + nf.format(r.surplusTotalAll) + '円</b></span></div>' : '';
     const miss = r.balanceMissing > 0 ? '<div class="flag">残高未入力：' + r.balanceMissing + '口座（どちらの合計にも含みません）</div>' : '';
-    return '<div id="shortbox"><div class="tots">' + short + plus + '</div>' +
-      '<p class="note" style="margin:6px 0 0">' + md(r.closing) + '締めまでの引落と、入力した残高を口座ごとに比べた合計です。余りには、締めまで引落のない口座の残高も入ります（設定で「余りに含めない」にした口座を除く）。口座間でお金を移すときの目安にしてください。</p>' + miss + '</div>';
+    return '<div id="shortbox"><div class="tots">' + short + plus + '</div>' + allLine +
+      '<p class="note" style="margin:6px 0 0">' + md(r.closing) + '締めまでの引落を差し引いた、口座ごとの過不足の合計です。余りには、締めまで引落のない口座の残高も入ります（設定で「余りに含めない」にした口座を除く）。口座間でお金を移すときの目安にしてください。</p>' + miss + '</div>';
   }
 
   function summaryHTML(r) {
@@ -304,11 +308,19 @@
 
   function nextHTML(b) { return b.next ? '次の引落 <span class="' + (isWeekend(b.next) ? 'wkend' : '') + '">' + mdw(b.next) + '</span>' : '予定なし'; }
 
-  function statusHTML(b) {
-    const ex = b.excluded ? '・合計外' : '';
+  function serial2(d) { return Date.UTC(d.y, d.m - 1, d.d); }
+  function statusHTML(b, r) {
+    const ex = b.excluded ? '（合計外）' : '';
+    const cl = r ? md(r.closing) + 'まで' : '';
     if (b.balance == null) return '<span class="pill none" data-status>' + (b.dueActive ? '残高未入力' : '残高未入力（締めまで引落なし）') + '</span>';
-    if (b.shortfall > 0) return '<span class="pill short num" data-status>不足 ' + nf.format(b.shortfall) + '円</span>';
-    return '<span class="pill ' + (b.excluded ? 'none' : 'ok') + ' num" data-status>' + (b.dueActive ? '足りています（余り ' : '余り（') + nf.format(b.surplus) + '円' + ex + '）</span>';
+    if (b.shortfall > 0) return '<span class="pill short num" data-status>' + cl + 'に不足 ' + nf.format(b.shortfall) + '円</span>';
+    return '<span class="pill ' + (b.excluded ? 'none' : 'ok') + ' num" data-status>' + cl + 'の余り ' + nf.format(b.surplus) + '円' + ex + '</span>';
+  }
+  /** 参考の期間まで見たときの過不足（締め日だけで見た場合と違うときだけ表示） */
+  function afterHTML(b, r) {
+    if (!r || b.balance == null || b.total === b.due || serial2(r.endAll) <= serial2(r.closing)) return '<div class="afternote" data-after hidden></div>';
+    const t = md(r.endAll) + 'まで見ると';
+    return '<div class="afternote ' + (b.shortAll > 0 ? 'neg' : '') + '" data-after>' + t + '：' + (b.shortAll > 0 ? '不足 ' + nf.format(b.shortAll) + '円' : '余り ' + nf.format(b.surplusAll) + '円') + '</div>';
   }
 
   function linesInner(b, W) {
@@ -326,12 +338,12 @@
       '<div class="bank-head"><span class="bank-name">' + esc(b.name) + '</span><span class="next">' + nextHTML(b) + '</span></div>' +
       '<div class="bank-amts">' + r.windows.map(w => '<div class="' + (w.inClose ? '' : 'after') + '"><span class="k">' + w.label + (w.inClose ? '' : '（参考）') + '</span><span class="v num" data-bsum="' + w.key + '">' + yen(b.sums[w.key]) + '</span></div>').join('') + '</div>' +
       (b.unentered ? '<div class="flag">金額未入力の引落が' + b.unentered + '件あります（0円として数えていません）</div>' : '') +
-      '<div class="bank-foot"><label for="bal-' + esc(b.name) + '">現在残高</label><input class="amount' + (b.balance == null ? ' empty' : '') + '" inputmode="numeric" enterkeyhint="done" autocomplete="off" id="bal-' + esc(b.name) + '" data-bal="' + esc(b.name) + '" value="' + yenTxt(b.balance) + '" placeholder="未入力">' + statusHTML(b) + '</div>' +
+      '<div class="bank-foot"><label for="bal-' + esc(b.name) + '">現在残高</label><input class="amount' + (b.balance == null ? ' empty' : '') + '" inputmode="numeric" enterkeyhint="done" autocomplete="off" id="bal-' + esc(b.name) + '" data-bal="' + esc(b.name) + '" value="' + yenTxt(b.balance) + '" placeholder="未入力">' + statusHTML(b, r) + '</div>' + afterHTML(b, r) +
       '<details class="lines"><summary>引落の内訳</summary><div class="line-list">' + linesInner(b, r.windows) + '</div></details>' +
       '</article>').join('');
     const idleTxt = idle.length ? '<div class="idle-head">この期間に引落のない口座<span class="sub">残高を入れると余りに入ります</span></div>' + idle.map(b => '<article class="bank idlebank" data-bank="' + esc(b.name) + '">' +
       '<div class="bank-head"><span class="bank-name">' + esc(b.name) + '</span><span class="next">' + nextHTML(b) + '</span></div>' +
-      '<div class="bank-foot"><label for="bal-' + esc(b.name) + '">現在残高</label><input class="amount' + (b.balance == null ? ' empty' : '') + '" inputmode="numeric" enterkeyhint="done" autocomplete="off" id="bal-' + esc(b.name) + '" data-bal="' + esc(b.name) + '" value="' + yenTxt(b.balance) + '" placeholder="未入力">' + statusHTML(b) + '</div></article>').join('') : '';
+      '<div class="bank-foot"><label for="bal-' + esc(b.name) + '">現在残高</label><input class="amount' + (b.balance == null ? ' empty' : '') + '" inputmode="numeric" enterkeyhint="done" autocomplete="off" id="bal-' + esc(b.name) + '" data-bal="' + esc(b.name) + '" value="' + yenTxt(b.balance) + '" placeholder="未入力">' + statusHTML(b, r) + '</div>' + afterHTML(b, r) + '</article>').join('') : '';
     return '<section id="banksSec" aria-label="銀行別の入金準備表"><div class="section-head"><h2>銀行別の入金準備</h2><span class="sub">' + r.activeCount + '口座</span></div>' +
       '<div class="banks">' + (cards || '<div class="idle">この期間の引落はありません</div>') + idleTxt + '</div>' +
       '<p class="note">集計は確認日以降の引落だけです。土日・祝日・年末年始（12/31〜1/3）に当たる日は、項目ごとの設定（初期値は支出が後ろ、収入が前）でずらしています。締め日が休日の場合は、設定に合わせて締め日もずらします。</p></section>';

@@ -193,6 +193,9 @@
       b.shortfall = b.balance == null ? null : Math.max(0, b.due - b.balance);
       b.surplus = b.balance == null ? null : Math.max(0, b.balance - b.due);
       b.excluded = exclSurplus.has(name); // 余りの合計に含めない口座
+      // 表示している最後の期限（参考の期間）まで含めた場合
+      b.shortAll = b.balance == null ? null : Math.max(0, b.total - b.balance);
+      b.surplusAll = b.balance == null ? null : Math.max(0, b.balance - b.total);
       b.active = b.total > 0 || b.unentered > 0;
       // 直近で必要な日（期間内で金額が0でない最初の引落。未入力も含む）
       const need = W.flatMap(w => b.lines[w.key]).filter(l => l.amount !== 0).sort((x, y) => serial(x.date) - serial(y.date))[0];
@@ -221,6 +224,9 @@
       surplusTotal: banks.filter(b => b.balance != null && !b.excluded).reduce((s, b) => s + b.surplus, 0),
       surplusCount: banks.filter(b => b.balance != null && !b.excluded && b.surplus > 0).length,
       excludedCount: banks.filter(b => b.excluded).length,
+      endAll: W[W.length - 1].to,
+      shortTotalAll: banks.filter(b => b.balance != null).reduce((s, b) => s + b.shortAll, 0),
+      surplusTotalAll: banks.filter(b => b.balance != null && !b.excluded).reduce((s, b) => s + b.surplusAll, 0),
       activeCount: banks.filter(b => b.active).length,
       balanceMissing: banks.filter(b => b.dueActive && b.balance == null).length,
       income: (data.income || []).filter(i => !i.hidden).map(i => Object.assign({}, i, { next: nextDate(i, T, true) }))
