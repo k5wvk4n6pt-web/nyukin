@@ -4,7 +4,9 @@
   const C = window.KCalc;
   const KEY = 'kakeibo.data.v1';
   const META = 'kakeibo.meta.v1';
-  const BACKUP_WARN_DAYS = 14;
+  const HISTORY = 'kakeibo.history.v1';
+  const HISTORY_DAYS = 7;
+  function backupEvery() { return [0, 7, 14, 30].includes(meta.backupEvery) ? meta.backupEvery : 30; }
 
   let state = null;
   let meta = {};
@@ -63,6 +65,21 @@
   let books = null; // { current, list: [{ id, name }] }
   function dataKey(id) { return id === 'main' ? KEY : KEY + ':' + id; }
   function readBook(id) { try { const s = localStorage.getItem(dataKey(id)); return s ? normalize(JSON.parse(s)) : null; } catch (e) { return null; } }
+  function allBooksData(now) {
+    return { app: 'kakeibo', kind: 'books', version: 2, exportedAt: now.toISOString(), current: books.current,
+      books: books.list.map(b => ({ id: b.id, name: b.name, data: b.id === books.current ? state : (readBook(b.id) || emptyState()) })) };
+  }
+  /** 1日1回、全帳簿の内容を端末内の履歴に残す（7日分） */
+  function snapshot() {
+    try {
+      const now = new Date(); const day = now.getFullYear() + '-' + (now.getMonth() + 1) + '-' + now.getDate();
+      let h = JSON.parse(localStorage.getItem(HISTORY) || '[]'); if (!Array.isArray(h)) h = [];
+      const label = (now.getMonth() + 1) + '/' + now.getDate() + '(' + C.WD[now.getDay()] + ') ' + timeText(now) + ' 時点';
+      const entry = { day, label, at: now.toISOString(), books: books.list.map(b => ({ name: b.name })), data: allBooksData(now) };
+      if (h[0] && h[0].day === day) h[0] = entry; else h.unshift(entry);
+      localStorage.setItem(HISTORY, JSON.stringify(h.slice(0, HISTORY_DAYS)));
+    } catch (e) { /* 容量不足などのときは履歴だけあきらめる */ }
+  }
   function saveBooks() { try { localStorage.setItem(BOOKS, JSON.stringify(books)); } catch (e) { /* 次の保存で再試行 */ } }
   function ensureBooks() { if (!books) { books = { current: 'main', list: [{ id: 'main', name: 'メイン' }] }; saveBooks(); } }
   function curBook() { return books && books.list.find(b => b.id === books.current); }
@@ -85,6 +102,7 @@
     try {
       ensureBooks();
       localStorage.setItem(dataKey(books.current), JSON.stringify(state));
+      clearTimeout(save._h); save._h = setTimeout(snapshot, 1500);
       lastSavedAt = new Date();
       $('#saved').textContent = '自動保存 ' + timeText(lastSavedAt);
     } catch (e) {
@@ -225,19 +243,23 @@
       '<h3>休日のずれ</h3><p>土日・祝日・年末年始（12/31〜1/3）に当たる日は、項目ごとに「後ろにずらす／前にずらす／ずらさない」を選べます。初期値は、支出が後ろ（翌営業日）、収入が前（前営業日）です。</p>' +
       '<h3>帳簿</h3><p>家族のお金なども、人ごとに別の帳簿で管理できます。画面上の名前をタップすると切り替わり、「＋ 帳簿」で追加できます。バックアップは全部の帳簿をまとめて保存します。</p>' +
       '<h3>非表示</h3><p>使わなくなった項目・口座・収入は非表示にできます。非表示にしたものは計算に含みません。</p>' +
-      '<h3>データの保存</h3><p>入力した内容はこの端末のブラウザの中だけに保存され、外部には送信しません。ブラウザのデータを消すと失われるので、「設定 → 保存」からバックアップを「ファイル」アプリなどに保存してください。</p>' +
+      '<h3>データの保存</h3><p>入力した内容は変更するたびに自動で、この端末の中だけに保存され、外部には送信しません。入力を間違えたときは「設定 → 保存」の自動の履歴から、前の日の状態に戻せます。機種変更やブラウザのデータ削除に備えて、ときどき「ファイル」アプリ（iCloud Driveなど）にバックアップを保存してください。お知らせの間隔は変えられます。</p>' +
       '<h3>ご注意</h3><p>計算結果は目安です。実際の引落日・金額は、金融機関やカード会社の案内で確認してください。</p></div>';
   }
   function showHelp() { confirmSheet('使い方', helpHTML(), null, null); }
 
   function backupNoticeHTML() {
+    const every = backupEvery();
+    if (!every) return '';
+    if (meta.snoozeUntil && Date.now() < new Date(meta.snoozeUntil)) return '';
     const last = meta.lastBackupAt ? new Date(meta.lastBackupAt) : null;
     const days = last ? Math.floor((Date.now() - last) / 86400000) : null;
-    if (last && days < BACKUP_WARN_DAYS) return '';
+    if (last && days < every) return '';
     const msg = last ? '最後のバックアップから' + days + '日たちました。' : 'まだバックアップがありません。';
-    return '<div class="notice"><div><b>' + msg + '</b><br>ブラウザ内の保存データは、iPhoneの設定変更や容量不足で消えることがあります。「ファイル」アプリにバックアップを保存しておいてください。</div>' +
-      '<div class="btnrow"><button class="primary" data-act="backup">今すぐバックアップ</button></div></div>';
+    return '<div class="notice"><div><b>' + msg + '</b><br>機種変更やデータの削除に備えて、「ファイル」アプリにバックアップを保存しておくと安心です。</div>' +
+      '<div class="btnrow"><button class="primary" data-act="backup">今すぐバックアップ</button><button data-act="snooze">あとで</button></div></div>';
   }
+
 
   function shortboxHTML(r) {
     if (!r.banks.some(b => b.balance != null)) {
@@ -603,14 +625,22 @@
     Object.keys(keep).forEach(id => { const el = $('#' + id); if (el) el.value = keep[id]; });
   }
 
+  function readHistory() { try { const h = JSON.parse(localStorage.getItem(HISTORY) || '[]'); return Array.isArray(h) ? h : []; } catch (e) { return []; } }
   function backupHTML() {
     const last = meta.lastBackupAt ? stampText(meta.lastBackupAt).replace('更新：', '') : 'まだありません';
+    const every = backupEvery();
+    const opts = [[30, '1か月ごと'], [14, '2週間ごと'], [7, '1週間ごと'], [0, '知らせない']].map(o => '<option value="' + o[0] + '"' + (o[0] === every ? ' selected' : '') + '>' + o[1] + '</option>').join('');
+    const hist = readHistory();
+    const histRows = hist.length ? hist.map((h, i) => '<div class="srow" data-hist="' + i + '"><span class="grow">' + esc(h.label) + '<br><span class="sub">' + h.books.map(b => esc(b.name)).join('・') + '</span></span><button class="small" data-act="hist-restore">この時点に戻す</button></div>').join('')
+      : '<p class="sub" style="margin:0">まだありません（入力した日の内容が、1日1回ここに残ります）</p>';
     return '<section class="backup" id="sec-backup" aria-label="バックアップ"><h2>バックアップ</h2>' +
-      '<p class="sub" style="margin:0">入力内容は自動でこの端末に保存されます。ただしブラウザ内の保存データは消える可能性があるため、月に1回は「ファイル」アプリに保存してください。</p>' +
+      '<p class="sub" style="margin:0">入力した内容は、変更するたびに自動でこの端末に保存されています。アプリの更新（ファイルの入れ替え）でも消えません。ファイルへのバックアップは、機種変更や、ブラウザのデータ削除に備えるためのものです。</p>' +
       '<div class="sub">最後のバックアップ：' + last + '</div>' +
       '<div class="btnrow"><button class="primary" data-act="backup">バックアップを保存</button>' +
       '<label class="fileBtn">バックアップから復元<input type="file" id="restoreFile" accept=".json,application/json"></label></div>' +
-      '<p class="note">保存先で「“ファイル”に保存」を選んでください。復元すると、今の内容は確認のあと上書きされます。</p>' +
+      '<p class="note">保存先で「“ファイル”に保存」を選んでください。iCloud Driveに保存すると、iPhoneをなくしても残ります。</p>' +
+      '<label class="inline-field">バックアップのお知らせ<select id="backup-every">' + opts + '</select></label>' +
+      '<div class="hist"><b>自動の履歴（この端末の中・' + HISTORY_DAYS + '日分）</b><p class="sub" style="margin:0">入力を間違えたときに、前の日の状態に戻せます。端末の中にあるので、機種変更の備えにはなりません。</p>' + histRows + '</div>' +
       '<div class="danger-zone"><b>すべてのデータを消す</b><p class="sub" style="margin:0">すべての帳簿の口座・支出・収入・残高を消して、最初の画面に戻ります。元に戻せないので、先にバックアップを保存してください。</p><button class="danger" data-act="wipe">すべてのデータを消す</button></div></section>';
   }
 
@@ -668,6 +698,12 @@
       const nm = $('#qa-name'); if (nm) nm.focus();
     }));
     main.querySelectorAll('[data-act="backup"]').forEach(b => b.addEventListener('click', doBackup));
+    main.querySelectorAll('[data-act="snooze"]').forEach(b => b.addEventListener('click', () => { meta.snoozeUntil = new Date(Date.now() + 7 * 86400000).toISOString(); saveMeta(); renderKeep(); toast('1週間後にまたお知らせします'); }));
+    const be = $('#backup-every'); if (be) be.addEventListener('change', () => { meta.backupEvery = Number(be.value); meta.snoozeUntil = null; saveMeta(); toast(meta.backupEvery ? 'お知らせ：' + be.options[be.selectedIndex].text : 'バックアップのお知らせを止めました'); });
+    main.querySelectorAll('[data-act="hist-restore"]').forEach(b => b.addEventListener('click', () => {
+      const h = readHistory()[Number(b.closest('[data-hist]').dataset.hist)]; if (!h) return;
+      restoreBooksData(h.data, h.label);
+    }));
     main.querySelectorAll('[data-reorder]').forEach(b => b.addEventListener('click', () => {
       meta.reorder = meta.reorder === b.dataset.reorder ? null : b.dataset.reorder; saveMeta(); renderKeep();
     }));
@@ -685,7 +721,8 @@
     main.querySelectorAll('[data-act="wipe"]').forEach(b => b.addEventListener('click', () => confirmSheet('すべてのデータを消しますか？', '<p class="flag" style="margin:0">口座・支出・収入・残高がすべて消え、元に戻せません。</p>', 'すべて消す', () => {
       try { (books ? books.list : [{ id: 'main' }]).forEach(b => localStorage.removeItem(dataKey(b.id))); localStorage.removeItem(BOOKS); } catch (e) { /* 消せなくても画面は初期化する */ }
       books = null;
-      state = null; meta = { lastBackupAt: meta.lastBackupAt }; saveMeta(); renderAll(); window.scrollTo(0, 0); $('#saved').textContent = ''; toast('すべてのデータを消しました');
+      try { localStorage.removeItem(HISTORY); } catch (e) { /* 履歴も消す */ }
+      state = null; meta = { lastBackupAt: meta.lastBackupAt, backupEvery: meta.backupEvery }; saveMeta(); renderAll(); window.scrollTo(0, 0); $('#saved').textContent = ''; toast('すべてのデータを消しました');
     }, true)));
     bindSettings();
     bindRestore();
@@ -732,8 +769,7 @@
   async function doBackup() {
     const now = new Date();
     save();
-    const data = { app: 'kakeibo', kind: 'books', version: 2, exportedAt: now.toISOString(), current: books.current,
-      books: books.list.map(b => ({ id: b.id, name: b.name, data: b.id === books.current ? state : (readBook(b.id) || emptyState()) })) };
+    const data = allBooksData(now);
     const name = '家計バックアップ_' + stampFile(now) + '.json';
     const blob = new Blob([JSON.stringify(data, null, 1)], { type: 'application/json' });
     const done = () => { meta.lastBackupAt = now.toISOString(); saveMeta(); renderKeep(); toast('バックアップを作りました'); };
@@ -750,6 +786,24 @@
     const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 4000);
     done();
+  }
+
+  function restoreBooksData(raw, title) {
+    let list;
+    try {
+      if (!raw || !Array.isArray(raw.books) || !raw.books.length) throw new Error('帳簿が入っていません');
+      list = raw.books.map((b, i) => ({ id: i === 0 ? 'main' : String(b.id && b.id !== 'main' ? b.id : uid('b')), name: String(b.name || '帳簿' + (i + 1)), data: normalize(b.data) }));
+    } catch (err) { toast('戻せませんでした：' + (err.message || '形式が違います')); return; }
+    const body = '<dl>' + list.map(b => '<dt>' + esc(b.name) + '</dt><dd>口座' + b.data.accounts.length + '・支出' + (b.data.variable.length + b.data.fixed.length) + '件</dd>').join('') + '</dl>' +
+      '<p class="flag" style="margin:0">今のすべての帳簿は、この時点の内容に置きかわります。</p>';
+    confirmSheet(title + 'に戻しますか？', body, 'この時点に戻す', () => {
+      try { if (books) books.list.forEach(b => localStorage.removeItem(dataKey(b.id))); } catch (e2) { /* 上書きで置きかわる */ }
+      const curIdx = Math.max(0, raw.books.findIndex(b => b.id === raw.current));
+      books = { current: list[curIdx].id, list: list.map(b => ({ id: b.id, name: b.name })) };
+      list.forEach(b => { try { localStorage.setItem(dataKey(b.id), JSON.stringify(b.data)); } catch (e2) { toast('保存できませんでした'); } });
+      saveBooks(); state = readBook(books.current) || emptyState();
+      meta.page = 'prep'; saveMeta(); renderAll(); window.scrollTo(0, 0); toast('戻しました');
+    }, true);
   }
 
   function onRestoreFile(e) {
