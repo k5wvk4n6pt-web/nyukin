@@ -165,6 +165,7 @@
     const W = windows(T, cs);
     // 非表示の項目・口座・収入は計算に含めない
     const hiddenAcc = new Set(data.hiddenAccounts || []);
+    const exclSurplus = new Set(data.excludeSurplus || []);
     const items = []
       .concat((data.variable || []).filter(x => !x.hidden).map(x => Object.assign({ kind: '変動費' }, x)))
       .concat((data.fixed || []).filter(x => !x.hidden).map(x => Object.assign({ kind: '固定費' }, x)));
@@ -191,6 +192,7 @@
       b.due = W.filter(w => w.inClose).reduce((s, w) => s + b.sums[w.key], 0);
       b.shortfall = b.balance == null ? null : Math.max(0, b.due - b.balance);
       b.surplus = b.balance == null ? null : Math.max(0, b.balance - b.due);
+      b.excluded = exclSurplus.has(name); // 余りの合計に含めない口座
       b.active = b.total > 0 || b.unentered > 0;
       // 直近で必要な日（期間内で金額が0でない最初の引落。未入力も含む）
       const need = W.flatMap(w => b.lines[w.key]).filter(l => l.amount !== 0).sort((x, y) => serial(x.date) - serial(y.date))[0];
@@ -215,8 +217,10 @@
       grandTotal: banks.reduce((s, b) => s + b.total, 0),
       shortfallTotal: entered.reduce((s, b) => s + b.shortfall, 0),
       shortCount: entered.filter(b => b.shortfall > 0).length,
-      surplusTotal: entered.reduce((s, b) => s + b.surplus, 0),
-      surplusCount: entered.filter(b => b.surplus > 0).length,
+      // 余り：残高を入力した全口座（合計に含めない設定の口座を除く）。締めまで引落がなければ残高がそのまま余り
+      surplusTotal: banks.filter(b => b.balance != null && !b.excluded).reduce((s, b) => s + b.surplus, 0),
+      surplusCount: banks.filter(b => b.balance != null && !b.excluded && b.surplus > 0).length,
+      excludedCount: banks.filter(b => b.excluded).length,
       activeCount: banks.filter(b => b.active).length,
       balanceMissing: banks.filter(b => b.dueActive && b.balance == null).length,
       income: (data.income || []).filter(i => !i.hidden).map(i => Object.assign({}, i, { next: nextDate(i, T, true) }))
@@ -224,7 +228,7 @@
     };
   }
 
-  const api = { deadlineLabel, closeSettings, nextClosing, closingOf, holidays, holidayName, isBusinessDay, shiftDate, shiftMode, actual, addDays, WD, lastDay, serial, addMonth, weekday, fromDate, occurrence, activeIn, windows, occurrencesIn, nextDate, compute };
+  const api = { VERSION: '2026.11.04', deadlineLabel, closeSettings, nextClosing, closingOf, holidays, holidayName, isBusinessDay, shiftDate, shiftMode, actual, addDays, WD, lastDay, serial, addMonth, weekday, fromDate, occurrence, activeIn, windows, occurrencesIn, nextDate, compute };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.KCalc = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

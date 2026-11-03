@@ -9,13 +9,13 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="入金準備">
+<meta name="apple-mobile-web-app-title" content="入金ナビ">
 <meta name="theme-color" content="#F8F6EF" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#16181A" media="(prefers-color-scheme: dark)">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" href="icon-192.png">
-<title>入金準備帳</title>
+<title>入金ナビ</title>
 <style>
 /* Layout: 1カラムの通帳風。上から 要約 → 銀行別 → 変動費 → 固定費 → バックアップ */
 :root {
@@ -278,6 +278,10 @@ button.mv:disabled { opacity: .3; }
 .hist { display: grid; gap: 8px; border-top: 1px dashed var(--line); padding-top: 14px; }
 .hist .srow { padding: 8px 0; border-bottom: 1px solid var(--line); }
 .hist .srow:last-child { border-bottom: 0; }
+.cloudbox { display: grid; gap: 4px; padding: 12px 14px; border-radius: 10px; background: var(--warn-bg); color: var(--warn); }
+.cloudbox.ok { background: var(--ok-bg); color: var(--ok); }
+.cloudbox .sub { color: inherit; opacity: .9; }
+.cloudbox button { justify-self: start; margin-top: 6px; }
 .danger-zone { border-top: 1px dashed var(--line); padding-top: 14px; display: grid; gap: 8px; }
 .sheet dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0; font-size: 14px; }
 .sheet dt { color: var(--muted); }
@@ -291,7 +295,7 @@ button.mv:disabled { opacity: .3; }
   <header class="top">
     <div>
       <div class="eyebrow">家計</div>
-      <h1>入金準備帳</h1>
+      <h1>入金ナビ</h1>
       <button id="helpBtn" class="ghost small helpbtn">使い方</button>
     </div>
     <div class="today">
@@ -312,6 +316,7 @@ button.mv:disabled { opacity: .3; }
 </nav>
 <div id="modal" class="modal" hidden></div>
 <div id="toast" class="toast" hidden role="status"></div>
+<script src="native.js"></script>
 <script src="calc.js"></script>
 <script src="app.js"></script>
 </body>

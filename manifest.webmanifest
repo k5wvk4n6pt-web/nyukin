@@ -1,6 +1,6 @@
 {
-  "name": "入金準備帳",
-  "short_name": "入金準備",
+  "name": "入金ナビ",
+  "short_name": "入金ナビ",
   "lang": "ja",
   "start_url": "./",
   "scope": "./",

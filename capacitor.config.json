@@ -1,0 +1,11 @@
+{
+  "appId": "com.k5wvk4n6pt.nyukinnavi",
+  "appName": "入金ナビ",
+  "webDir": "www",
+  "backgroundColor": "#F8F6EF",
+  "ios": {
+    "contentInset": "never",
+    "scrollEnabled": true,
+    "limitsNavigationsToAppBoundDomains": false
+  }
+}

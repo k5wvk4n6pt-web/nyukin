@@ -1,7 +1,12 @@
-/* 入金準備帳 — 画面・保存・バックアップ（データはこの端末の中だけに保存し、外部へは送信しません） */
+/* 入金ナビ — 画面・保存・バックアップ（データはこの端末の中だけに保存し、外部へは送信しません） */
 (function () {
   'use strict';
   const C = window.KCalc;
+  const APP_VERSION = '2026.11.04';
+  /** ファイルの一部だけが新しい（アップロード漏れ・古いキャッシュ）と計算が合わなくなるので知らせる */
+  function versionMismatch() { return !C || C.VERSION !== APP_VERSION || (window.NyukinNative && window.NyukinNative.VERSION && window.NyukinNative.VERSION !== APP_VERSION); }
+  const N = window.NyukinNative || { isNative: false, ready: Promise.resolve() };
+  let cloud = { available: false, data: null }; // iCloud（アプリ版のみ）
   const KEY = 'kakeibo.data.v1';
   const META = 'kakeibo.meta.v1';
   const HISTORY = 'kakeibo.history.v1';
@@ -79,6 +84,10 @@
       if (h[0] && h[0].day === day) h[0] = entry; else h.unshift(entry);
       localStorage.setItem(HISTORY, JSON.stringify(h.slice(0, HISTORY_DAYS)));
     } catch (e) { /* 容量不足などのときは履歴だけあきらめる */ }
+    if (N.isNative && cloud.available && books) {
+      const now = new Date();
+      N.cloudSave(allBooksData(now)).then(ok => { if (ok) { meta.cloudAt = now.toISOString(); saveMeta(); const el = $('#cloudAt'); if (el) el.textContent = stampText(meta.cloudAt).replace('更新：', ''); } });
+    }
   }
   function saveBooks() { try { localStorage.setItem(BOOKS, JSON.stringify(books)); } catch (e) { /* 次の保存で再試行 */ } }
   function ensureBooks() { if (!books) { books = { current: 'main', list: [{ id: 'main', name: 'メイン' }] }; saveBooks(); } }
@@ -156,6 +165,10 @@
     }
     $('#today').textContent = T.y + '年' + T.m + '月' + T.d + '日(' + C.WD[C.weekday(T)] + ')';
     if (!state) { main.innerHTML = welcomeHTML(); bindWelcome(); return; }
+    if (versionMismatch()) {
+      main.innerHTML = '<div class="notice"><div><b>アプリのファイルが一部だけ古いままです。</b><br>このままだと計算が正しくありません。ファイルをすべてアップロードし直すか、アプリを閉じて数分後に開き直してください。（画面：' + APP_VERSION + '／計算：' + (C && C.VERSION || '古い版') + '）</div></div>';
+      return;
+    }
     const r = C.compute(state, T);
     const page = PAGES.includes(meta.page) ? meta.page : 'prep';
     main.innerHTML = page === 'variable' ? listHTML('variable', '変動費', '毎月の金額をここで入力します。')
@@ -196,10 +209,13 @@
       '<p class="sub" style="margin:0">入力した内容はこの端末の中だけに保存され、外部には送信しません。ログインも不要です。</p>' +
       '<div class="btnrow col"><button class="primary" data-act="start-empty">空の状態ではじめる</button>' +
       '<button data-act="start-sample">サンプルデータで試してみる</button>' +
-      '<label class="fileBtn">バックアップから復元<input type="file" id="restoreFile" accept=".json,application/json"></label></div>' +
-      '<p class="note">iPhoneでは、Safariの共有ボタンから「ホーム画面に追加」して、ホーム画面のアイコンから使うのがおすすめです（Safariとホーム画面のアプリは、データの保存場所が別になります）。</p>' +
+      (cloud.data ? '<button data-act="cloud-restore">iCloudのバックアップから復元（' + esc(cloudWhen()) + '）</button>' : '') +
+      '<label class="fileBtn">バックアップファイルから復元<input type="file" id="restoreFile" accept=".json,application/json"></label></div>' +
+      (N.isNative ? '' : '<p class="note">iPhoneでは、Safariの共有ボタンから「ホーム画面に追加」して、ホーム画面のアイコンから使うのがおすすめです（Safariとホーム画面のアプリは、データの保存場所が別になります）。</p>') +
       '<button class="ghost small" data-act="help">使い方を見る</button></section>';
   }
+
+  function cloudWhen() { return cloud.data && cloud.data.exportedAt ? stampText(cloud.data.exportedAt).replace('更新：', '') : ''; }
 
   function emptyState() { return { app: 'kakeibo', version: 1, source: '', settings: { closeDay: 10, closeShift: 'after', close2Day: 'end', close2Shift: 'none' }, accounts: [], variable: [], fixed: [], balances: {}, hiddenAccounts: [], income: [] }; }
 
@@ -243,14 +259,15 @@
       '<h3>休日のずれ</h3><p>土日・祝日・年末年始（12/31〜1/3）に当たる日は、項目ごとに「後ろにずらす／前にずらす／ずらさない」を選べます。初期値は、支出が後ろ（翌営業日）、収入が前（前営業日）です。</p>' +
       '<h3>帳簿</h3><p>家族のお金なども、人ごとに別の帳簿で管理できます。画面上の名前をタップすると切り替わり、「＋ 帳簿」で追加できます。バックアップは全部の帳簿をまとめて保存します。</p>' +
       '<h3>非表示</h3><p>使わなくなった項目・口座・収入は非表示にできます。非表示にしたものは計算に含みません。</p>' +
-      '<h3>データの保存</h3><p>入力した内容は変更するたびに自動で、この端末の中だけに保存され、外部には送信しません。入力を間違えたときは「設定 → 保存」の自動の履歴から、前の日の状態に戻せます。機種変更やブラウザのデータ削除に備えて、ときどき「ファイル」アプリ（iCloud Driveなど）にバックアップを保存してください。お知らせの間隔は変えられます。</p>' +
-      '<h3>ご注意</h3><p>計算結果は目安です。実際の引落日・金額は、金融機関やカード会社の案内で確認してください。</p></div>';
+      '<h3>データの保存</h3><p>入力した内容は変更するたびに自動で、この端末の中だけに保存され、外部には送信しません（アプリ版でiCloudがオンの場合は、あなたのiCloudにも自動でバックアップします）。入力を間違えたときは「設定 → 保存」の自動の履歴から、前の日の状態に戻せます。機種変更やブラウザのデータ削除に備えて、ときどき「ファイル」アプリ（iCloud Driveなど）にバックアップを保存してください。お知らせの間隔は変えられます。</p>' +
+      '<h3>ご注意</h3><p>計算結果は目安です。実際の引落日・金額は、金融機関やカード会社の案内で確認してください。</p>' +
+      '<p style="margin-top:14px"><a href="https://k5wvk4n6pt-web.github.io/nyukin/privacy.html" target="_blank" rel="noopener">プライバシーポリシー</a>　<a href="https://k5wvk4n6pt-web.github.io/nyukin/support.html" target="_blank" rel="noopener">サポート</a></p></div>';
   }
   function showHelp() { confirmSheet('使い方', helpHTML(), null, null); }
 
   function backupNoticeHTML() {
     const every = backupEvery();
-    if (!every) return '';
+    if (!every || (N.isNative && cloud.available)) return '';
     if (meta.snoozeUntil && Date.now() < new Date(meta.snoozeUntil)) return '';
     const last = meta.lastBackupAt ? new Date(meta.lastBackupAt) : null;
     const days = last ? Math.floor((Date.now() - last) / 86400000) : null;
@@ -633,13 +650,18 @@
     const hist = readHistory();
     const histRows = hist.length ? hist.map((h, i) => '<div class="srow" data-hist="' + i + '"><span class="grow">' + esc(h.label) + '<br><span class="sub">' + h.books.map(b => esc(b.name)).join('・') + '</span></span><button class="small" data-act="hist-restore">この時点に戻す</button></div>').join('')
       : '<p class="sub" style="margin:0">まだありません（入力した日の内容が、1日1回ここに残ります）</p>';
+    const cloudBox = !N.isNative ? '' : cloud.available
+      ? '<div class="cloudbox ok"><b>iCloudに自動でバックアップしています</b><span class="sub">最後のバックアップ：<span id="cloudAt">' + (meta.cloudAt ? stampText(meta.cloudAt).replace('更新：', '') : 'まだありません（次の入力のあとに保存します）') + '</span></span><span class="sub">機種変更しても、同じApple IDでこのアプリを入れれば戻せます。</span>' +
+        (cloud.data ? '<button class="small" data-act="cloud-restore">iCloudのバックアップから復元（' + esc(cloudWhen()) + '）</button>' : '') + '</div>'
+      : '<div class="cloudbox"><b>iCloudのバックアップは使えません</b><span class="sub">iPhoneの「設定」でApple IDにサインインし、iCloud Driveをオンにすると、自動でバックアップされます。それまでは下のボタンで「ファイル」に保存してください。</span></div>';
     return '<section class="backup" id="sec-backup" aria-label="バックアップ"><h2>バックアップ</h2>' +
-      '<p class="sub" style="margin:0">入力した内容は、変更するたびに自動でこの端末に保存されています。アプリの更新（ファイルの入れ替え）でも消えません。ファイルへのバックアップは、機種変更や、ブラウザのデータ削除に備えるためのものです。</p>' +
+      cloudBox +
+      '<p class="sub" style="margin:0">入力した内容は、変更するたびに自動でこの端末に保存されています。' + (N.isNative ? '' : 'アプリの更新（ファイルの入れ替え）でも消えません。') + 'ファイルへのバックアップは、機種変更や、データの削除に備えるためのものです。</p>' +
       '<div class="sub">最後のバックアップ：' + last + '</div>' +
       '<div class="btnrow"><button class="primary" data-act="backup">バックアップを保存</button>' +
       '<label class="fileBtn">バックアップから復元<input type="file" id="restoreFile" accept=".json,application/json"></label></div>' +
       '<p class="note">保存先で「“ファイル”に保存」を選んでください。iCloud Driveに保存すると、iPhoneをなくしても残ります。</p>' +
-      '<label class="inline-field">バックアップのお知らせ<select id="backup-every">' + opts + '</select></label>' +
+      ((N.isNative && cloud.available) ? '' : '<label class="inline-field">バックアップのお知らせ<select id="backup-every">' + opts + '</select></label>') +
       '<div class="hist"><b>自動の履歴（この端末の中・' + HISTORY_DAYS + '日分）</b><p class="sub" style="margin:0">入力を間違えたときに、前の日の状態に戻せます。端末の中にあるので、機種変更の備えにはなりません。</p>' + histRows + '</div>' +
       '<div class="danger-zone"><b>すべてのデータを消す</b><p class="sub" style="margin:0">すべての帳簿の口座・支出・収入・残高を消して、最初の画面に戻ります。元に戻せないので、先にバックアップを保存してください。</p><button class="danger" data-act="wipe">すべてのデータを消す</button></div></section>';
   }
@@ -698,6 +720,7 @@
       const nm = $('#qa-name'); if (nm) nm.focus();
     }));
     main.querySelectorAll('[data-act="backup"]').forEach(b => b.addEventListener('click', doBackup));
+    bindCloud();
     main.querySelectorAll('[data-act="snooze"]').forEach(b => b.addEventListener('click', () => { meta.snoozeUntil = new Date(Date.now() + 7 * 86400000).toISOString(); saveMeta(); renderKeep(); toast('1週間後にまたお知らせします'); }));
     const be = $('#backup-every'); if (be) be.addEventListener('change', () => { meta.backupEvery = Number(be.value); meta.snoozeUntil = null; saveMeta(); toast(meta.backupEvery ? 'お知らせ：' + be.options[be.selectedIndex].text : 'バックアップのお知らせを止めました'); });
     main.querySelectorAll('[data-act="hist-restore"]').forEach(b => b.addEventListener('click', () => {
@@ -734,7 +757,15 @@
       el.addEventListener('blur', () => { const v = parseAmount(el.value); if (!Number.isNaN(v)) el.value = yenTxt(v); });
     });
   }
+  function bindCloud() {
+    main.querySelectorAll('[data-act="cloud-restore"]').forEach(b => b.addEventListener('click', async () => {
+      const d = await N.cloudLoad() || cloud.data;
+      if (!d) { toast('iCloudのバックアップが見つかりません'); return; }
+      restoreBooksData(d, 'iCloudのバックアップ（' + (d.exportedAt ? stampText(d.exportedAt).replace('更新：', '') : '') + '）');
+    }));
+  }
   function bindWelcome() {
+    bindCloud();
     bindRestore();
     const se = main.querySelector('[data-act="start-empty"]'); if (se) se.addEventListener('click', () => { ensureBooks(); state = emptyState(); meta.page = 'prep'; saveMeta(); save(); renderAll(); });
     const ss = main.querySelector('[data-act="start-sample"]'); if (ss) ss.addEventListener('click', () => { ensureBooks(); state = sampleState(); meta.page = 'prep'; saveMeta(); save(); renderAll(); toast('サンプルデータを表示しました'); });
@@ -773,6 +804,11 @@
     const name = '家計バックアップ_' + stampFile(now) + '.json';
     const blob = new Blob([JSON.stringify(data, null, 1)], { type: 'application/json' });
     const done = () => { meta.lastBackupAt = now.toISOString(); saveMeta(); renderKeep(); toast('バックアップを作りました'); };
+    if (N.isNative) {
+      try { if (await N.shareFile(name, JSON.stringify(data, null, 1))) done(); else toast('バックアップをやめました'); }
+      catch (e) { toast('バックアップを作れませんでした'); }
+      return;
+    }
     try {
       const file = new File([blob], name, { type: 'application/json' });
       if (navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -885,6 +921,7 @@
   });
 
   /* ---------- 起動 ---------- */
+  function boot() {
   load();
   renderAll();
   if (state) $('#saved').textContent = '保存済み';
@@ -893,5 +930,16 @@
   setInterval(tick, 30000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) { tick(); syncTyping(); } });
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
-  if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(() => {});
+  if (!N.isNative && 'serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(() => {});
+  if (N.isNative) {
+    // iCloudの状態を確認（ウェルカム画面で復元を出す・自動バックアップ）
+    N.cloudAvailable().then(async ok => {
+      cloud.available = ok;
+      if (ok) cloud.data = await N.cloudLoad();
+      renderKeep();
+      if (ok && state) snapshot();
+    });
+  }
+  }
+  Promise.resolve(N.ready).catch(() => {}).then(boot);
 })();
