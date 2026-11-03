@@ -1,5 +1,5 @@
 /* オフライン用：アプリ本体だけを保存する（家計データはここに含まれない） */
-const CACHE = 'kakeibo-app-v23';
+const CACHE = 'kakeibo-app-v24';
 const FILES = ['./', 'index.html', 'native.js', 'calc.js', 'app.js', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES.map(f => new Request(f, { cache: 'reload' })))).then(() => self.skipWaiting()));

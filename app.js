@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   const C = window.KCalc;
-  const APP_VERSION = '2026.11.04';
+  const APP_VERSION = '2026.11.04b';
   /** ファイルの一部だけが新しい（アップロード漏れ・古いキャッシュ）と計算が合わなくなるので知らせる */
   function versionMismatch() { return !C || C.VERSION !== APP_VERSION || (window.NyukinNative && window.NyukinNative.VERSION && window.NyukinNative.VERSION !== APP_VERSION); }
   const N = window.NyukinNative || { isNative: false, ready: Promise.resolve() };
@@ -129,6 +129,12 @@
     if (!d || d.app !== 'kakeibo' || !Array.isArray(d.accounts) || !Array.isArray(d.variable) || !Array.isArray(d.fixed)) throw new Error('入金準備帳のデータではありません');
     const item = (x, fixed) => {
       const o = { id: x.id || uid(fixed ? 'f' : 'v'), name: String(x.name || '').trim() || '（名称なし）', day: x.day, account: x.account || '', amount: x.amount == null ? null : Number(x.amount), memo: x.memo || '', updatedAt: x.updatedAt || null, hidden: !!x.hidden, shift: validShift(x.shift, 'after') };
+      if (fixed === 'once') {
+        o.date = /^\d{4}-\d{2}-\d{2}$/.test(String(x.date || '')) ? String(x.date) : null; delete o.day;
+        if (!o.date) throw new Error('日付が読み取れない項目があります：' + o.name);
+        if (!validAmt(o.amount)) throw new Error('金額が読み取れない項目があります：' + o.name);
+        return o;
+      }
       if (fixed) o.end = x.end || null;
       if (!validDay(o.day)) throw new Error('引落日が読み取れない項目があります：' + o.name);
       if (!validAmt(o.amount)) throw new Error('金額が読み取れない項目があります：' + o.name);
@@ -139,6 +145,7 @@
       accounts: d.accounts.map(String),
       variable: d.variable.map(x => item(x, false)),
       fixed: d.fixed.map(x => item(x, true)),
+      once: Array.isArray(d.once) ? d.once.map(x => item(x, 'once')) : [],
       balances: {},
       settings: (() => { const cs = C.closeSettings(d); return { closeDay: cs.d1.day, closeShift: cs.d1.shift, close2Day: cs.d2.day, close2Shift: cs.d2.shift }; })(),
       excludeSurplus: Array.isArray(d.excludeSurplus) ? d.excludeSurplus.map(String).filter(a => d.accounts.map(String).includes(a)) : [],
@@ -171,7 +178,7 @@
     }
     const r = C.compute(state, T);
     const page = PAGES.includes(meta.page) ? meta.page : 'prep';
-    main.innerHTML = page === 'variable' ? listHTML('variable', '変動費', '毎月の金額をここで入力します。')
+    main.innerHTML = page === 'variable' ? listHTML('variable', '変動費', '毎月の金額をここで入力します。') + listHTML('once', '1回のみの引落', '日付を決めて1回だけ引き落とされるもの（年払い・臨時の支払いなど）。過ぎたものは「済み」にまとまります。')
       : page === 'fixed' ? listHTML('fixed', '固定費', '金額・引落日・口座が変わった時だけ変更します。')
       : page === 'settings' ? settingsHTML()
       : sampleBannerHTML() + (needsSetup() ? setupGuideHTML() : backupNoticeHTML()) + summaryHTML(r) + banksHTML(r) +
@@ -218,7 +225,7 @@
 
   function cloudWhen() { return cloud.data && cloud.data.exportedAt ? stampText(cloud.data.exportedAt).replace('更新：', '') : ''; }
 
-  function emptyState() { return { app: 'kakeibo', version: 1, source: '', settings: { closeDay: 10, closeShift: 'after', close2Day: 'end', close2Shift: 'none' }, accounts: [], variable: [], fixed: [], balances: {}, hiddenAccounts: [], income: [] }; }
+  function emptyState() { return { app: 'kakeibo', version: 1, source: '', settings: { closeDay: 10, closeShift: 'after', close2Day: 'end', close2Shift: 'none' }, once: [], accounts: [], variable: [], fixed: [], balances: {}, hiddenAccounts: [], income: [] }; }
 
   /** 架空のサンプル（人名・実在の口座名は使わない） */
   function sampleState() {
@@ -239,9 +246,10 @@
       '<div class="btnrow"><button class="primary" data-act="sample-clear">サンプルを消して自分のデータではじめる</button>' +
       '<label class="fileBtn">バックアップから復元<input type="file" id="restoreFile" accept=".json,application/json"></label></div></div>';
   }
-  function needsSetup() { return !state.sample && (state.accounts.length === 0 || state.variable.length + state.fixed.length === 0); }
+  function allItems() { return state.variable.concat(state.fixed, state.once || []); }
+  function needsSetup() { return !state.sample && (state.accounts.length === 0 || allItems().length === 0); }
   function setupGuideHTML() {
-    const hasAcc = state.accounts.length > 0, hasItem = state.variable.length + state.fixed.length > 0;
+    const hasAcc = state.accounts.length > 0, hasItem = allItems().length > 0;
     const step = (done, n, title, sub, btn, act) => '<li class="' + (done ? 'done' : '') + '"><span class="stepn">' + (done ? '✓' : n) + '</span><span class="stept"><b>' + title + '</b><small>' + sub + '</small></span>' + (btn ? '<button class="small' + (done ? '' : ' primary') + '" data-act="' + act + '">' + btn + '</button>' : '') + '</li>';
     return '<section class="guide"><h2>はじめの設定</h2><ol>' +
       step(hasAcc, 1, '口座を登録', '引落に使う銀行口座など', '登録する', 'go-acc') +
@@ -259,6 +267,7 @@
       '<h3>期限と期間</h3><p>「いつまでに必要か」の期限を2つ設定できます（初期設定は10日と月末）。期限1が締め日で、確認日から次の締め日までの引落で不足と余りを判定します。期限2の分は参考として表示します。「設定 → 帳簿」で、それぞれ1〜28日または月末と、休日に当たったときの扱い（後ろ・前・ずらさない）に変えられます。確認日（今日）から次の締め日までの引落で、不足と余りを判定します。</p>' +
       '<h3>休日のずれ</h3><p>土日・祝日・年末年始（12/31〜1/3）に当たる日は、項目ごとに「後ろにずらす／前にずらす／ずらさない」を選べます。初期値は、支出が後ろ（翌営業日）、収入が前（前営業日）です。</p>' +
       '<h3>帳簿</h3><p>家族のお金なども、人ごとに別の帳簿で管理できます。画面上の名前をタップすると切り替わり、「＋ 帳簿」で追加できます。バックアップは全部の帳簿をまとめて保存します。</p>' +
+      '<h3>1回のみの引落</h3><p>年払いの保険や税金など、決まった日に1回だけ引き落とされるものは、「設定 → 支出 → 1回のみ」で日付を指定して追加します。変動費ページの下に並び、日付が過ぎると「済み」にまとまります。</p>' +
       '<h3>非表示</h3><p>使わなくなった項目・口座・収入は非表示にできます。非表示にしたものは計算に含みません。</p>' +
       '<h3>データの保存</h3><p>入力した内容は変更するたびに自動で、この端末の中だけに保存され、外部には送信しません（アプリ版でiCloudがオンの場合は、あなたのiCloudにも自動でバックアップします）。入力を間違えたときは「設定 → 保存」の自動の履歴から、前の日の状態に戻せます。機種変更やブラウザのデータ削除に備えて、ときどき「ファイル」アプリ（iCloud Driveなど）にバックアップを保存してください。お知らせの間隔は変えられます。</p>' +
       '<h3>ご注意</h3><p>計算結果は目安です。実際の引落日・金額は、金融機関やカード会社の案内で確認してください。</p>' +
@@ -359,20 +368,26 @@
     return '<select id="' + id + '" aria-label="引落口座">' + (a ? '' : '<option value="" selected>口座を選ぶ</option>') + opts.map(o => '<option' + (o === a ? ' selected' : '') + '>' + esc(o) + '</option>').join('') + '</select>';
   }
 
+  function isoOf(dt) { return dt.y + '-' + String(dt.m).padStart(2, '0') + '-' + String(dt.d).padStart(2, '0'); }
+  function dateLabel(iso) { const [y, m, d] = iso.split('-').map(Number); const t = { y, m, d }; return (y !== today().y ? y + '/' : '') + mdw(t); }
+  function itemWhen(it) { return it.date ? dateLabel(it.date) : dayLabel(it.day); }
   function listHTML(kind, title, lead) {
     const T = today();
-    const visible = state[kind].filter(x => !x.hidden), hiddenItems = state[kind].filter(x => x.hidden);
+    if (kind === 'once') state.once = (state.once || []).slice().sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
+    const isPast = it => kind === 'once' && it.date < isoOf(T);
+    const visible = state[kind].filter(x => !x.hidden && !isPast(x)), hiddenItems = state[kind].filter(x => x.hidden && !isPast(x));
+    const pastItems = state[kind].filter(isPast);
     if (meta.reorder === kind) {
       return '<section id="sec-' + kind + '" aria-label="' + title + '">' + headHTML(title, '表示 ' + visible.length + '件', kind) +
         '<p class="sub" style="margin:-4px 0 10px">↑↓で順番を変えます。終わったら「完了」を押してください。</p>' +
-        '<div class="list">' + orderRows(kind, visible.map(it => ({ key: it.id, label: it.name, sub: dayLabel(it.day) + '・' + (it.account || '口座なし') + '・' + (it.amount == null ? '未入力' : nf.format(it.amount) + '円') }))) + '</div></section>';
+        '<div class="list">' + orderRows(kind, visible.map(it => ({ key: it.id, label: it.name, sub: itemWhen(it) + '・' + (it.account || '口座なし') + '・' + (it.amount == null ? '未入力' : nf.format(it.amount) + '円') }))) + '</div></section>';
     }
     const rows = visible.map(it => {
       const ended = kind === 'fixed' && it.end && !C.activeIn(it, T.y, T.m);
       return '<div class="row' + (ended ? ' ended' : '') + '" data-kind="' + kind + '" data-id="' + esc(it.id) + '">' +
         '<div class="row-main"><span class="row-name">' + esc(it.name) + '</span>' +
         '<input class="amount' + (it.amount == null ? ' empty' : '') + '" inputmode="numeric" enterkeyhint="done" autocomplete="off" id="amt-' + esc(it.id) + '" data-f="amount" value="' + yenTxt(it.amount) + '" placeholder="未入力" aria-label="' + esc(it.name) + 'の金額"></div>' +
-        '<div class="row-sub">' + daySelect('day-' + esc(it.id), it.day) + acctSelect('acc-' + esc(it.id), it.account) +
+        '<div class="row-sub">' + (kind === 'once' ? '<input class="text datein" type="date" id="date-' + esc(it.id) + '" data-f="date" value="' + esc(it.date) + '" aria-label="引落日">' : daySelect('day-' + esc(it.id), it.day)) + acctSelect('acc-' + esc(it.id), it.account) +
         '<span class="stamp" data-stamp>' + stampText(it.updatedAt) + '</span></div>' +
         ((it.memo || it.end) ? '<div class="memo">' + (it.end ? (ended ? '終了しました（' : '終了予定 ') + it.end.replace('-', '/') + (ended ? '）' : '') + (it.memo ? '　' : '') : '') + esc(it.memo) + '</div>' : '') +
         '<div class="row-acts"><button class="ghost small" data-act="edit">詳細（名前・休日・削除）</button><button class="ghost small" data-act="hide">非表示にする</button></div>' +
@@ -385,8 +400,16 @@
         '</div>';
     }).join('');
     const hid = hiddenItems.length ? '<details class="hiddenbox"' + (meta['open-' + kind] ? ' open' : '') + ' data-kind="' + kind + '"><summary>非表示の項目 ' + hiddenItems.length + '件（計算に含みません）</summary>' +
-      hiddenItems.map(it => '<div class="hrow" data-kind="' + kind + '" data-id="' + esc(it.id) + '"><span class="row-name">' + esc(it.name) + '<span class="sub">' + dayLabel(it.day) + '・' + esc(it.account || '口座なし') + '・' + (it.amount == null ? '未入力' : nf.format(it.amount) + '円') + '</span></span><button class="small" data-act="unhide">表示する</button></div>').join('') +
+      hiddenItems.map(it => '<div class="hrow" data-kind="' + kind + '" data-id="' + esc(it.id) + '"><span class="row-name">' + esc(it.name) + '<span class="sub">' + itemWhen(it) + '・' + esc(it.account || '口座なし') + '・' + (it.amount == null ? '未入力' : nf.format(it.amount) + '円') + '</span></span><button class="small" data-act="unhide">表示する</button></div>').join('') +
       '</details>' : '';
+    const past = pastItems.length ? '<details class="hiddenbox"' + (meta['open-past'] ? ' open' : '') + ' data-kind="past"><summary>済み ' + pastItems.length + '件（日付が過ぎたもの）</summary>' +
+      pastItems.slice().reverse().map(it => '<div class="hrow" data-kind="once" data-id="' + esc(it.id) + '"><span class="row-name">' + esc(it.name) + '<span class="sub">' + dateLabel(it.date) + '・' + esc(it.account || '口座なし') + '・' + (it.amount == null ? '未入力' : nf.format(it.amount) + '円') + '</span></span><button class="small danger" data-act="pastdel">削除</button></div>').join('') + '</details>' : '';
+    if (kind === 'once') {
+      const rowsOnce = visible.length ? rows : '<div class="emptyrow sub">予定はありません</div>';
+      return '<section id="sec-once" aria-label="' + title + '" style="margin-top:28px">' + headHTML(title, visible.length + '件', null) +
+        '<p class="sub" style="margin:-4px 0 10px">' + lead + '</p>' +
+        '<div class="list">' + rowsOnce + '<div class="add"><button class="ghost" data-act="add" data-kind="once">＋ 1回のみの引落を追加</button></div></div>' + hid + past + '</section>';
+    }
     return '<section id="sec-' + kind + '" aria-label="' + title + '">' + headHTML(title, '表示 ' + visible.length + '件', kind) +
       '<p class="sub" style="margin:-4px 0 10px">' + lead + '</p>' +
       '<div class="list">' + rows + '<div class="add"><button class="ghost" data-act="add" data-kind="' + kind + '">＋ ' + title + 'を追加</button></div></div>' + hid + '</section>';
@@ -447,20 +470,21 @@
   function visibleAccounts() { return state.accounts.filter(a => !hiddenAcc().includes(a)); }
 
   function outHTML() {
-    const kind = meta.qkind === 'fixed' ? 'fixed' : 'variable';
+    const kind = ['fixed', 'once'].includes(meta.qkind) ? meta.qkind : 'variable';
+    const kname = { variable: '変動費', fixed: '固定費', once: '1回のみ' }[kind];
     const accs = visibleAccounts();
     const acc = accs.includes(meta.qacc) ? meta.qacc : '';
     const day = meta.qday === 'end' || (Number(meta.qday) >= 1 && Number(meta.qday) <= 31) ? (meta.qday === 'end' ? 'end' : Number(meta.qday)) : 27;
     return '<div class="card form">' +
-      '<div class="shead">支出を追加<span class="sub">追加した項目は「' + (kind === 'fixed' ? '固定費' : '変動費') + '」ページに表示され、すぐ計算に入ります</span></div>' +
-      '<div class="seg small-seg">' + [['variable', '変動費'], ['fixed', '固定費']].map(k => '<button class="' + (k[0] === kind ? 'on' : '') + '" data-qkind="' + k[0] + '">' + k[1] + '</button>').join('') + '</div>' +
+      '<div class="shead">支出を追加<span class="sub">追加した項目は「' + (kind === 'fixed' ? '固定費' : '変動費') + '」ページに表示され、すぐ計算に入ります' + (kind === 'once' ? '（1回のみは変動費ページの下）' : '') + '</span></div>' +
+      '<div class="seg small-seg">' + [['variable', '変動費'], ['fixed', '固定費'], ['once', '1回のみ']].map(k => '<button class="' + (k[0] === kind ? 'on' : '') + '" data-qkind="' + k[0] + '">' + k[1] + '</button>').join('') + '</div>' +
       '<label>項目名<input class="text" id="qa-name" autocomplete="off" placeholder="例：クレジットカード"></label>' +
       '<label>金額（わからなければ空欄）<input class="amount wide" id="qa-amt" inputmode="numeric" enterkeyhint="done" autocomplete="off" placeholder="未入力"></label>' +
-      '<div class="two"><label>引落日' + daySelect('qa-day', day) + '</label>' +
+      '<div class="two"><label>引落日' + (kind === 'once' ? '<input class="text" type="date" id="qa-date" value="' + (meta.qdate || isoOf(today())) + '">' : daySelect('qa-day', day)) + '</label>' +
       '<label>引落口座<select id="qa-acc" aria-label="引落口座">' + (acc ? '' : '<option value="" selected>選ぶ</option>') + accs.map(a => '<option' + (a === acc ? ' selected' : '') + '>' + esc(a) + '</option>').join('') + '</select></label></div>' +
       '<label>引落日が休日のとき' + shiftSelect('qa-shift', validShift(meta.qshift, 'after')) + '</label>' +
       (kind === 'fixed' ? '<label>終了月（ローンなど。なければ空欄）<input class="text" type="month" id="qa-end"></label>' : '') +
-      '<button class="primary" data-act="qadd">' + (kind === 'fixed' ? '固定費' : '変動費') + 'に追加</button>' +
+      '<button class="primary" data-act="qadd">' + (kind === 'once' ? '1回のみの引落として追加' : kname + 'に追加') + '</button>' +
       (meta.qlast ? '<p class="note" id="qa-last">追加しました：' + esc(meta.qlast) + '</p>' : '') +
       '</div>';
   }
@@ -484,7 +508,7 @@
 
   function accHTML() {
     const on = meta.reorder === 'accounts';
-    const used = name => state.variable.concat(state.fixed).filter(x => x.account === name).length;
+    const used = name => allItems().filter(x => x.account === name).length;
     const list = on ? orderRows('accounts', state.accounts.map(a => ({ key: a, label: a, sub: used(a) + '件' + (hiddenAcc().includes(a) ? '・非表示' : '') }))) :
       state.accounts.map((a, i) => '<div class="srow' + (hiddenAcc().includes(a) ? ' is-hidden' : '') + '" data-acc-i="' + i + '">' +
         '<input class="text" id="accname-' + i + '" value="' + esc(a) + '" aria-label="口座名">' +
@@ -555,23 +579,27 @@
     if (qadd) {
       const amt = $('#qa-amt');
       amt.addEventListener('blur', () => { const v = parseAmount(amt.value); if (!Number.isNaN(v)) amt.value = yenTxt(v); });
-      $('#qa-day').addEventListener('change', e => { meta.qday = e.target.value === 'end' ? 'end' : Number(e.target.value); saveMeta(); });
+      if ($('#qa-day')) $('#qa-day').addEventListener('change', e => { meta.qday = e.target.value === 'end' ? 'end' : Number(e.target.value); saveMeta(); });
       $('#qa-acc').addEventListener('change', e => { meta.qacc = e.target.value; saveMeta(); });
       qadd.addEventListener('click', () => {
-        const kind = meta.qkind === 'fixed' ? 'fixed' : 'variable';
+        const kind = ['fixed', 'once'].includes(meta.qkind) ? meta.qkind : 'variable';
         const name = $('#qa-name').value.trim();
         const v = parseAmount(amt.value);
         const acc = $('#qa-acc').value;
-        const dv = $('#qa-day').value; const day = dv === 'end' ? 'end' : Number(dv);
+        const qd = $('#qa-date');
+        if (qd && !/^\d{4}-\d{2}-\d{2}$/.test(qd.value)) { toast('引落日を選んでください'); return; }
+        const dv = qd ? null : $('#qa-day').value; const day = qd ? null : (dv === 'end' ? 'end' : Number(dv));
         if (!name) { toast('項目名を入力してください'); $('#qa-name').focus(); return; }
         if (Number.isNaN(v)) { toast('金額は数字で入力してください'); amt.focus(); return; }
         if (!acc) { toast('引落口座を選んでください'); return; }
         const shift = validShift($('#qa-shift').value, 'after'); meta.qshift = shift;
         const it = { id: uid(kind === 'fixed' ? 'f' : 'v'), name, day, account: acc, amount: v, memo: '', updatedAt: new Date().toISOString(), hidden: false, shift };
         if (kind === 'fixed') { const e = $('#qa-end'); it.end = e && e.value ? e.value : null; }
+        if (kind === 'once') { delete it.day; it.date = qd.value; meta.qdate = qd.value; }
+        state.once = state.once || [];
         state[kind].push(it); save();
-        meta.qacc = acc; meta.qday = day;
-        meta.qlast = name + '（' + (kind === 'fixed' ? '固定費' : '変動費') + '・' + dayLabel(day) + '・' + acc + '・' + (v == null ? '金額未入力' : nf.format(v) + '円') + '）';
+        meta.qacc = acc; if (day != null) meta.qday = day;
+        meta.qlast = name + '（' + { variable: '変動費', fixed: '固定費', once: '1回のみ' }[kind] + '・' + itemWhen(it) + '・' + acc + '・' + (v == null ? '金額未入力' : nf.format(v) + '円') + '）';
         saveMeta(); renderKeep(); toast('「' + name + '」を追加しました');
       });
     }
@@ -615,7 +643,7 @@
         if (state.accounts.includes(n)) { e.target.value = old; toast('同じ名前の口座があります'); return; }
         state.accounts[i] = n;
         let cnt = 0;
-        for (const it of state.variable.concat(state.fixed)) if (it.account === old) { it.account = n; cnt++; }
+        for (const it of allItems()) if (it.account === old) { it.account = n; cnt++; }
         state.balances[n] = state.balances[old] || { amount: null, updatedAt: null }; delete state.balances[old];
         state.hiddenAccounts = hiddenAcc().map(a => a === old ? n : a);
         state.excludeSurplus = exclSurplus().map(a => a === old ? n : a);
@@ -628,7 +656,7 @@
         save(); renderKeep(); toast(on ? '「' + old + '」を表示しました' : '「' + old + '」を非表示にしました（計算に含みません）');
       });
       row.querySelector('[data-act="accdel"]').addEventListener('click', () => {
-        const uses = state.variable.concat(state.fixed).filter(x => x.account === old);
+        const uses = allItems().filter(x => x.account === old);
         if (uses.length) {
           confirmSheet('「' + old + '」は削除できません', '<p class="sub" style="margin:0">この口座を使っている引落が' + uses.length + '件あります（' + uses.slice(0, 5).map(x => esc(x.name)).join('、') + (uses.length > 5 ? ' ほか' : '') + '）。先に変動費・固定費で別の口座に変えてください。</p>', null, null);
           return;
@@ -649,7 +677,7 @@
 
   /** 追加フォームの入力途中の内容を残したまま描き直す */
   function keepForm(fn) {
-    const keep = {}; ['qa-name', 'qa-amt'].forEach(id => { const el = $('#' + id); if (el) keep[id] = el.value; });
+    const keep = {}; ['qa-name', 'qa-amt', 'qa-date'].forEach(id => { const el = $('#' + id); if (el) keep[id] = el.value; });
     fn();
     Object.keys(keep).forEach(id => { const el = $('#' + id); if (el) el.value = keep[id]; });
   }
@@ -698,7 +726,10 @@
       const amt = row.querySelector('[data-f="amount"]');
       amt.addEventListener('input', () => onAmountInput(amt, () => it.amount, v => { it.amount = v; }, () => touch(it, row)));
       amt.addEventListener('blur', () => { const v = parseAmount(amt.value); if (!Number.isNaN(v)) amt.value = yenTxt(v); });
-      row.querySelector('select[id^="day-"]').addEventListener('change', e => { it.day = e.target.value === 'end' ? 'end' : Number(e.target.value); touch(it, row); save(); renderKeep(); });
+      const ds = row.querySelector('select[id^="day-"]');
+      if (ds) ds.addEventListener('change', e => { it.day = e.target.value === 'end' ? 'end' : Number(e.target.value); touch(it, row); save(); renderKeep(); });
+      const di = row.querySelector('[data-f="date"]');
+      if (di) di.addEventListener('change', e => { if (!/^\d{4}-\d{2}-\d{2}$/.test(e.target.value)) { e.target.value = it.date; return; } it.date = e.target.value; touch(it, row); save(); renderKeep(); });
       row.querySelector('select[id^="acc-"]').addEventListener('change', e => { it.account = e.target.value; touch(it, row); save(); renderKeep(); });
       const ed = row.querySelector('[data-editor]');
       row.querySelector('[data-act="edit"]').addEventListener('click', () => { ed.hidden = !ed.hidden; });
@@ -708,7 +739,7 @@
       row.querySelector('[data-f="shift"]').addEventListener('change', e => { it.shift = validShift(e.target.value, 'after'); touch(it, row); save(); renderKeep(); toast('「' + it.name + '」：' + SHIFT_LABEL[it.shift]); });
       const end = row.querySelector('[data-f="end"]');
       if (end) end.addEventListener('change', e => { it.end = e.target.value || null; touch(it, row); save(); renderKeep(); });
-      row.querySelector('[data-act="del"]').addEventListener('click', () => confirmSheet('「' + it.name + '」を削除しますか？', '<p class="sub" style="margin:0">' + dayLabel(it.day) + '・' + esc(it.account) + '・' + (it.amount == null ? '未入力' : nf.format(it.amount) + '円') + '</p>', '削除する', () => {
+      row.querySelector('[data-act="del"]').addEventListener('click', () => confirmSheet('「' + it.name + '」を削除しますか？', '<p class="sub" style="margin:0">' + itemWhen(it) + '・' + esc(it.account) + '・' + (it.amount == null ? '未入力' : nf.format(it.amount) + '円') + '</p>', '削除する', () => {
         state[row.dataset.kind] = state[row.dataset.kind].filter(x => x.id !== it.id); save(); renderKeep(); toast('削除しました');
       }, true));
     });
@@ -719,6 +750,10 @@
     main.querySelectorAll('.hrow [data-act="unhide"]').forEach(btn => btn.addEventListener('click', () => {
       const row = btn.closest('.hrow'); const it = findItem(row);
       it.hidden = false; save(); renderKeep(); toast('「' + it.name + '」を表示しました');
+    }));
+    main.querySelectorAll('.hrow [data-act="pastdel"]').forEach(btn => btn.addEventListener('click', () => {
+      const it = findItem(btn.closest('.hrow'));
+      state.once = state.once.filter(x => x.id !== it.id); save(); renderKeep(); toast('「' + it.name + '」を削除しました');
     }));
     main.querySelectorAll('details.hiddenbox').forEach(d => d.addEventListener('toggle', () => { meta['open-' + d.dataset.kind] = d.open; saveMeta(); }));
     bindBalances();
@@ -842,7 +877,7 @@
       if (!raw || !Array.isArray(raw.books) || !raw.books.length) throw new Error('帳簿が入っていません');
       list = raw.books.map((b, i) => ({ id: i === 0 ? 'main' : String(b.id && b.id !== 'main' ? b.id : uid('b')), name: String(b.name || '帳簿' + (i + 1)), data: normalize(b.data) }));
     } catch (err) { toast('戻せませんでした：' + (err.message || '形式が違います')); return; }
-    const body = '<dl>' + list.map(b => '<dt>' + esc(b.name) + '</dt><dd>口座' + b.data.accounts.length + '・支出' + (b.data.variable.length + b.data.fixed.length) + '件</dd>').join('') + '</dl>' +
+    const body = '<dl>' + list.map(b => '<dt>' + esc(b.name) + '</dt><dd>口座' + b.data.accounts.length + '・支出' + (b.data.variable.length + b.data.fixed.length + b.data.once.length) + '件</dd>').join('') + '</dl>' +
       '<p class="flag" style="margin:0">今のすべての帳簿は、この時点の内容に置きかわります。</p>';
     confirmSheet(title + 'に戻しますか？', body, 'この時点に戻す', () => {
       try { if (books) books.list.forEach(b => localStorage.removeItem(dataKey(b.id))); } catch (e2) { /* 上書きで置きかわる */ }
@@ -871,7 +906,7 @@
           list = raw.books.map((b, i) => ({ id: i === 0 ? 'main' : String(b.id && b.id !== 'main' ? b.id : uid('b')), name: String(b.name || '帳簿' + (i + 1)), data: normalize(b.data) }));
         } catch (err) { toast('読み込めませんでした：' + (err.message || 'ファイルの形式が違います')); return; }
         const body = '<dl><dt>ファイル</dt><dd>' + esc(f.name) + '</dd><dt>作成</dt><dd>' + esc(when) + '</dd>' +
-          list.map(b => '<dt>' + esc(b.name) + '</dt><dd>口座' + b.data.accounts.length + '・支出' + (b.data.variable.length + b.data.fixed.length) + '件</dd>').join('') + '</dl>' +
+          list.map(b => '<dt>' + esc(b.name) + '</dt><dd>口座' + b.data.accounts.length + '・支出' + (b.data.variable.length + b.data.fixed.length + b.data.once.length) + '件</dd>').join('') + '</dl>' +
           (state ? '<p class="flag" style="margin:0">今アプリに入っているすべての帳簿は上書きされ、元に戻せません。</p>' : '');
         confirmSheet('すべての帳簿（' + list.length + '冊）を復元しますか？', body, state ? '上書きして復元' : '読み込む', () => {
           try { if (books) books.list.forEach(b => localStorage.removeItem(dataKey(b.id))); } catch (e2) { /* 上書きで置きかわる */ }
@@ -890,6 +925,7 @@
       const body = '<dl><dt>ファイル</dt><dd>' + esc(f.name) + '</dd><dt>作成</dt><dd>' + esc(when) + '</dd>' +
         '<dt>変動費</dt><dd>' + d.variable.length + '件・' + nf.format(sum(d.variable)) + '円</dd>' +
         '<dt>固定費</dt><dd>' + d.fixed.length + '件・' + nf.format(sum(d.fixed)) + '円</dd>' +
+        (d.once.length ? '<dt>1回のみ</dt><dd>' + d.once.length + '件・' + nf.format(sum(d.once)) + '円</dd>' : '') +
         '<dt>口座</dt><dd>' + d.accounts.length + '口座</dd><dt>読み込み先</dt><dd>帳簿「' + esc(bn) + '」</dd></dl>' +
         (state && (state.accounts.length || state.variable.length || state.fixed.length) ? '<p class="flag" style="margin:0">帳簿「' + esc(bn) + '」の今の内容は上書きされ、元に戻せません。ほかの帳簿はそのままです。</p>' : '');
       confirmSheet('帳簿「' + bn + '」に読み込みますか？', body, '読み込む', () => {

@@ -32,7 +32,7 @@
   }
 
   const api = {
-    VERSION: '2026.11.04',
+    VERSION: '2026.11.04b',
     isNative,
     ready: hydrate(),
     /** iCloudが使えるか */
