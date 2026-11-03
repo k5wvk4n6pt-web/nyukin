@@ -192,8 +192,17 @@
       b.shortfall = b.balance == null ? null : Math.max(0, b.due - b.balance);
       b.surplus = b.balance == null ? null : Math.max(0, b.balance - b.due);
       b.active = b.total > 0 || b.unentered > 0;
+      // 直近で必要な日（期間内で金額が0でない最初の引落。未入力も含む）
+      const need = W.flatMap(w => b.lines[w.key]).filter(l => l.amount !== 0).sort((x, y) => serial(x.date) - serial(y.date))[0];
+      b.firstNeed = need ? need.date : null;
       b.dueActive = b.due > 0 || b.unenteredDue > 0;
       return b;
+    });
+    // 準備ページは直近で必要な口座から並べる（同じ日は設定の口座順）
+    const order = new Map(banks.map((b, i) => [b.name, i]));
+    banks.sort((x, y) => {
+      const fx = x.firstNeed ? serial(x.firstNeed) : Infinity, fy = y.firstNeed ? serial(y.firstNeed) : Infinity;
+      return fx - fy || order.get(x.name) - order.get(y.name);
     });
     const totals = {};
     for (const w of W) totals[w.key] = banks.reduce((s, b) => s + b.sums[w.key], 0);
