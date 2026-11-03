@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="format-detection" content="telephone=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="入金準備">
+<meta name="theme-color" content="#F8F6EF" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#16181A" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<title>入金準備帳</title>
+<style>
+/* Layout: 1カラムの通帳風。上から 要約 → 銀行別 → 変動費 → 固定費 → バックアップ */
+:root {
+  --bg: #F8F6EF;       /* アイボリー */
+  --surface: #FFFFFF;
+  --ink: #23272B;
+  --muted: #6E6C66;
+  --line: #E4DFD3;
+  --accent: #2C5560;   /* 通帳の表紙の紺青緑 */
+  --accent-soft: #E7EEEF;
+  --short: #B3261E;
+  --short-bg: #FCEBE9;
+  --ok: #2F6A42;
+  --ok-bg: #EAF2EC;
+  --warn: #8A5A00;
+  --warn-bg: #FBF1DC;
+  --field: #FFFDF8;
+  --font-display: "Hiragino Mincho ProN", "Yu Mincho", "YuMincho", "Noto Serif JP", serif;
+  --font-body: -apple-system, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", system-ui, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #16181A; --surface: #1F2225; --ink: #ECE9E1; --muted: #A4A19A; --line: #33373B;
+    --accent: #86B9C1; --accent-soft: #22323A; --short: #FF8C7F; --short-bg: #3B1F1C;
+    --ok: #8FCB9F; --ok-bg: #1D2C22; --warn: #E8C176; --warn-bg: #352B18; --field: #1A1D20;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #16181A; --surface: #1F2225; --ink: #ECE9E1; --muted: #A4A19A; --line: #33373B;
+  --accent: #86B9C1; --accent-soft: #22323A; --short: #FF8C7F; --short-bg: #3B1F1C;
+  --ok: #8FCB9F; --ok-bg: #1D2C22; --warn: #E8C176; --warn-bg: #352B18; --field: #1A1D20;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font-family: var(--font-body); font-size: 15px; line-height: 1.55;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 96px);
+  -webkit-tap-highlight-color: transparent;
+}
+[hidden] { display: none !important; }
+#main { display: grid; gap: 28px; }
+.wrap { max-width: 560px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 28px; }
+.num, input.amount { font-variant-numeric: tabular-nums; }
+h1, h2 { font-family: var(--font-display); font-weight: 600; margin: 0; text-wrap: balance; letter-spacing: .02em; }
+h1 { font-size: 22px; }
+h2 { font-size: 18px; }
+.eyebrow { font-size: 12px; letter-spacing: .12em; color: var(--muted); }
+.sub { color: var(--muted); font-size: 13px; }
+.yen { font-size: .72em; margin-left: 1px; color: var(--muted); font-weight: 400; }
+
+/* ヘッダー */
+header.top { padding-top: 18px; display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; }
+.today { text-align: right; }
+.today b { font-family: var(--font-display); font-size: 17px; font-weight: 600; display: block; }
+.saved { font-size: 12px; color: var(--muted); min-height: 1.2em; }
+
+/* 要約 */
+.summary { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: grid; gap: 14px; }
+.periods { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.period { display: grid; gap: 2px; }
+.period .lab { font-size: 13px; font-weight: 600; }
+.period .rng { font-size: 12px; color: var(--muted); }
+.period .val { font-size: 22px; font-weight: 600; }
+.period.after .val, .bank-amts .after .v { color: var(--muted); font-weight: 500; }
+.tag { font-size: 11px; font-weight: 500; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 0 6px; margin-left: 6px; }
+.shortbox { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 10px; background: var(--short-bg); color: var(--short); }
+.shortbox.ok { background: var(--ok-bg); color: var(--ok); }
+.shortbox.none { background: var(--accent-soft); color: var(--accent); }
+.shortbox .big { font-size: 24px; font-weight: 700; }
+.tots { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.tot { border-radius: 10px; padding: 10px 12px; display: grid; gap: 2px; min-width: 0; }
+.tot .tl { font-size: 12px; font-weight: 600; }
+.tot .big { font-size: 22px; font-weight: 700; }
+.tot small { font-size: 12px; opacity: .85; }
+.tot.short { background: var(--short-bg); color: var(--short); }
+.tot.plus { background: var(--ok-bg); color: var(--ok); }
+.tot.zero { background: var(--accent-soft); color: var(--muted); }
+.shortbox small { display: block; font-size: 12px; opacity: .85; }
+.income { display: grid; gap: 6px; border-top: 1px dashed var(--line); padding-top: 12px; }
+.income-row { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+.income-row .who { font-weight: 600; min-width: 3em; }
+.income-row .when { color: var(--muted); flex: 1; }
+.income-row input.amount { width: 128px; }
+
+/* 銀行カード */
+.section-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 10px; }
+.banks { display: grid; gap: 10px; }
+.bank { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px; display: grid; gap: 10px; }
+.bank.is-short { border-color: color-mix(in srgb, var(--short) 45%, var(--line)); box-shadow: inset 4px 0 0 var(--short); }
+.bank-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.bank-name { font-family: var(--font-display); font-size: 17px; font-weight: 600; }
+.next { font-size: 13px; color: var(--muted); white-space: nowrap; }
+.bank-amts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.bank-amts div { display: grid; }
+.bank-amts .k { font-size: 12px; color: var(--muted); }
+.bank-amts .v { font-size: 17px; font-weight: 600; }
+.bank-foot { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.bank-foot label { font-size: 13px; color: var(--muted); }
+.bank-foot input.amount { flex: 1; min-width: 120px; }
+.pill { font-size: 13px; font-weight: 700; padding: 6px 10px; border-radius: 999px; white-space: nowrap; }
+.pill.short { background: var(--short-bg); color: var(--short); }
+.pill.ok { background: var(--ok-bg); color: var(--ok); }
+.pill.none { background: var(--warn-bg); color: var(--warn); font-weight: 600; }
+.flag { font-size: 12px; color: var(--warn); }
+details.lines summary { font-size: 13px; color: var(--accent); cursor: pointer; list-style: none; padding: 4px 0; }
+details.lines summary::-webkit-details-marker { display: none; }
+details.lines summary::before { content: "＋ "; }
+details.lines[open] summary::before { content: "－ "; }
+.line-list { display: grid; gap: 2px; font-size: 13px; margin-top: 4px; }
+.line-list .wh { font-size: 12px; color: var(--muted); margin-top: 6px; }
+.li { display: grid; grid-template-columns: 5.6em 1fr auto; gap: 8px; padding: 3px 0; border-bottom: 1px dotted var(--line); }
+.wkend { color: var(--short); }
+.shifted { font-size: 12px; color: var(--muted); margin-left: 4px; }
+.irow-bot select { min-width: 0; flex: 1 1 auto; }
+.edit select { width: 100%; }
+.idle { background: transparent; border: 1px dashed var(--line); border-radius: 12px; padding: 12px 14px; font-size: 13px; color: var(--muted); }
+.idle b { color: var(--ink); font-weight: 600; }
+
+/* 入力リスト */
+.list { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+.row { padding: 12px 14px; border-bottom: 1px solid var(--line); display: grid; gap: 8px; }
+.row:last-child { border-bottom: 0; }
+.row-main { display: flex; align-items: center; gap: 10px; }
+.row-name { flex: 1; min-width: 0; font-weight: 600; overflow-wrap: anywhere; }
+.row-sub { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.stamp { font-size: 12px; color: var(--muted); margin-left: auto; white-space: nowrap; }
+.stamp.fresh { color: var(--accent); }
+.memo { font-size: 12px; color: var(--muted); }
+.ended { opacity: .55; }
+
+/* フォーム部品（16px以上でiPhoneの自動拡大を防ぐ） */
+input, select, button { font: inherit; font-size: 16px; color: var(--ink); }
+input.amount, input.text { background: var(--field); border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px; min-height: 44px; }
+input.amount { text-align: right; width: 140px; }
+input.text { width: 100%; }
+input:focus, select:focus, button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+input.amount.empty { border-style: dashed; }
+select { appearance: none; -webkit-appearance: none; background: var(--accent-soft); color: var(--accent); border: 0; border-radius: 8px; padding: 8px 26px 8px 10px; min-height: 40px;
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: calc(100% - 13px) 52%, calc(100% - 9px) 52%; background-size: 4px 4px; background-repeat: no-repeat; max-width: 100%; }
+button { min-height: 44px; border-radius: 10px; padding: 10px 16px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; }
+button.primary { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 600; }
+button.ghost { background: transparent; border-color: transparent; color: var(--accent); padding-left: 8px; padding-right: 8px; }
+button.danger { color: var(--short); border-color: color-mix(in srgb, var(--short) 40%, var(--line)); background: transparent; }
+button.small { min-height: 36px; padding: 6px 10px; font-size: 14px; }
+.edit { display: grid; gap: 8px; padding: 10px; background: var(--bg); border-radius: 10px; }
+.edit label { font-size: 12px; color: var(--muted); display: grid; gap: 4px; }
+.edit .btns { display: flex; gap: 8px; justify-content: space-between; flex-wrap: wrap; }
+.add { padding: 8px 14px 12px; }
+
+/* 下の移動ボタン */
+.nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
+  background: color-mix(in srgb, var(--surface) 92%, transparent); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  border-top: 1px solid var(--line);
+  padding: 8px max(16px, env(safe-area-inset-right, 0px)) calc(8px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+.nav button { border: 0; background: transparent; color: var(--muted); font-size: 15px; font-weight: 600; min-height: 46px; border-radius: 10px; padding: 6px 4px; }
+.nav button.on { background: var(--accent-soft); color: var(--accent); }
+body.typing .nav { display: none; }
+section[id], #sec-top { scroll-margin-top: calc(env(safe-area-inset-top, 0px) + 12px); }
+
+/* 設定 */
+.settings .shead { padding: 14px 14px 6px; font-weight: 700; display: grid; gap: 2px; }
+.srow { display: flex; align-items: center; gap: 8px; padding: 8px 14px; border-bottom: 1px solid var(--line); }
+.srow .text { flex: 1; min-width: 0; }
+.srow select { flex: 0 0 auto; }
+.srow.is-hidden .text { color: var(--muted); text-decoration: line-through; }
+.row-acts { display: flex; gap: 4px; flex-wrap: wrap; }
+.hiddenbox { margin-top: 12px; border: 1px dashed var(--line); border-radius: 12px; }
+.hiddenbox summary { padding: 12px 14px; color: var(--muted); font-size: 14px; cursor: pointer; }
+.hrow { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-top: 1px solid var(--line); }
+.hrow .row-name { display: grid; color: var(--muted); font-weight: 600; }
+.hrow .row-name .sub { font-weight: 400; }
+.head-right { display: flex; align-items: center; gap: 10px; }
+.seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; background: var(--accent-soft); border-radius: 12px; padding: 4px; margin-bottom: 14px; }
+.seg button { border: 0; background: transparent; color: var(--accent); font-weight: 600; min-height: 42px; border-radius: 9px; padding: 6px 4px; }
+.seg button.on { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px color-mix(in srgb, var(--ink) 18%, transparent); }
+.small-seg { margin-bottom: 0; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+.card .pad { padding: 14px 14px 10px; display: grid; gap: 4px; }
+.card .pad .section-head { margin-bottom: 0; }
+.card .pad h2 { font-size: 17px; }
+.form { padding: 14px; display: grid; gap: 12px; }
+.form label { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
+.form .shead { padding: 0; }
+.form select { width: 100%; }
+.addform { border-top: 1px solid var(--line); }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.two > * { min-width: 0; }
+input.amount.wide { width: 100%; }
+.irow { padding: 10px 14px; border-top: 1px solid var(--line); display: grid; gap: 8px; }
+.irow-top, .irow-bot { display: flex; align-items: center; gap: 8px; }
+.irow-top .text { flex: 1; min-width: 0; }
+.irow-top .amount { width: 128px; }
+.irow.is-hidden .text { color: var(--muted); text-decoration: line-through; }
+.grow { flex: 1; }
+.orow { display: flex; align-items: center; gap: 8px; padding: 8px 14px; border-top: 1px solid var(--line); }
+.list .orow:first-child { border-top: 0; }
+.oname { flex: 1; min-width: 0; font-weight: 600; display: grid; overflow-wrap: anywhere; }
+.oname small { font-weight: 400; color: var(--muted); font-size: 12px; }
+button.mv { min-width: 48px; min-height: 44px; font-size: 18px; font-weight: 700; color: var(--accent); }
+button.mv:disabled { opacity: .3; }
+.srow.add-row { border-bottom: 0; padding-bottom: 14px; }
+.nowrap { white-space: nowrap; min-width: 2.8em; text-align: right; }
+
+/* お知らせ・バックアップ */
+.notice { border-radius: 12px; padding: 14px; font-size: 14px; display: grid; gap: 10px; background: var(--warn-bg); color: var(--warn); }
+.notice b { color: inherit; }
+.backup { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: grid; gap: 12px; }
+.btnrow { display: flex; gap: 10px; flex-wrap: wrap; }
+.btnrow > * { flex: 1 1 140px; }
+.fileBtn { position: relative; overflow: hidden; display: inline-flex; align-items: center; justify-content: center; min-height: 44px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); padding: 10px 16px; cursor: pointer; }
+.fileBtn.primary { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 600; }
+.fileBtn input { position: absolute; inset: 0; opacity: 0; font-size: 16px; cursor: pointer; }
+.note { font-size: 12px; color: var(--muted); }
+.welcome { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 20px; display: grid; gap: 14px; }
+.welcome ol { margin: 0; padding-left: 1.3em; display: grid; gap: 6px; }
+
+/* 確認ダイアログ */
+.modal { position: fixed; inset: 0; background: color-mix(in srgb, var(--ink) 40%, transparent); display: grid; place-items: end center; z-index: 50;
+  padding: 16px max(16px, env(safe-area-inset-right, 0px)) calc(16px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+.sheet { background: var(--surface); color: var(--ink); border-radius: 16px; padding: 20px; width: 100%; max-width: 520px; display: grid; gap: 14px; }
+.sheet { max-height: 86vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.help h3 { font-family: var(--font-display); font-size: 15px; margin: 14px 0 4px; }
+.help h3:first-child { margin-top: 0; }
+.help p { margin: 0; font-size: 14px; color: var(--ink); }
+.helpbtn { margin-left: -8px; }
+.btnrow.col { flex-direction: column; }
+.btnrow.col > * { flex: 0 0 auto; }
+.guide { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: grid; gap: 12px; }
+.guide ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.guide li { display: flex; align-items: center; gap: 12px; }
+.stepn { flex: 0 0 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); font-weight: 700; }
+.guide li.done .stepn { background: var(--ok-bg); color: var(--ok); }
+.guide li.done .stept b { color: var(--muted); }
+.stept { flex: 1; min-width: 0; display: grid; }
+.stept small { color: var(--muted); font-size: 12px; }
+.danger-zone { border-top: 1px dashed var(--line); padding-top: 14px; display: grid; gap: 8px; }
+.sheet dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 0; font-size: 14px; }
+.sheet dt { color: var(--muted); }
+.sheet dd { margin: 0; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(84px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 999px; font-size: 14px; z-index: 60; max-width: calc(100% - 32px); }
+@media (prefers-reduced-motion: no-preference) { .toast { transition: opacity .2s; } }
+</style>
+</head>
+<body>
+<div class="wrap" id="app">
+  <header class="top">
+    <div>
+      <div class="eyebrow">家計</div>
+      <h1>入金準備帳</h1>
+      <button id="helpBtn" class="ghost small helpbtn">使い方</button>
+    </div>
+    <div class="today">
+      <span class="sub">確認日（本日）</span>
+      <b id="today">—</b>
+      <div class="saved" id="saved" aria-live="polite"></div>
+    </div>
+  </header>
+  <noscript>このアプリはJavaScriptを使います。</noscript>
+  <div id="main"></div>
+</div>
+<nav id="nav" class="nav" aria-label="移動" hidden>
+  <button data-page="prep" class="on">準備</button>
+  <button data-page="variable">変動費</button>
+  <button data-page="fixed">固定費</button>
+  <button data-page="settings">設定</button>
+</nav>
+<div id="modal" class="modal" hidden></div>
+<div id="toast" class="toast" hidden role="status"></div>
+<script src="calc.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
