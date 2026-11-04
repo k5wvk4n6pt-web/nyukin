@@ -175,7 +175,7 @@
     const bk = $('#books');
     bk.hidden = !state;
     if (state && books) {
-      bk.innerHTML = books.list.map(b => '<button class="book' + (b.id === books.current ? ' on' : '') + '" data-book="' + esc(b.id) + '"' + (b.id === books.current ? ' aria-current="true"' : '') + '>' + esc(b.name) + '</button>').join('') +
+      bk.innerHTML = books.list.map((b, i) => '<button class="book b' + (i % 5) + (b.id === books.current ? ' on' : '') + '" data-book="' + esc(b.id) + '"' + (b.id === books.current ? ' aria-current="true"' : '') + '>' + esc(b.name) + '</button>').join('') +
         '<button class="book add" data-act="book-add" aria-label="帳簿を追加">＋ 帳簿</button>';
     }
     $('#today').textContent = T.y + '年' + T.m + '月' + T.d + '日(' + C.WD[C.weekday(T)] + ')';
@@ -192,6 +192,7 @@
       : sampleBannerHTML() + (needsSetup() ? setupGuideHTML() : backupNoticeHTML()) + summaryHTML(r) + banksHTML(r) +
         '<p class="note">表示される金額と日付は、登録した内容から計算した目安です。実際の引落日・金額は金融機関やカード会社の案内で確認してください。</p>';
     if (typeof syncFab === 'function') setTimeout(syncFab, 0);
+    document.body.className = document.body.className.replace(/\bpg-\S+/g, '').trim() + ' pg-' + page;
     $('#nav').querySelectorAll('[data-page]').forEach(b => { const on = b.dataset.page === page; b.classList.toggle('on', on); b.setAttribute('aria-current', on ? 'page' : 'false'); });
     bindAll();
     if (typeof syncTyping === 'function') syncTyping();
@@ -381,7 +382,7 @@
       const ls = b.lines[w.key];
       if (!ls.length) return '<div class="wh">' + w.label + '：なし</div>';
       return '<div class="wh">' + w.label + '（' + md(w.from) + '〜' + md(w.to) + '）</div>' + ls.map(l =>
-        '<div class="li"><span class="' + (isWeekend(l.date) ? 'wkend' : '') + '">' + mdw(l.date) + '</span><span>' + esc(l.name) + ' <span class="sub">' + l.kind + '</span>' + (l.orig ? '<br>' + shiftNote(l) : '') + '</span><span class="num">' + (l.amount == null ? '<span class="flag">未入力</span>' : nf.format(l.amount) + '円') + '</span></div>').join('');
+        '<div class="li"><span class="' + (isWeekend(l.date) ? 'wkend' : '') + '">' + mdw(l.date) + '</span><span>' + esc(l.name) + ' <span class="kchip k-' + ({ '変動費': 'v', '固定費': 'f', '1回のみ': 'o' }[l.kind] || 'v') + '">' + l.kind + '</span>' + (l.orig ? '<br>' + shiftNote(l) : '') + '</span><span class="num">' + (l.amount == null ? '<span class="flag">未入力</span>' : nf.format(l.amount) + '円') + '</span></div>').join('');
     }).join('');
   }
 

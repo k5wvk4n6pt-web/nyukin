@@ -10,8 +10,8 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="入金ナビ">
-<meta name="theme-color" content="#F8F6EF" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#16181A" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#FBF8F4" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#17191E" media="(prefers-color-scheme: dark)">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" href="icon-192.png">
@@ -19,37 +19,44 @@
 <style>
 /* Layout: 1カラムの通帳風。上から 要約 → 銀行別 → 変動費 → 固定費 → バックアップ */
 :root {
-  --bg: #F8F6EF;       /* アイボリー */
-  --surface: #FFFFFF;
-  --ink: #23272B;
-  --muted: #6E6C66;
-  --line: #E4DFD3;
-  --accent: #2C5560;   /* 通帳の表紙の紺青緑 */
-  --accent-soft: #E7EEEF;
-  --short: #B3261E;
-  --short-bg: #FCEBE9;
-  --ok: #2F6A42;
-  --ok-bg: #EAF2EC;
-  --warn: #8A5A00;
-  --warn-bg: #FBF1DC;
-  --field: #FFFDF8;
-  --font-display: "Hiragino Mincho ProN", "Yu Mincho", "YuMincho", "Noto Serif JP", serif;
+  --bg: #FBF8F4; --surface: #FFFFFF; --ink: #2F3542; --muted: #767C8A; --line: #ECE6EE;
+  --accent: #4473C5; --accent-soft: #E8EFFC; --on-accent: #FFFFFF;
+  --short: #C8453B; --short-bg: #FDECEA; --ok: #2D7F5B; --ok-bg: #E2F5EB; --warn: #946200; --warn-bg: #FFF3D6; --field: #FFFDFB;
+  --c-blue: #4473C5; --c-blue-bg: #E8EFFC;
+  --c-lav: #7656C2; --c-lav-bg: #F0EAFB;
+  --c-peach: #C25A24; --c-peach-bg: #FEEEE3;
+  --c-teal: #22807F; --c-teal-bg: #DFF3F1;
+  --c-pink: #BE4A7E; --c-pink-bg: #FCE8F1;
+  --c-yellow: #8E6A00; --c-yellow-bg: #FFF5D4;
+  --font-display: "Hiragino Maru Gothic ProN", "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
   --font-body: -apple-system, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", system-ui, sans-serif;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #16181A; --surface: #1F2225; --ink: #ECE9E1; --muted: #A4A19A; --line: #33373B;
-    --accent: #86B9C1; --accent-soft: #22323A; --short: #FF8C7F; --short-bg: #3B1F1C;
-    --ok: #8FCB9F; --ok-bg: #1D2C22; --warn: #E8C176; --warn-bg: #352B18; --field: #1A1D20;
+    --bg: #17191E; --surface: #20232A; --ink: #ECEAF0; --muted: #A3A7B3; --line: #343842;
+    --accent: #8FB2F0; --accent-soft: #24304A; --on-accent: #10192B;
+    --short: #FF9C91; --short-bg: #3D2224; --ok: #86D3AE; --ok-bg: #1C3328; --warn: #F0C77A; --warn-bg: #3A2F1A; --field: #1B1E24;
+    --c-blue: #8FB2F0; --c-blue-bg: #24304A;
+    --c-lav: #BBA6F2; --c-lav-bg: #2E2742;
+    --c-peach: #F3A877; --c-peach-bg: #3C2A20;
+    --c-teal: #7CD1CB; --c-teal-bg: #1B3634;
+    --c-pink: #F0A0C4; --c-pink-bg: #3B2232;
+    --c-yellow: #EBCB6E; --c-yellow-bg: #383019;
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --bg: #16181A; --surface: #1F2225; --ink: #ECE9E1; --muted: #A4A19A; --line: #33373B;
-  --accent: #86B9C1; --accent-soft: #22323A; --short: #FF8C7F; --short-bg: #3B1F1C;
-  --ok: #8FCB9F; --ok-bg: #1D2C22; --warn: #E8C176; --warn-bg: #352B18; --field: #1A1D20;
-  color-scheme: dark;
+    --bg: #17191E; --surface: #20232A; --ink: #ECEAF0; --muted: #A3A7B3; --line: #343842;
+    --accent: #8FB2F0; --accent-soft: #24304A; --on-accent: #10192B;
+    --short: #FF9C91; --short-bg: #3D2224; --ok: #86D3AE; --ok-bg: #1C3328; --warn: #F0C77A; --warn-bg: #3A2F1A; --field: #1B1E24;
+    --c-blue: #8FB2F0; --c-blue-bg: #24304A;
+    --c-lav: #BBA6F2; --c-lav-bg: #2E2742;
+    --c-peach: #F3A877; --c-peach-bg: #3C2A20;
+    --c-teal: #7CD1CB; --c-teal-bg: #1B3634;
+    --c-pink: #F0A0C4; --c-pink-bg: #3B2232;
+    --c-yellow: #EBCB6E; --c-yellow-bg: #383019;
+    color-scheme: dark;
 }
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
@@ -330,6 +337,86 @@ button.mv:disabled { opacity: .3; }
 .sheet dd { margin: 0; }
 .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(144px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 999px; font-size: 14px; z-index: 60; max-width: calc(100% - 32px); }
 @media (prefers-reduced-motion: no-preference) { .toast { transition: opacity .2s; } }
+/* ---- やさしいカラフル：意味ごとに色を分ける ----
+   青＝締めまで（判定に使う）  ラベンダー＝参考の期間・1回のみ  ピーチ＝変動費  ティール＝固定費
+   黄＝収入  ミント＝余り・足りている  コーラル＝不足  */
+button.primary, .fileBtn.primary { color: var(--on-accent); }
+.fab.add { color: var(--on-accent); }
+h1 { color: var(--c-blue); letter-spacing: .04em; }
+.eyebrow { color: var(--c-pink); font-weight: 600; }
+.summary { border: 0; background: var(--surface); box-shadow: 0 1px 0 var(--line), 0 6px 20px color-mix(in srgb, var(--c-lav) 10%, transparent); }
+.period { background: var(--c-blue-bg); border-radius: 12px; padding: 10px 12px; }
+.period .lab { color: var(--c-blue); }
+.period .val { color: var(--ink); }
+.period.after { background: var(--c-lav-bg); }
+.period.after .lab { color: var(--c-lav); }
+.period.after .tag { color: var(--c-lav); border-color: color-mix(in srgb, var(--c-lav) 35%, transparent); }
+.tot { border: 0; }
+.tot.short { background: var(--short-bg); color: var(--short); }
+.tot.plus { background: var(--ok-bg); color: var(--ok); }
+.tot.zero { background: var(--bg); color: var(--muted); }
+.allline { background: var(--c-lav-bg); color: var(--c-lav); border-radius: 10px; padding: 8px 12px; margin-top: 8px; }
+.allline b { color: var(--ink); }
+.income { border-top: 0; background: var(--c-yellow-bg); border-radius: 12px; padding: 12px; }
+.income > .sub { color: var(--c-yellow); font-weight: 600; }
+.income input.amount { background: var(--surface); }
+.cycle { border: 0; box-shadow: 0 1px 0 var(--line), 0 6px 20px color-mix(in srgb, var(--c-lav) 10%, transparent); }
+.cyc-title b { color: var(--c-lav); }
+.cyc-grid > div { border-radius: 10px; padding: 8px 10px; }
+.cyc-grid > div:nth-child(1) { background: var(--c-yellow-bg); } .cyc-grid > div:nth-child(1) .k { color: var(--c-yellow); }
+.cyc-grid > div:nth-child(2) { background: var(--c-peach-bg); } .cyc-grid > div:nth-child(2) .k { color: var(--c-peach); }
+.cyc-grid .diff.pos { background: var(--ok-bg); } .cyc-grid .diff.neg { background: var(--short-bg); }
+.cyc-grid .diff .k { color: inherit; }
+.cyc-head button { border-color: var(--line); color: var(--c-lav); }
+/* 銀行カード：状態で左の帯の色 */
+.bank { border: 0; box-shadow: 0 1px 0 var(--line), 0 4px 14px color-mix(in srgb, var(--ink) 5%, transparent); }
+.bank:not(.idlebank) { box-shadow: inset 5px 0 0 var(--c-blue), 0 1px 0 var(--line), 0 4px 14px color-mix(in srgb, var(--ink) 5%, transparent); }
+.bank.is-short { box-shadow: inset 5px 0 0 var(--short), 0 1px 0 var(--line), 0 4px 14px color-mix(in srgb, var(--short) 12%, transparent); }
+.bank.idlebank { border: 1px dashed var(--line); box-shadow: none; }
+.bank-name { color: var(--ink); }
+.bank-amts > div:first-child .k { color: var(--c-blue); font-weight: 600; }
+.bank-amts > div.after .k { color: var(--c-lav); }
+.pill.ok { background: var(--ok-bg); color: var(--ok); }
+.pill.short { background: var(--short-bg); color: var(--short); }
+/* 種類のしるし */
+.kchip { display: inline-block; font-size: 11px; font-weight: 600; padding: 0 7px; border-radius: 999px; line-height: 1.6; }
+.kchip.k-v { background: var(--c-peach-bg); color: var(--c-peach); }
+.kchip.k-f { background: var(--c-teal-bg); color: var(--c-teal); }
+.kchip.k-o { background: var(--c-lav-bg); color: var(--c-lav); }
+#sec-variable h2, .seg button[data-qkind="variable"].on { color: var(--c-peach); }
+#sec-fixed h2, .seg button[data-qkind="fixed"].on { color: var(--c-teal); }
+#sec-once h2, .seg button[data-qkind="once"].on { color: var(--c-lav); }
+#sec-variable .list { box-shadow: inset 0 4px 0 var(--c-peach); }
+#sec-fixed .list { box-shadow: inset 0 4px 0 var(--c-teal); }
+#sec-once .list { box-shadow: inset 0 4px 0 var(--c-lav); }
+#banksSec h2 { color: var(--c-blue); }
+/* 下のタブ：ページごとの色 */
+.nav button[data-page="prep"].on { background: var(--c-blue-bg); color: var(--c-blue); }
+.nav button[data-page="variable"].on { background: var(--c-peach-bg); color: var(--c-peach); }
+.nav button[data-page="fixed"].on { background: var(--c-teal-bg); color: var(--c-teal); }
+.nav button[data-page="settings"].on { background: var(--c-lav-bg); color: var(--c-lav); }
+body.pg-variable .fab.add { background: var(--c-peach); border-color: var(--c-peach); color: var(--surface); }
+body.pg-fixed .fab.add { background: var(--c-teal); border-color: var(--c-teal); color: var(--surface); }
+/* 帳簿：1冊ずつ違う色 */
+.book.b0.on { background: var(--c-blue); border-color: var(--c-blue); color: var(--surface); }
+.book.b1.on { background: var(--c-pink); border-color: var(--c-pink); color: var(--surface); }
+.book.b2.on { background: var(--c-teal); border-color: var(--c-teal); color: var(--surface); }
+.book.b3.on { background: var(--c-peach); border-color: var(--c-peach); color: var(--surface); }
+.book.b4.on { background: var(--c-lav); border-color: var(--c-lav); color: var(--surface); }
+.book.b0:not(.on) { color: var(--c-blue); } .book.b1:not(.on) { color: var(--c-pink); } .book.b2:not(.on) { color: var(--c-teal); } .book.b3:not(.on) { color: var(--c-peach); } .book.b4:not(.on) { color: var(--c-lav); }
+/* 設定のタブ */
+.seg { background: var(--c-lav-bg); }
+.seg button { color: var(--c-lav); }
+.closecard .shead { color: var(--c-blue); }
+.xferlog b:first-child { color: var(--c-teal); }
+.bulkbtn { background: var(--c-teal); border-color: var(--c-teal); color: var(--surface); }
+select { background-color: var(--accent-soft); color: var(--accent); }
+.cyc-grid .v { font-size: 17px; white-space: nowrap; }
+.cyc-grid .yen { font-size: .7em; }
+button.primary.bulkbtn { background: var(--c-teal); border-color: var(--c-teal); color: var(--surface); }
+#sec-variable .section-head button.primary { background: var(--c-peach); border-color: var(--c-peach); color: var(--surface); }
+#sec-fixed .section-head button.primary { background: var(--c-teal); border-color: var(--c-teal); color: var(--surface); }
+#sec-once .section-head button.primary { background: var(--c-lav); border-color: var(--c-lav); color: var(--surface); }
 </style>
 </head>
 <body>
