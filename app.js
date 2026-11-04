@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   const C = window.KCalc;
-  const APP_VERSION = '2026.11.04b';
+  const APP_VERSION = '2026.11.04c';
   /** ファイルの一部だけが新しい（アップロード漏れ・古いキャッシュ）と計算が合わなくなるので知らせる */
   function versionMismatch() { return !C || C.VERSION !== APP_VERSION || (window.NyukinNative && window.NyukinNative.VERSION && window.NyukinNative.VERSION !== APP_VERSION); }
   const N = window.NyukinNative || { isNative: false, ready: Promise.resolve() };
@@ -195,6 +195,7 @@
     const r = C.compute(state, today());
     main.querySelectorAll('[data-sum]').forEach(el => { el.innerHTML = yen(r.totals[el.dataset.sum]); });
     const sb = $('#shortbox'); if (sb) { sb.outerHTML = shortboxHTML(r); const bb = main.querySelector('#shortbox [data-act="bulk"]'); if (bb) bb.addEventListener('click', openBulk); }
+    const cyc = $('#cycleSec'); if (cyc) { cyc.outerHTML = cycleHTML(); bindCycle(); }
     if (!$('#banksSec')) return;
     const shown = [...main.querySelectorAll('.bank:not(.idlebank)')].map(c => c.dataset.bank).join('|');
     if (shown !== r.banks.filter(b => b.active).map(b => b.name).join('|')) {
@@ -274,6 +275,7 @@
       '<h3>できること</h3><p>登録した毎月の引落をもとに、口座ごとに「締め日までに必要な金額」を計算します。残高を入力すると、不足している口座と余っている口座がわかります。</p>' +
       '<h3>期限と期間</h3><p>「いつまでに必要か」の期限を2つ設定できます（初期設定は10日と月末）。期限1が締め日で、確認日から次の締め日までの引落で不足と余りを判定します。期限2の分は参考として表示します。「設定 → 帳簿」で、それぞれ1〜28日または月末と、休日に当たったときの扱い（後ろ・前・ずらさない）に変えられます。確認日（今日）から次の締め日までの引落で、不足と余りを判定します。</p>' +
       '<h3>休日のずれ</h3><p>土日・祝日・年末年始（12/31〜1/3）に当たる日は、項目ごとに「後ろにずらす／前にずらす／ずらさない」を選べます。初期値は、支出が後ろ（翌営業日）、収入が前（前営業日）です。</p>' +
+      '<h3>締め期間の収支</h3><p>準備ページの「締め期間の収支」に、締め日の翌日から次の締め日までの収入の合計・支出の合計・差し引きが出ます。‹ › で前後の期間も見られます。</p>' +
       '<h3>移動と追加</h3><p>下のタブで今のページをもう一度押すか、右下の「↑」で一番上に戻れます。変動費・固定費のページでは、右下の「＋」や見出しの「＋ 追加」から、ページを移らずに追加できます。「追加して続ける」で何件も続けて入れられます。</p>' +
       '<h3>帳簿</h3><p>家族のお金なども、人ごとに別の帳簿で管理できます。画面上の名前をタップすると切り替わり、「＋ 帳簿」で追加できます。バックアップは全部の帳簿をまとめて保存します。</p>' +
       '<h3>口座間の移動</h3><p>不足している口座の「ほかの口座から移す」は、その口座へ入れる移動です。それ以外の口座の「ほかの口座へ移す」は、その口座から出す移動です。ほかの帳簿の口座（自分 → 母など）や、非表示の口座とも移動できます。「不足をまとめて解消する」を押すと、余りのある口座から不足している口座へ移す案をまとめて作ります。準備ページの「ほかの口座から移す」「口座間で移す」で、実際に移したお金を記録すると、両方の残高が書きかわります。不足している口座から開くと、不足額が最初から入ります。手数料は「移動元から別に引く」か「移す金額から引く」を選べ、口座の組み合わせごとに前回の手数料を覚えます。間違えたときは「最近の移動」から取り消せます。</p>' +
@@ -323,7 +325,26 @@
       '<input class="amount' + (i.amount == null ? ' empty' : '') + '" inputmode="numeric" enterkeyhint="done" autocomplete="off" id="inc-' + esc(i.id) + '" data-inc="' + esc(i.id) + '" value="' + yenTxt(i.amount) + '" placeholder="金額（任意）" aria-label="' + esc(i.name) + 'の収入予定額"></div>').join('');
     return '<section class="summary" id="sec-top" aria-label="要約">' +
       '<div class="periods">' + per + '</div>' + shortboxHTML(r) +
-      '<div class="income"><div class="sub">収入予定（未入金の収入は残高に足しません）</div>' + inc + '</div></section>';
+      '<div class="income"><div class="sub">収入予定（未入金の収入は残高に足しません）</div>' + inc + '</div></section>' + cycleHTML();
+  }
+
+  let cycleOffset = 0; // 0=今のサイクル（画面を開き直すと今に戻る）
+  function cycleHTML() {
+    const cy = C.cycle(state, today(), cycleOffset);
+    const label = cycleOffset === 0 ? '今回' : cycleOffset === -1 ? '前回' : cycleOffset === 1 ? '次回' : (cycleOffset > 0 ? cycleOffset + '回あと' : -cycleOffset + '回前');
+    const kinds = Object.keys(cy.byKind).filter(k => cy.byKind[k] || k !== '1回のみ').map(k => '<span>' + k + ' <b class="num">' + nf.format(cy.byKind[k]) + '円</b></span>').join('');
+    const neg = cy.diff < 0;
+    return '<section class="cycle" id="cycleSec" aria-label="締め日から締め日の収支">' +
+      '<div class="cyc-head"><button class="small" data-cyc="-1" aria-label="前のサイクル">‹</button>' +
+      '<div class="cyc-title"><b>' + label + 'の締め期間の収支</b><span class="sub">' + md(cy.from) + '〜' + md(cy.to) + '（締め日の翌日〜締め日）</span>' +
+      (cy.startShift || cy.endShift ? '<span class="shiftinfo">' + [cy.startShift ? '前の締め日 ' + md(cy.startShift.nominal) + '→' + md(cy.startShift.actual) : '', cy.endShift ? '締め日 ' + md(cy.endShift.nominal) + '→' + md(cy.endShift.actual) : ''].filter(Boolean).join('・') + '（休日のため）</span>' : '') + '</div>' +
+      '<button class="small" data-cyc="1" aria-label="次のサイクル">›</button></div>' +
+      '<div class="cyc-grid">' +
+      '<div><span class="k">収入の合計</span><span class="v num">' + nf.format(cy.income) + '<span class="yen">円</span></span>' + (cy.incomeMissing ? '<span class="flag">金額未入力 ' + cy.incomeMissing + '件</span>' : '<span class="sub">' + cy.incomeItems.length + '件</span>') + '</div>' +
+      '<div><span class="k">支出の合計</span><span class="v num">' + nf.format(cy.expense) + '<span class="yen">円</span></span>' + (cy.unentered ? '<span class="flag">金額未入力 ' + cy.unentered + '件</span>' : '<span class="sub">引落の合計</span>') + '</div>' +
+      '<div class="diff ' + (neg ? 'neg' : 'pos') + '"><span class="k">差し引き</span><span class="v num">' + (neg ? '−' : '＋') + nf.format(Math.abs(cy.diff)) + '<span class="yen">円</span></span><span class="sub">' + (neg ? '支出が多い' : '収入が多い') + '</span></div>' +
+      '</div><div class="cyc-kinds">' + kinds + '</div>' +
+      '<p class="note" style="margin:0">すでに引き落とされた分も含めた、期間全体の合計です。収入は「収入予定」に入れた金額、支出は休日のずらしを反映した日付で数えています（非表示の項目・口座は除く）。</p></section>';
   }
 
   function nextHTML(b) { return b.next ? '次の引落 <span class="' + (isWeekend(b.next) ? 'wkend' : '') + '">' + mdw(b.next) + '</span>' : '予定なし'; }
@@ -788,6 +809,7 @@
       if (accountCatalog().length < 2) { toast('口座が2つ以上必要です'); return; }
       if (b.dataset.act === 'xfer-from') openTransfer('', b.dataset.acc); else openTransfer(b.dataset.acc);
     }));
+    bindCycle();
     main.querySelectorAll('[data-act="bulk"]').forEach(b => b.addEventListener('click', openBulk));
     main.querySelectorAll('[data-act="xfer-undo"]').forEach(b => b.addEventListener('click', () => {
       const t = (state.transfers || []).find(x => x.id === b.closest('[data-xid]').dataset.xid); if (!t) return;
@@ -1070,6 +1092,13 @@
       }
       saveMeta(); close(); renderKeep(); toast(picks.length + '件の移動を記録しました');
     };
+  }
+
+  function bindCycle() {
+    main.querySelectorAll('[data-cyc]').forEach(b => b.addEventListener('click', () => {
+      cycleOffset = Math.max(-12, Math.min(12, cycleOffset + Number(b.dataset.cyc)));
+      const el = $('#cycleSec'); if (el) { el.outerHTML = cycleHTML(); bindCycle(); }
+    }));
   }
 
   /* ---------- その場で追加するシート ---------- */

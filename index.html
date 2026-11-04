@@ -116,6 +116,18 @@ body.typing .fabs { display: none; }
 @keyframes flash { from { background: var(--accent-soft); } to { background: transparent; } }
 @media (prefers-reduced-motion: reduce) { .row.flash { animation: none; } }
 .xsheet .btnrow > * { flex: 1 1 90px; }
+.cycle { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; display: grid; gap: 10px; }
+.cyc-head { display: flex; align-items: center; gap: 8px; }
+.cyc-head button { min-width: 44px; font-size: 20px; font-weight: 700; color: var(--accent); }
+.cyc-title { flex: 1; min-width: 0; display: grid; text-align: center; }
+.shiftinfo { font-size: 12px; color: var(--warn); }
+.cyc-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.cyc-grid > div { display: grid; gap: 2px; min-width: 0; }
+.cyc-grid .k { font-size: 12px; color: var(--muted); }
+.cyc-grid .v { font-size: 18px; font-weight: 700; overflow-wrap: anywhere; }
+.cyc-grid .diff.pos .v { color: var(--ok); } .cyc-grid .diff.neg .v { color: var(--short); }
+.cyc-kinds { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 13px; color: var(--muted); }
+.cyc-kinds b { color: var(--ink); font-weight: 600; }
 .bulkbtn { width: 100%; margin-top: 8px; }
 .blist { display: grid; gap: 8px; max-height: 46vh; overflow-y: auto; }
 .brow { display: flex; gap: 8px; align-items: flex-start; background: var(--bg); border-radius: 10px; padding: 10px; }

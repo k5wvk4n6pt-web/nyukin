@@ -170,6 +170,43 @@
     return best;
   }
 
+  /**
+   * 締め日から締め日までの1サイクルの収入・支出の合計
+   * offset 0 = 確認日を含むサイクル（前回の締め日の翌日〜次の締め日）、-1 = 前、1 = 次
+   */
+  function cycle(data, T, offset) {
+    const cs = closeSettings(data).d1;
+    let c = nextClosing(T, cs);                    // 確認日以降の最初の締め日
+    const nom = c.nominal || c;
+    const ym = addMonth(nom.y, nom.m, offset || 0);
+    const to0 = closingOf(ym.y, ym.m, cs);
+    const p = addMonth(ym.y, ym.m, -1);
+    const prev = closingOf(p.y, p.m, cs);
+    const from = addDays({ y: prev.y, m: prev.m, d: prev.d }, 1), to = { y: to0.y, m: to0.m, d: to0.d };
+    const hiddenAcc = new Set(data.hiddenAccounts || []);
+    const kinds = [['variable', '変動費'], ['fixed', '固定費'], ['once', '1回のみ']];
+    const out = { from, to, expense: 0, byKind: {}, unentered: 0, income: 0, incomeMissing: 0, incomeItems: [],
+      startShift: prev.nominal ? { nominal: prev.nominal, actual: { y: prev.y, m: prev.m, d: prev.d } } : null,
+      endShift: to0.nominal ? { nominal: to0.nominal, actual: to } : null };
+    for (const [k, label] of kinds) {
+      let sum = 0;
+      for (const it of (data[k] || [])) {
+        if (it.hidden || hiddenAcc.has(it.account) || !(data.accounts || []).includes(it.account)) continue;
+        for (const o of occurrencesIn(it, from, to, false)) { if (it.amount == null) out.unentered++; else sum += Number(it.amount); }
+      }
+      out.byKind[label] = sum; out.expense += sum;
+    }
+    for (const i of (data.income || [])) {
+      if (i.hidden) continue;
+      for (const o of occurrencesIn(i, from, to, true)) {
+        out.incomeItems.push({ name: i.name, date: o, amount: i.amount });
+        if (i.amount == null) out.incomeMissing++; else out.income += Number(i.amount);
+      }
+    }
+    out.diff = out.income - out.expense;
+    return out;
+  }
+
   function compute(data, T) {
     const cs = closeSettings(data);
     const W = windows(T, cs);
@@ -245,7 +282,7 @@
     };
   }
 
-  const api = { VERSION: '2026.11.04b', onceDate, deadlineLabel, closeSettings, nextClosing, closingOf, holidays, holidayName, isBusinessDay, shiftDate, shiftMode, actual, addDays, WD, lastDay, serial, addMonth, weekday, fromDate, occurrence, activeIn, windows, occurrencesIn, nextDate, compute };
+  const api = { VERSION: '2026.11.04c', cycle, onceDate, deadlineLabel, closeSettings, nextClosing, closingOf, holidays, holidayName, isBusinessDay, shiftDate, shiftMode, actual, addDays, WD, lastDay, serial, addMonth, weekday, fromDate, occurrence, activeIn, windows, occurrencesIn, nextDate, compute };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.KCalc = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
