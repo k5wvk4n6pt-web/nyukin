@@ -184,6 +184,7 @@
       : page === 'settings' ? settingsHTML()
       : sampleBannerHTML() + (needsSetup() ? setupGuideHTML() : backupNoticeHTML()) + summaryHTML(r) + banksHTML(r) +
         '<p class="note">表示される金額と日付は、登録した内容から計算した目安です。実際の引落日・金額は金融機関やカード会社の案内で確認してください。</p>';
+    if (typeof syncFab === 'function') setTimeout(syncFab, 0);
     $('#nav').querySelectorAll('[data-page]').forEach(b => { const on = b.dataset.page === page; b.classList.toggle('on', on); b.setAttribute('aria-current', on ? 'page' : 'false'); });
     bindAll();
     if (typeof syncTyping === 'function') syncTyping();
@@ -273,6 +274,7 @@
       '<h3>できること</h3><p>登録した毎月の引落をもとに、口座ごとに「締め日までに必要な金額」を計算します。残高を入力すると、不足している口座と余っている口座がわかります。</p>' +
       '<h3>期限と期間</h3><p>「いつまでに必要か」の期限を2つ設定できます（初期設定は10日と月末）。期限1が締め日で、確認日から次の締め日までの引落で不足と余りを判定します。期限2の分は参考として表示します。「設定 → 帳簿」で、それぞれ1〜28日または月末と、休日に当たったときの扱い（後ろ・前・ずらさない）に変えられます。確認日（今日）から次の締め日までの引落で、不足と余りを判定します。</p>' +
       '<h3>休日のずれ</h3><p>土日・祝日・年末年始（12/31〜1/3）に当たる日は、項目ごとに「後ろにずらす／前にずらす／ずらさない」を選べます。初期値は、支出が後ろ（翌営業日）、収入が前（前営業日）です。</p>' +
+      '<h3>移動と追加</h3><p>下のタブで今のページをもう一度押すか、右下の「↑」で一番上に戻れます。変動費・固定費のページでは、右下の「＋」や見出しの「＋ 追加」から、ページを移らずに追加できます。「追加して続ける」で何件も続けて入れられます。</p>' +
       '<h3>帳簿</h3><p>家族のお金なども、人ごとに別の帳簿で管理できます。画面上の名前をタップすると切り替わり、「＋ 帳簿」で追加できます。バックアップは全部の帳簿をまとめて保存します。</p>' +
       '<h3>口座間の移動</h3><p>不足している口座の「ほかの口座から移す」は、その口座へ入れる移動です。それ以外の口座の「ほかの口座へ移す」は、その口座から出す移動です。ほかの帳簿の口座（自分 → 母など）や、非表示の口座とも移動できます。「不足をまとめて解消する」を押すと、余りのある口座から不足している口座へ移す案をまとめて作ります。準備ページの「ほかの口座から移す」「口座間で移す」で、実際に移したお金を記録すると、両方の残高が書きかわります。不足している口座から開くと、不足額が最初から入ります。手数料は「移動元から別に引く」か「移す金額から引く」を選べ、口座の組み合わせごとに前回の手数料を覚えます。間違えたときは「最近の移動」から取り消せます。</p>' +
       '<h3>1回のみの引落</h3><p>年払いの保険や税金など、決まった日に1回だけ引き落とされるものは、「設定 → 支出 → 1回のみ」で日付を指定して追加します。変動費ページの下に並び、日付が過ぎると「済み」にまとまります。</p>' +
@@ -421,11 +423,11 @@
       pastItems.slice().reverse().map(it => '<div class="hrow" data-kind="once" data-id="' + esc(it.id) + '"><span class="row-name">' + esc(it.name) + '<span class="sub">' + dateLabel(it.date) + '・' + esc(it.account || '口座なし') + '・' + (it.amount == null ? '未入力' : nf.format(it.amount) + '円') + '</span></span><button class="small danger" data-act="pastdel">削除</button></div>').join('') + '</details>' : '';
     if (kind === 'once') {
       const rowsOnce = visible.length ? rows : '<div class="emptyrow sub">予定はありません</div>';
-      return '<section id="sec-once" aria-label="' + title + '" style="margin-top:28px">' + headHTML(title, visible.length + '件', null) +
+      return '<section id="sec-once" aria-label="' + title + '" style="margin-top:28px">' + headHTML(title, visible.length + '件', null, 'once') +
         '<p class="sub" style="margin:-4px 0 10px">' + lead + '</p>' +
         '<div class="list">' + rowsOnce + '<div class="add"><button class="ghost" data-act="add" data-kind="once">＋ 1回のみの引落を追加</button></div></div>' + hid + past + '</section>';
     }
-    return '<section id="sec-' + kind + '" aria-label="' + title + '">' + headHTML(title, '表示 ' + visible.length + '件', kind) +
+    return '<section id="sec-' + kind + '" aria-label="' + title + '">' + headHTML(title, '表示 ' + visible.length + '件', kind, kind) +
       '<p class="sub" style="margin:-4px 0 10px">' + lead + '</p>' +
       '<div class="list">' + rows + '<div class="add"><button class="ghost" data-act="add" data-kind="' + kind + '">＋ ' + title + 'を追加</button></div></div>' + hid + '</section>';
   }
@@ -435,9 +437,10 @@
   function hideBtn(isHidden, act) { return '<button class="small' + (isHidden ? ' primary' : '') + '" data-act="' + act + '">' + (isHidden ? '表示する' : '非表示') + '</button>'; }
 
   /* 見出し＋並び替えボタン */
-  function headHTML(title, note, group) {
+  function headHTML(title, note, group, addKind) {
     const on = meta.reorder === group;
     return '<div class="section-head"><h2>' + title + '</h2><span class="head-right"><span class="sub">' + note + '</span>' +
+      (addKind && !on ? '<button class="small primary" data-act="add" data-kind="' + addKind + '">＋ 追加</button>' : '') +
       (group ? '<button class="small' + (on ? ' primary' : '') + '" data-reorder="' + group + '">' + (on ? '完了' : '並び替え') + '</button>' : '') + '</span></div>';
   }
   function orderRows(group, list) {
@@ -778,10 +781,7 @@
       el.addEventListener('input', () => onAmountInput(el, () => inc.amount, v => { inc.amount = v; }));
       el.addEventListener('blur', () => { const v = parseAmount(el.value); if (!Number.isNaN(v)) el.value = yenTxt(v); });
     });
-    main.querySelectorAll('[data-act="add"]').forEach(btn => btn.addEventListener('click', () => {
-      meta.page = 'settings'; meta.stab = 'out'; meta.qkind = btn.dataset.kind; meta.reorder = null; saveMeta(); renderAll(); window.scrollTo(0, 0);
-      const nm = $('#qa-name'); if (nm) nm.focus();
-    }));
+    main.querySelectorAll('[data-act="add"]').forEach(btn => btn.addEventListener('click', () => openAddSheet(btn.dataset.kind)));
     main.querySelectorAll('[data-act="backup"]').forEach(b => b.addEventListener('click', doBackup));
     bindCloud();
     main.querySelectorAll('[data-act="xfer-to"], [data-act="xfer-from"]').forEach(b => b.addEventListener('click', () => {
@@ -1072,6 +1072,66 @@
     };
   }
 
+  /* ---------- その場で追加するシート ---------- */
+  function openAddSheet(kind) {
+    kind = ['fixed', 'once'].includes(kind) ? kind : 'variable';
+    const kname = { variable: '変動費', fixed: '固定費', once: '1回のみの引落' }[kind];
+    const accs = visibleAccounts();
+    if (!accs.length) { toast('先に「設定 → 口座」で口座を登録してください'); return; }
+    const acc = accs.includes(meta.qacc) ? meta.qacc : '';
+    const day = meta.qday === 'end' || (Number(meta.qday) >= 1 && Number(meta.qday) <= 31) ? (meta.qday === 'end' ? 'end' : Number(meta.qday)) : 27;
+    const m = $('#modal');
+    m.innerHTML = '<div class="sheet form xsheet" role="dialog" aria-modal="true" aria-labelledby="mt"><h2 id="mt">' + kname + 'を追加</h2>' +
+      '<label>項目名<input class="text" id="as-name" autocomplete="off" placeholder="例：クレジットカード"></label>' +
+      '<label>金額（わからなければ空欄）<input class="amount wide" id="as-amt" inputmode="numeric" enterkeyhint="done" autocomplete="off" placeholder="未入力"></label>' +
+      '<div class="two"><label>引落日' + (kind === 'once' ? '<input class="text" type="date" id="as-date" value="' + (meta.qdate || isoOf(today())) + '">' : daySelect('as-day', day)) + '</label>' +
+      '<label>引落口座<select id="as-acc">' + (acc ? '' : '<option value="" selected>選ぶ</option>') + accs.map(a => '<option' + (a === acc ? ' selected' : '') + '>' + esc(a) + '</option>').join('') + '</select></label></div>' +
+      '<label>引落日が休日のとき' + shiftSelect('as-shift', validShift(meta.qshift, 'after')) + '</label>' +
+      (kind === 'fixed' ? '<label>終了月（ローンなど。なければ空欄）<input class="text" type="month" id="as-end"></label>' : '') +
+      '<p class="note" id="as-last" style="margin:0"></p>' +
+      '<div class="btnrow"><button id="mCancel">閉じる</button><button id="as-more">追加して続ける</button><button id="mOk" class="primary">追加</button></div></div>';
+    m.hidden = false;
+    const close = () => { m.hidden = true; m.innerHTML = ''; };
+    $('#mCancel').onclick = close;
+    m.onclick = e => { if (e.target === m) close(); };
+    const amt = $('#as-amt');
+    amt.addEventListener('blur', () => { const v = parseAmount(amt.value); if (!Number.isNaN(v)) amt.value = yenTxt(v); });
+    let added = null;
+    const add = () => {
+      const name = $('#as-name').value.trim(); const v = parseAmount(amt.value); const a = $('#as-acc').value;
+      if (!name) { toast('項目名を入力してください'); $('#as-name').focus(); return false; }
+      if (Number.isNaN(v)) { toast('金額は数字で入力してください'); amt.focus(); return false; }
+      if (!a) { toast('引落口座を選んでください'); return false; }
+      const shift = validShift($('#as-shift').value, 'after');
+      const it = { id: uid(kind === 'fixed' ? 'f' : kind === 'once' ? 'o' : 'v'), name, account: a, amount: v, memo: '', updatedAt: new Date().toISOString(), hidden: false, shift };
+      if (kind === 'once') {
+        const dv = $('#as-date').value; if (!/^\d{4}-\d{2}-\d{2}$/.test(dv)) { toast('引落日を選んでください'); return false; }
+        it.date = dv; meta.qdate = dv;
+      } else {
+        const dv = $('#as-day').value; it.day = dv === 'end' ? 'end' : Number(dv); meta.qday = it.day;
+      }
+      if (kind === 'fixed') { const e = $('#as-end'); it.end = e && e.value ? e.value : null; }
+      state.once = state.once || [];
+      state[kind].push(it); meta.qacc = a; meta.qshift = shift; saveMeta(); save();
+      added = it.id;
+      toast('「' + name + '」を追加しました');
+      return true;
+    };
+    $('#mOk').onclick = () => {
+      if (!add()) return;
+      close(); renderKeep();
+      const row = main.querySelector('.row[data-id="' + added + '"]');
+      if (row) { row.scrollIntoView({ block: 'center' }); row.classList.add('flash'); setTimeout(() => row.classList.remove('flash'), 1600); }
+    };
+    $('#as-more').onclick = () => {
+      if (!add()) return;
+      $('#as-last').textContent = '追加しました：' + $('#as-name').value.trim();
+      $('#as-name').value = ''; amt.value = ''; $('#as-name').focus();
+      renderKeep();
+    };
+    $('#as-name').focus();
+  }
+
   /* ---------- バックアップ ---------- */
   function stampFile(t) { const p = n => String(n).padStart(2, '0'); return t.getFullYear() + p(t.getMonth() + 1) + p(t.getDate()) + '-' + p(t.getHours()) + p(t.getMinutes()); }
   async function doBackup() {
@@ -1193,6 +1253,16 @@
   window.addEventListener('pageshow', () => syncTyping());
 
   $('#helpBtn').addEventListener('click', showHelp);
+  const fabTop = $('#fabTop'), fabAdd = $('#fabAdd');
+  const syncFab = () => {
+    fabTop.hidden = !state || window.scrollY < 500;
+    const pg = meta.page;
+    fabAdd.hidden = !state || !(pg === 'variable' || pg === 'fixed');
+    if (!fabAdd.hidden) fabAdd.textContent = pg === 'fixed' ? '＋ 固定費' : '＋ 変動費';
+  };
+  window.addEventListener('scroll', () => { cancelAnimationFrame(syncFab._r); syncFab._r = requestAnimationFrame(syncFab); }, { passive: true });
+  fabTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }));
+  fabAdd.addEventListener('click', () => openAddSheet(meta.page === 'fixed' ? 'fixed' : 'variable'));
   $('#books').addEventListener('click', e => {
     const b = e.target.closest('[data-book]'); if (b) { switchBook(b.dataset.book); return; }
     if (e.target.closest('[data-act="book-add"]')) { meta.page = 'settings'; meta.stab = 'books'; meta.reorder = null; saveMeta(); renderAll(); window.scrollTo(0, 0); const n = $('#booknew'); if (n) n.focus(); }
