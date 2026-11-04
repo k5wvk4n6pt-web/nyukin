@@ -105,6 +105,14 @@ header.top { padding-top: 18px; display: flex; justify-content: space-between; a
 .xsheet select { width: 100%; }
 .xprev { display: grid; gap: 8px; background: var(--bg); border-radius: 10px; padding: 10px 12px; font-size: 14px; }
 .okc { color: var(--ok); font-size: 13px; } .ngc { color: var(--short); font-size: 13px; }
+.xsheet label.check { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--ink); }
+.modal:not([hidden]) ~ .toast { top: calc(12px + env(safe-area-inset-top, 0px)); bottom: auto; }
+.cardacts.end { justify-content: flex-end; }
+.bulkbtn { width: 100%; margin-top: 8px; }
+.blist { display: grid; gap: 8px; max-height: 46vh; overflow-y: auto; }
+.brow { display: flex; gap: 8px; align-items: flex-start; background: var(--bg); border-radius: 10px; padding: 10px; }
+.brow .check { flex: 0 0 auto; min-height: 0; }
+.brow .grow { min-width: 0; display: grid; gap: 6px; font-size: 14px; }
 .allline { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: baseline; font-size: 13px; color: var(--muted); padding: 8px 2px 0; }
 .allline b { color: var(--ink); font-weight: 600; }
 .afternote { font-size: 13px; color: var(--muted); margin-top: -2px; }
