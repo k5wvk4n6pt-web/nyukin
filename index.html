@@ -289,7 +289,7 @@ button.mv:disabled { opacity: .3; }
 .welcome ol { margin: 0; padding-left: 1.3em; display: grid; gap: 6px; }
 
 /* 確認ダイアログ */
-.modal { position: fixed; inset: 0; background: color-mix(in srgb, var(--ink) 40%, transparent); display: grid; place-items: end center; z-index: 50;
+.modal { position: fixed; inset: 0; background: rgba(10, 12, 18, .45); display: grid; place-items: end center; z-index: 50;
   padding: 16px max(16px, env(safe-area-inset-right, 0px)) calc(16px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
 .sheet { background: var(--surface); color: var(--ink); border-radius: 16px; padding: 20px; width: 100%; max-width: 520px; display: grid; gap: 14px; }
 .sheet { max-height: 86vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
@@ -297,6 +297,11 @@ button.mv:disabled { opacity: .3; }
 .help h3:first-child { margin-top: 0; }
 .help p { margin: 0; font-size: 14px; color: var(--ink); }
 .helpbtn { margin-left: -8px; }
+.headbtns { display: flex; gap: 2px; flex-wrap: wrap; }
+.themebtn { color: var(--c-lav); }
+.theme-seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.theme-seg button { min-height: 52px; font-weight: 600; }
+.theme-seg button.on { background: var(--c-lav-bg); color: var(--c-lav); border-color: var(--c-lav); }
 .btnrow.col { flex-direction: column; }
 .btnrow.col > * { flex: 0 0 auto; }
 .guide { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: grid; gap: 12px; }
@@ -425,7 +430,7 @@ button.primary.bulkbtn { background: var(--c-teal); border-color: var(--c-teal);
     <div>
       <div class="eyebrow">家計</div>
       <h1>入金ナビ</h1>
-      <button id="helpBtn" class="ghost small helpbtn">使い方</button>
+      <div class="headbtns"><button id="helpBtn" class="ghost small helpbtn">使い方</button><button id="themeBtn" class="ghost small themebtn" aria-label="表示の明るさを切り替え">表示：自動</button></div>
     </div>
     <div class="today">
       <span class="sub">確認日（本日）</span>

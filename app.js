@@ -283,6 +283,7 @@
       '<h3>できること</h3><p>登録した毎月の引落をもとに、口座ごとに「締め日までに必要な金額」を計算します。残高を入力すると、不足している口座と余っている口座がわかります。</p>' +
       '<h3>期限と期間</h3><p>「いつまでに必要か」の期限を2つ設定できます（初期設定は10日と月末）。期限1が締め日で、確認日から次の締め日までの引落で不足と余りを判定します。期限2の分は参考として表示します。「設定 → 帳簿」で、それぞれ1〜28日または月末と、休日に当たったときの扱い（後ろ・前・ずらさない）に変えられます。確認日（今日）から次の締め日までの引落で、不足と余りを判定します。</p>' +
       '<h3>休日のずれ</h3><p>土日・祝日・年末年始（12/31〜1/3）に当たる日は、項目ごとに「後ろにずらす／前にずらす／ずらさない」を選べます。初期値は、支出が後ろ（翌営業日）、収入が前（前営業日）です。</p>' +
+      '<h3>表示の明るさ</h3><p>画面上の「表示」から、自動（端末の設定に合わせる）・ライト・ダークを選べます。</p>' +
       '<h3>締め期間の収支</h3><p>準備ページの「締め期間の収支」に、締め日の翌日から次の締め日までの収入の合計・支出の合計・差し引きが出ます。‹ › で前後の期間も見られます。</p>' +
       '<h3>移動と追加</h3><p>下のタブで今のページをもう一度押すか、右下の「↑」で一番上に戻れます。変動費・固定費のページでは、右下の「＋」や見出しの「＋ 追加」から、ページを移らずに追加できます。「追加して続ける」で何件も続けて入れられます。</p>' +
       '<h3>帳簿</h3><p>家族のお金なども、人ごとに別の帳簿で管理できます。画面上の名前をタップすると切り替わり、「＋ 帳簿」で追加できます。バックアップは全部の帳簿をまとめて保存します。</p>' +
@@ -849,7 +850,7 @@
       try { (books ? books.list : [{ id: 'main' }]).forEach(b => localStorage.removeItem(dataKey(b.id))); localStorage.removeItem(BOOKS); } catch (e) { /* 消せなくても画面は初期化する */ }
       books = null;
       try { localStorage.removeItem(HISTORY); } catch (e) { /* 履歴も消す */ }
-      state = null; meta = { lastBackupAt: meta.lastBackupAt, backupEvery: meta.backupEvery }; saveMeta(); renderAll(); window.scrollTo(0, 0); $('#saved').textContent = ''; toast('すべてのデータを消しました');
+      state = null; meta = { lastBackupAt: meta.lastBackupAt, backupEvery: meta.backupEvery, theme: meta.theme }; saveMeta(); renderAll(); window.scrollTo(0, 0); $('#saved').textContent = ''; toast('すべてのデータを消しました');
     }, true)));
     bindSettings();
     bindRestore();
@@ -1290,6 +1291,33 @@
   window.addEventListener('pageshow', () => syncTyping());
 
   $('#helpBtn').addEventListener('click', showHelp);
+
+  /* ---------- 表示の明るさ（自動・ライト・ダーク） ---------- */
+  const THEMES = [['auto', '自動', '端末の設定に合わせる'], ['light', 'ライト', 'いつも明るい表示'], ['dark', 'ダーク', 'いつも暗い表示']];
+  function themeOf() { return ['light', 'dark'].includes(meta.theme) ? meta.theme : 'auto'; }
+  function applyTheme() {
+    const t = themeOf(); const root = document.documentElement;
+    if (t === 'auto') root.removeAttribute('data-theme'); else root.setAttribute('data-theme', t);
+    const dark = t === 'dark' || (t === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    document.querySelectorAll('meta[name="theme-color"]').forEach(m => { m.setAttribute('content', dark ? '#17191E' : '#FBF8F4'); m.removeAttribute('media'); });
+    $('#themeBtn').textContent = '表示：' + THEMES.find(x => x[0] === t)[1];
+  }
+  function openTheme() {
+    const t = themeOf(); const m = $('#modal');
+    m.innerHTML = '<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="mt"><h2 id="mt">表示の明るさ</h2>' +
+      '<div class="theme-seg">' + THEMES.map(x => '<button data-theme-pick="' + x[0] + '" class="' + (x[0] === t ? 'on' : '') + '">' + x[1] + '</button>').join('') + '</div>' +
+      '<p class="sub" style="margin:0">' + THEMES.map(x => x[1] + '：' + x[2]).join('　') + '</p>' +
+      '<div class="btnrow"><button id="mCancel">閉じる</button></div></div>';
+    m.hidden = false;
+    const close = () => { m.hidden = true; m.innerHTML = ''; };
+    $('#mCancel').onclick = close; m.onclick = e => { if (e.target === m) close(); };
+    m.querySelectorAll('[data-theme-pick]').forEach(b => b.addEventListener('click', () => {
+      meta.theme = b.dataset.themePick; saveMeta(); applyTheme();
+      m.querySelectorAll('[data-theme-pick]').forEach(x => x.classList.toggle('on', x === b));
+    }));
+  }
+  $('#themeBtn').addEventListener('click', openTheme);
+  try { window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme); } catch (e) { /* 古い端末 */ }
   const fabTop = $('#fabTop'), fabAdd = $('#fabAdd');
   const syncFab = () => {
     fabTop.hidden = !state || window.scrollY < 500;
@@ -1308,6 +1336,7 @@
   /* ---------- 起動 ---------- */
   function boot() {
   load();
+  applyTheme();
   renderAll();
   if (state) $('#saved').textContent = '保存済み';
   // 日付が変わったら確認日と集計を更新（入力中は邪魔しない）
