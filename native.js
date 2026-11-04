@@ -32,7 +32,8 @@
   }
 
   const api = {
-    VERSION: '2026.11.04b',
+    VERSION: '2026.11.04c',
+    API: 1, // 画面側から使う機能の版。機能を変えたときだけ上げる
     isNative,
     ready: hydrate(),
     /** iCloudが使えるか */

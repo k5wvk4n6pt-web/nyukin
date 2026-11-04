@@ -4,7 +4,14 @@
   const C = window.KCalc;
   const APP_VERSION = '2026.11.04c';
   /** ファイルの一部だけが新しい（アップロード漏れ・古いキャッシュ）と計算が合わなくなるので知らせる */
-  function versionMismatch() { return !C || C.VERSION !== APP_VERSION || (window.NyukinNative && window.NyukinNative.VERSION && window.NyukinNative.VERSION !== APP_VERSION); }
+  /** 古いままのファイル名（なければ空）。native.js は中身が変わったときだけ気にする */
+  function staleFiles() {
+    const out = [];
+    if (!C || C.VERSION !== APP_VERSION) out.push('calc.js');
+    if (!window.NyukinNative || (window.NyukinNative.API || 1) < 1) out.push('native.js');
+    return out;
+  }
+  function versionMismatch() { return staleFiles().length > 0; }
   const N = window.NyukinNative || { isNative: false, ready: Promise.resolve() };
   let cloud = { available: false, data: null }; // iCloud（アプリ版のみ）
   const KEY = 'kakeibo.data.v1';
@@ -174,7 +181,7 @@
     $('#today').textContent = T.y + '年' + T.m + '月' + T.d + '日(' + C.WD[C.weekday(T)] + ')';
     if (!state) { main.innerHTML = welcomeHTML(); bindWelcome(); return; }
     if (versionMismatch()) {
-      main.innerHTML = '<div class="notice"><div><b>アプリのファイルが一部だけ古いままです。</b><br>このままだと計算が正しくありません。ファイルをすべてアップロードし直すか、アプリを閉じて数分後に開き直してください。（画面：' + APP_VERSION + '／計算：' + (C && C.VERSION || '古い版') + '）</div></div>';
+      main.innerHTML = '<div class="notice"><div><b>アプリのファイルが一部だけ古いままです。</b><br>古いファイル：<b>' + staleFiles().join('、') + '</b><br>このファイルをアップロードし直してください。アップロード済みなら、アプリを閉じて数分後に開き直してください。（app.js：' + APP_VERSION + '／calc.js：' + (C && C.VERSION || '古い版') + '）</div></div>';
       return;
     }
     const r = C.compute(state, T);
