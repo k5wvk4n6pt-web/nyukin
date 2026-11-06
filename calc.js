@@ -93,8 +93,10 @@
   function closeSettings(data) {
     const s = (data && data.settings) || {};
     const d1 = { day: validDayVal(s.closeDay, 10), shift: SHIFTS.includes(s.closeShift) ? s.closeShift : 'after' };
-    const d2 = { day: validDayVal(s.close2Day, 'end'), shift: SHIFTS.includes(s.close2Shift) ? s.close2Shift : 'none' };
-    return { d1, d2, day: d1.day, shift: d1.shift };
+    // 期限2は「追加」したときだけ使う（初期は締め日1つ）
+    const d2 = s.close2On ? { day: validDayVal(s.close2Day, 'end'), shift: SHIFTS.includes(s.close2Shift) ? s.close2Shift : 'none' } : null;
+    const d2saved = { day: validDayVal(s.close2Day, 'end'), shift: SHIFTS.includes(s.close2Shift) ? s.close2Shift : 'none' };
+    return { d1, d2, d2saved, day: d1.day, shift: d1.shift };
   }
   function nominalClosing(y, m, cs) { return { y, m, d: cs.day === 'end' ? lastDay(y, m) : cs.day }; }
   function closingOf(y, m, cs) { cs = cs || { day: 10, shift: 'after' }; const n = nominalClosing(y, m, cs); const a = shiftDate(n, cs.shift); return serial(a) === serial(n) ? n : Object.assign({ nominal: n }, a); }
@@ -116,7 +118,12 @@
    *  判定（inClose）は、期限1（締め日）の次の到来日までの期間
    */
   function windows(T, cs) {
-    cs = cs && cs.d1 ? cs : { d1: cs || { day: 10, shift: 'after' }, d2: { day: 'end', shift: 'none' } };
+    cs = cs && cs.d1 ? cs : { d1: cs || { day: 10, shift: 'after' }, d2: null };
+    if (!cs.d2) {
+      // 締め日1つ：確認日〜次の締め日
+      const c = nextClosing(T, cs.d1);
+      return [{ key: 'w1', which: 1, label: deadlineLabel(cs.d1, c, T), from: T, to: { y: c.y, m: c.m, d: c.d }, nominal: c.nominal || null, inClose: true }];
+    }
     const c1 = nextClosing(T, cs.d1), c2 = nextClosing(T, cs.d2);
     const firstIs1 = serial(c1) <= serial(c2);
     const first = firstIs1 ? c1 : c2, firstDl = firstIs1 ? cs.d1 : cs.d2;
@@ -282,7 +289,7 @@
     };
   }
 
-  const api = { VERSION: '2026.11.04c', cycle, onceDate, deadlineLabel, closeSettings, nextClosing, closingOf, holidays, holidayName, isBusinessDay, shiftDate, shiftMode, actual, addDays, WD, lastDay, serial, addMonth, weekday, fromDate, occurrence, activeIn, windows, occurrencesIn, nextDate, compute };
+  const api = { VERSION: '2026.11.07', cycle, onceDate, deadlineLabel, closeSettings, nextClosing, closingOf, holidays, holidayName, isBusinessDay, shiftDate, shiftMode, actual, addDays, WD, lastDay, serial, addMonth, weekday, fromDate, occurrence, activeIn, windows, occurrencesIn, nextDate, compute };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.KCalc = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

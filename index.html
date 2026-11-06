@@ -313,6 +313,8 @@ button.mv:disabled { opacity: .3; }
 .stept { flex: 1; min-width: 0; display: grid; }
 .stept small { color: var(--muted); font-size: 12px; }
 .closecard { margin-top: 14px; scroll-margin-top: 12px; }
+.dlhead { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.periods:has(> .period:only-child), .bank-amts:has(> div:only-child) { grid-template-columns: 1fr; }
 .dl { display: grid; gap: 6px; padding-top: 10px; border-top: 1px dashed var(--line); }
 .dl b { font-size: 14px; }
 .linkish { border: 0; background: transparent; color: var(--accent); font-size: 12px; font-weight: 600; min-height: 0; padding: 0 0 0 6px; text-decoration: underline; }
@@ -416,7 +418,7 @@ body.pg-fixed .fab.add { background: var(--c-teal); border-color: var(--c-teal);
 .xferlog b:first-child { color: var(--c-teal); }
 .bulkbtn { background: var(--c-teal); border-color: var(--c-teal); color: var(--surface); }
 select { background-color: var(--accent-soft); color: var(--accent); }
-.cyc-grid .v { font-size: 17px; white-space: nowrap; }
+.cyc-grid .v { font-size: clamp(14px, 4.1vw, 17px); white-space: nowrap; }
 .cyc-grid .yen { font-size: .7em; }
 button.primary.bulkbtn { background: var(--c-teal); border-color: var(--c-teal); color: var(--surface); }
 #sec-variable .section-head button.primary { background: var(--c-peach); border-color: var(--c-peach); color: var(--surface); }
