@@ -178,7 +178,8 @@
       bk.innerHTML = books.list.map((b, i) => '<button class="book b' + (i % 5) + (b.id === books.current ? ' on' : '') + '" data-book="' + esc(b.id) + '"' + (b.id === books.current ? ' aria-current="true"' : '') + '>' + esc(b.name) + '</button>').join('') +
         '<button class="book add" data-act="book-add" aria-label="帳簿を追加">＋ 帳簿</button>';
     }
-    $('#today').textContent = T.y + '年' + T.m + '月' + T.d + '日(' + C.WD[C.weekday(T)] + ')';
+    $('#today').textContent = T.m + '月' + T.d + '日（' + C.WD[C.weekday(T)] + '）';
+    document.querySelector('.todaycard').hidden = !state;
     if (!state) { main.innerHTML = welcomeHTML(); bindWelcome(); return; }
     if (versionMismatch()) {
       main.innerHTML = '<div class="notice"><div><b>アプリのファイルが一部だけ古いままです。</b><br>古いファイル：<b>' + staleFiles().join('、') + '</b><br>このファイルをアップロードし直してください。アップロード済みなら、アプリを閉じて数分後に開き直してください。（app.js：' + APP_VERSION + '／calc.js：' + (C && C.VERSION || '古い版') + '）</div></div>';
@@ -204,10 +205,11 @@
     main.querySelectorAll('[data-sum]').forEach(el => { el.innerHTML = yen(r.totals[el.dataset.sum]); });
     const sb = $('#shortbox'); if (sb) { sb.outerHTML = shortboxHTML(r); const bb = main.querySelector('#shortbox [data-act="bulk"]'); if (bb) bb.addEventListener('click', openBulk); }
     const cyc = $('#cycleSec'); if (cyc) { cyc.outerHTML = cycleHTML(); bindCycle(); }
+    const at = $('#acctable'); if (at) { at.outerHTML = acctableHTML(r); main.querySelectorAll('#acctable [data-goto]').forEach(b => b.addEventListener('click', () => gotoBank(b.dataset.goto))); }
     if (!$('#banksSec')) return;
     const shown = [...main.querySelectorAll('.bank:not(.idlebank)')].map(c => c.dataset.bank).join('|');
     if (shown !== r.banks.filter(b => b.active).map(b => b.name).join('|')) {
-      const sec = $('#banksSec'); sec.outerHTML = banksHTML(r); bindBalances(); return;
+      const sec = $('#banksSec'); sec.outerHTML = banksHTML(r); bindBalances(); bindLines(); bindXfer(); return;
     }
     for (const b of r.banks) {
       const card = main.querySelector('.bank[data-bank="' + CSS.escape(b.name) + '"]');
@@ -215,13 +217,12 @@
       card.querySelectorAll('[data-bsum]').forEach(el => { el.innerHTML = yen(b.sums[el.dataset.bsum]); });
       const st = card.querySelector('[data-status]'); if (st) st.outerHTML = statusHTML(b, r);
       const af = card.querySelector('[data-after]'); if (af) af.outerHTML = afterHTML(b, r);
-      const xb = card.querySelector('.cardacts [data-act^="xfer"]');
+      const xb = card.querySelector('.bank-row2 [data-act^="xfer"]');
       if (xb && !card.classList.contains('idlebank') && xb.dataset.act !== (b.shortfall > 0 ? 'xfer-to' : 'xfer-from')) {
-        xb.outerHTML = xferBtn(b);
-        const nb = card.querySelector('.cardacts [data-act^="xfer"]');
-        nb.addEventListener('click', () => { if (nb.dataset.act === 'xfer-from') openTransfer('', nb.dataset.acc); else openTransfer(nb.dataset.acc); });
+        xb.outerHTML = xferBtn(b); bindXfer();
       }
       card.classList.toggle('is-short', b.shortfall > 0);
+      card.classList.toggle('nobal', b.balance == null);
       const ln = card.querySelector('.line-list'); if (ln) ln.innerHTML = linesInner(b, r.windows);
       const nx = card.querySelector('.next'); if (nx) nx.innerHTML = nextHTML(b);
     }
@@ -283,7 +284,7 @@
       '<h3>できること</h3><p>登録した毎月の引落をもとに、口座ごとに「締め日までに必要な金額」を計算します。残高を入力すると、不足している口座と余っている口座がわかります。</p>' +
       '<h3>締め日と期間</h3><p>初めは締め日（毎月10日）が1つで、確認日から次の締め日までの引落で不足と余りを判定します。月末までなど、もう一つの期限の分も見たいときは「設定 → 帳簿」で「＋ もう一つの期限を追加」を押すと、参考として並びます。「設定 → 帳簿」で、それぞれ1〜28日または月末と、休日に当たったときの扱い（後ろ・前・ずらさない）に変えられます。確認日（今日）から次の締め日までの引落で、不足と余りを判定します。</p>' +
       '<h3>休日のずれ</h3><p>土日・祝日・年末年始（12/31〜1/3）に当たる日は、項目ごとに「後ろにずらす／前にずらす／ずらさない」を選べます。初期値は、支出が後ろ（翌営業日）、収入が前（前営業日）です。</p>' +
-      '<h3>表示の明るさ</h3><p>画面上の「表示」から、自動（端末の設定に合わせる）・ライト・ダークを選べます。</p>' +
+      '<h3>表示の明るさ</h3><p>標準はライト（明るい表示）です。画面右上のボタンから、ライト・ダーク・自動（端末の設定に合わせる）を選べます。</p>' +
       '<h3>締め期間の収支</h3><p>準備ページの「締め期間の収支」に、締め日の翌日から次の締め日までの収入の合計・支出の合計・差し引きが出ます。‹ › で前後の期間も見られます。</p>' +
       '<h3>移動と追加</h3><p>下のタブで今のページをもう一度押すか、右下の「↑」で一番上に戻れます。変動費・固定費のページでは、右下の「＋」や見出しの「＋ 追加」から、ページを移らずに追加できます。「追加して続ける」で何件も続けて入れられます。</p>' +
       '<h3>帳簿</h3><p>家族のお金なども、人ごとに別の帳簿で管理できます。画面上の名前をタップすると切り替わり、「＋ 帳簿」で追加できます。バックアップは全部の帳簿をまとめて保存します。</p>' +
@@ -328,13 +329,77 @@
       '<p class="note" style="margin:6px 0 0">' + md(r.closing) + '締めまでの引落を差し引いた、口座ごとの過不足の合計です。余りには、締めまで引落のない口座の残高も入ります（設定で「余りに含めない」にした口座を除く）。口座間でお金を移すときの目安にしてください。</p>' + miss + '</div>';
   }
 
+  /* ---------- やさしいイラストのアイコン ---------- */
+  const ICON = {
+    cal: c => '<svg class="pico" viewBox="0 0 40 40" aria-hidden="true"><rect x="5" y="8" width="30" height="27" rx="6" fill="var(--surface)" stroke="var(' + c + ')" stroke-width="2.6"/><path d="M5 16h30" stroke="var(' + c + ')" stroke-width="2.6"/><path d="M13 5v6M27 5v6" stroke="var(--brown)" stroke-width="2.8" stroke-linecap="round"/><g fill="var(' + c + ')" opacity=".6"><rect x="10" y="20" width="5" height="4" rx="1"/><rect x="18" y="20" width="5" height="4" rx="1"/><rect x="26" y="20" width="5" height="4" rx="1"/><rect x="10" y="27" width="5" height="4" rx="1"/><rect x="18" y="27" width="5" height="4" rx="1"/></g></svg>',
+    bank: c => '<svg viewBox="0 0 40 34" aria-hidden="true"><path d="M20 2 L37 11 H3 Z" fill="var(' + c + ')"/><rect x="4" y="11" width="32" height="3" fill="var(' + c + ')"/><g fill="var(' + c + ')"><rect x="7" y="16" width="4" height="11" rx="1"/><rect x="15" y="16" width="4" height="11" rx="1"/><rect x="21" y="16" width="4" height="11" rx="1"/><rect x="29" y="16" width="4" height="11" rx="1"/></g><rect x="3" y="28" width="34" height="4" rx="1.5" fill="var(' + c + ')"/></svg>',
+    note: '<svg viewBox="0 0 40 40" aria-hidden="true"><rect x="7" y="6" width="24" height="30" rx="4" fill="var(--surface)" stroke="var(--c-pink)" stroke-width="2.6"/><path d="M12 14h14M12 20h14M12 26h8" stroke="var(--c-pink)" stroke-width="2.4" stroke-linecap="round" opacity=".6"/><path d="M24 30 L35 17 L38 20 L27 33 L23 34 Z" fill="#F7C948" stroke="var(--brown)" stroke-width="1.8" stroke-linejoin="round"/></svg>',
+    list: '<svg viewBox="0 0 40 40" aria-hidden="true"><rect x="6" y="6" width="28" height="28" rx="6" fill="var(--surface)" stroke="var(--c-blue)" stroke-width="2.6"/><path d="M12 14h16M12 20h16M12 26h10" stroke="var(--c-blue)" stroke-width="2.6" stroke-linecap="round"/></svg>',
+    coins: '<svg viewBox="0 0 40 40" aria-hidden="true"><g stroke="#B7791F" stroke-width="1.8" fill="#F7C948"><ellipse cx="15" cy="30" rx="11" ry="4.5"/><path d="M4 26v4c0 2.5 5 4.5 11 4.5s11-2 11-4.5v-4"/><ellipse cx="15" cy="25" rx="11" ry="4.5"/><ellipse cx="26" cy="15" rx="11" ry="4.5"/><path d="M15 15v6M37 15v6c0 2.5-5 4.5-11 4.5"/><ellipse cx="26" cy="10" rx="11" ry="4.5"/></g></svg>',
+    chart: '<svg viewBox="0 0 40 40" aria-hidden="true"><rect x="6" y="22" width="7" height="12" rx="2" fill="var(--c-lav)" opacity=".55"/><rect x="16.5" y="15" width="7" height="19" rx="2" fill="var(--c-lav)" opacity=".75"/><rect x="27" y="7" width="7" height="27" rx="2" fill="var(--c-lav)"/></svg>'
+  };
+  const BANK_COLORS = ['--c-teal', '--c-blue', '--c-peach', '--c-pink', '--c-lav', '--c-yellow'];
+
+  /** 口座ごとの必要金額（今後の引き落とし分） */
+  function acctableHTML(r) {
+    const act = r.banks.filter(b => b.active);
+    if (!act.length) return '<div id="acctable"></div>';
+    const rows = act.map((b, i) => '<button class="acrow" data-goto="' + esc(b.name) + '">' + ICON.bank(BANK_COLORS[i % BANK_COLORS.length]) +
+      '<span class="nm">' + esc(b.name) + '</span>' +
+      r.windows.map(w => '<span class="am' + (w.inClose ? '' : ' after') + (w.inClose && b.shortfall > 0 ? ' short' : '') + '">' + (w.label.replace('まで', '')) + 'まで<b class="num">' + (b.sums[w.key] ? '¥' + nf.format(b.sums[w.key]) : '—') + '</b></span>').join('') +
+      (r.windows.length === 1 ? '<span></span>' : '') + '<span class="chev">›</span></button>').join('');
+    return '<div id="acctable"><div class="acchead">' + ICON.bank('--c-teal') + '口座ごとの必要金額<span class="sub">（今後の引き落とし分）</span></div><div class="acctable">' + rows + '</div></div>';
+  }
+  function quickHTML() {
+    return '<div class="quick">' +
+      '<button class="q-v" data-quick="variable">' + ICON.note + '<span class="t">変動費の入力</span><span class="chev">›</span></button>' +
+      '<button class="q-f" data-quick="fixed">' + ICON.list + '<span class="t">固定費の確認</span><span class="chev">›</span></button>' +
+      '<button class="q-i" data-quick="income">' + ICON.coins + '<span class="t">収入の管理</span><span class="chev">›</span></button>' +
+      '<button class="q-c" data-quick="cycle">' + ICON.chart + '<span class="t">締め期間の収支</span><span class="chev">›</span></button></div>';
+  }
+  function bindQuick() {
+    main.querySelectorAll('[data-quick]').forEach(b => b.addEventListener('click', () => {
+      const q = b.dataset.quick;
+      if (q === 'variable' || q === 'fixed') { meta.page = q; meta.reorder = null; saveMeta(); renderAll(); window.scrollTo(0, 0); }
+      else if (q === 'income') { const el = $('#incomecard'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+      else { const el = $('#cycleSec'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+    }));
+    main.querySelectorAll('[data-goto]').forEach(b => b.addEventListener('click', () => gotoBank(b.dataset.goto)));
+    main.querySelectorAll('.period[data-tile]').forEach(b => b.addEventListener('click', e => { if (e.target.closest('button,a')) return; const el = $('#banksSec'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }));
+  }
+  function bindXfer() {
+    main.querySelectorAll('[data-act="xfer-to"], [data-act="xfer-from"]').forEach(b => {
+      if (b._bound) return; b._bound = true;
+      b.addEventListener('click', () => {
+        if (accountCatalog().length < 2) { toast('口座が2つ以上必要です'); return; }
+        if (b.dataset.act === 'xfer-from') openTransfer('', b.dataset.acc); else openTransfer(b.dataset.acc);
+      });
+    });
+  }
+  const openLines = new Set(); // 内訳を開いている口座（描き直しても開いたまま）
+  function bindLines() {
+    main.querySelectorAll('[data-act="lines"]').forEach(btn => btn.addEventListener('click', () => {
+      const card = btn.closest('.bank'); const name = card.dataset.bank; const list = card.querySelector('.line-list');
+      const open = list.hidden; list.hidden = !open;
+      if (open) openLines.add(name); else openLines.delete(name);
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false'); btn.textContent = '内訳' + (open ? '▴' : '▾');
+    }));
+  }
+  function gotoBank(name) {
+    const card = main.querySelector('.bank[data-bank="' + CSS.escape(name) + '"]');
+    if (!card) return;
+    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    card.classList.add('flash'); setTimeout(() => card.classList.remove('flash'), 1600);
+  }
+
   function summaryHTML(r) {
-    const per = r.windows.map((w, i) => '<div class="period' + (w.inClose ? '' : ' after') + '"><span class="lab">' + w.label + 'に必要' + (w.inClose ? '' : '<span class="tag">参考</span>') + (i === 0 ? '<button class="linkish" data-act="go-close" aria-label="期限を変更">変更</button>' : '') + '</span><span class="rng">' + md(w.from) + '〜' + md(w.to) + (w.nominal ? '<br>' + md(w.nominal) + 'が休日のため' + md(w.to) + 'まで' : '') + '</span><span class="val num" data-sum="' + w.key + '">' + yen(r.totals[w.key]) + '</span></div>').join('');
+    const per = r.windows.map((w, i) => '<div class="period' + (w.inClose ? '' : ' after') + '" data-tile><span class="lab">' + ICON.cal(w.inClose ? '--c-blue' : '--c-pink') + w.label + 'に必要' + (w.inClose ? '' : '<span class="tag">参考</span>') + (i === 0 ? '<button class="linkish" data-act="go-close" aria-label="期限を変更">変更</button>' : '') + '</span><span class="rng">' + md(w.from) + '〜' + md(w.to) + (w.nominal ? '<br>' + md(w.nominal) + 'が休日のため' + md(w.to) + 'まで' : '') + '</span><span class="val num" data-sum="' + w.key + '">' + yen(r.totals[w.key]) + '</span></div>').join('');
     const inc = r.income.map(i => '<div class="income-row"><span class="who">' + esc(i.name) + '</span><span class="when">' + (i.next ? '<span class="' + (isWeekend(i.next) ? 'wkend' : '') + '">' + mdw(i.next) + '</span> 予定' + shiftNote(i.next) : '') + '</span>' +
       '<input class="amount' + (i.amount == null ? ' empty' : '') + '" inputmode="numeric" enterkeyhint="done" autocomplete="off" id="inc-' + esc(i.id) + '" data-inc="' + esc(i.id) + '" value="' + yenTxt(i.amount) + '" placeholder="金額（任意）" aria-label="' + esc(i.name) + 'の収入予定額"></div>').join('');
     return '<section class="summary" id="sec-top" aria-label="要約">' +
-      '<div class="periods">' + per + '</div>' + shortboxHTML(r) +
-      '<div class="income"><div class="sub">収入予定（未入金の収入は残高に足しません）</div>' + inc + '</div></section>' + cycleHTML();
+      '<div class="periods">' + per + '</div>' + acctableHTML(r) + shortboxHTML(r) + '</section>' +
+      '<section class="incomecard" id="incomecard" aria-label="収入予定"><div class="acchead">' + ICON.coins + '収入予定<span class="sub">（未入金の収入は残高に足しません）</span></div>' +
+      (inc ? '<div class="income">' + inc + '</div>' : '<p class="sub" style="margin:0">収入はまだありません。「設定 → 収入」から追加できます。</p>') + '</section>' + cycleHTML();
   }
 
   let cycleOffset = 0; // 0=今のサイクル（画面を開き直すと今に戻る）
@@ -360,16 +425,17 @@
 
   /** 不足している口座は「入れる」、それ以外は「出す」ボタン */
   function xferBtn(b) {
-    return b.shortfall > 0 ? '<button class="small primary" data-act="xfer-to" data-acc="' + esc(b.name) + '">ほかの口座から移す</button>'
-      : '<button class="small" data-act="xfer-from" data-acc="' + esc(b.name) + '">ほかの口座へ移す</button>';
+    // 不足している口座は「入れる」、それ以外は「出す」移動として開く（表示はどちらも「残高移動」）
+    return b.shortfall > 0 ? '<button class="small primary xbtn" data-act="xfer-to" data-acc="' + esc(b.name) + '" title="ほかの口座からこの口座へ">残高移動</button>'
+      : '<button class="small xbtn" data-act="xfer-from" data-acc="' + esc(b.name) + '" title="この口座からほかの口座へ">残高移動</button>';
   }
   function serial2(d) { return Date.UTC(d.y, d.m - 1, d.d); }
   function statusHTML(b, r) {
-    const ex = b.excluded ? '（合計外）' : '';
+    // 省スペースのため短く表示（何日までの分かは title と上の合計に出す）
     const cl = r ? md(r.closing) + 'まで' : '';
-    if (b.balance == null) return '<span class="pill none" data-status>' + (b.dueActive ? '残高未入力' : '残高未入力（締めまで引落なし）') + '</span>';
-    if (b.shortfall > 0) return '<span class="pill short num" data-status>' + cl + 'に不足 ' + nf.format(b.shortfall) + '円</span>';
-    return '<span class="pill ' + (b.excluded ? 'none' : 'ok') + ' num" data-status>' + cl + 'の余り ' + nf.format(b.surplus) + '円' + ex + '</span>';
+    if (b.balance == null) return '<span class="pill none" data-status>未入力</span>';
+    if (b.shortfall > 0) return '<span class="pill short num" data-status title="' + cl + 'に不足">不足 ' + nf.format(b.shortfall) + '円</span>';
+    return '<span class="pill ' + (b.excluded ? 'none' : 'ok') + ' num" data-status title="' + cl + 'の余り">余り ' + nf.format(b.surplus) + '円' + (b.excluded ? '・合計外' : '') + '</span>';
   }
   /** 参考の期間まで見たときの過不足（締め日だけで見た場合と違うときだけ表示） */
   function afterHTML(b, r) {
@@ -389,18 +455,18 @@
 
   function banksHTML(r) {
     const active = r.banks.filter(b => b.active), idle = r.banks.filter(b => !b.active);
-    const cards = active.map(b => '<article class="bank' + (b.shortfall > 0 ? ' is-short' : '') + '" data-bank="' + esc(b.name) + '">' +
+    const cards = active.map(b => '<article class="bank' + (b.shortfall > 0 ? ' is-short' : '') + (b.balance == null ? ' nobal' : '') + '" data-bank="' + esc(b.name) + '">' +
       '<div class="bank-head"><span class="bank-name">' + esc(b.name) + '</span><span class="next">' + nextHTML(b) + '</span></div>' +
-      '<div class="bank-amts">' + r.windows.map(w => '<div class="' + (w.inClose ? '' : 'after') + '"><span class="k">' + w.label + (w.inClose ? '' : '（参考）') + '</span><span class="v num" data-bsum="' + w.key + '">' + yen(b.sums[w.key]) + '</span></div>').join('') + '</div>' +
+      '<div class="bank-row2"><div class="bank-amts">' + r.windows.map(w => '<div class="' + (w.inClose ? '' : 'after') + '"><span class="k">' + w.label + (w.inClose ? '' : '（参考）') + '</span><span class="v num" data-bsum="' + w.key + '">' + yen(b.sums[w.key]) + '</span></div>').join('') + '</div>' +
+      '<button class="small linesbtn" data-act="lines" aria-expanded="' + (openLines.has(b.name) ? 'true' : 'false') + '">内訳' + (openLines.has(b.name) ? '▴' : '▾') + '</button>' + xferBtn(b) + '</div>' +
       (b.unentered ? '<div class="flag">金額未入力の引落が' + b.unentered + '件あります（0円として数えていません）</div>' : '') +
-      '<div class="bank-foot"><label for="bal-' + esc(b.name) + '">現在残高</label><input class="amount' + (b.balance == null ? ' empty' : '') + '" inputmode="numeric" enterkeyhint="done" autocomplete="off" id="bal-' + esc(b.name) + '" data-bal="' + esc(b.name) + '" value="' + yenTxt(b.balance) + '" placeholder="未入力">' + statusHTML(b, r) + '</div>' + afterHTML(b, r) +
-      '<div class="cardacts"><details class="lines"><summary>引落の内訳</summary><div class="line-list">' + linesInner(b, r.windows) + '</div></details>' +
-      xferBtn(b) + '</div>' +
+      '<div class="bank-foot"><label for="bal-' + esc(b.name) + '">残高</label><input class="amount' + (b.balance == null ? ' empty' : '') + '" inputmode="numeric" enterkeyhint="done" autocomplete="off" id="bal-' + esc(b.name) + '" data-bal="' + esc(b.name) + '" value="' + yenTxt(b.balance) + '" placeholder="未入力">' + statusHTML(b, r) + '</div>' + afterHTML(b, r) +
+      '<div class="line-list"' + (openLines.has(b.name) ? '' : ' hidden') + '>' + linesInner(b, r.windows) + '</div>' +
       '</article>').join('');
-    const idleTxt = idle.length ? '<div class="idle-head">この期間に引落のない口座<span class="sub">残高を入れると余りに入ります</span></div>' + idle.map(b => '<article class="bank idlebank" data-bank="' + esc(b.name) + '">' +
+    const idleTxt = idle.length ? '<div class="idle-head">この期間に引落のない口座<span class="sub">残高を入れると余りに入ります</span></div>' + idle.map(b => '<article class="bank idlebank' + (b.balance == null ? ' nobal' : '') + '" data-bank="' + esc(b.name) + '">' +
       '<div class="bank-head"><span class="bank-name">' + esc(b.name) + '</span><span class="next">' + nextHTML(b) + '</span></div>' +
-      '<div class="bank-foot"><label for="bal-' + esc(b.name) + '">現在残高</label><input class="amount' + (b.balance == null ? ' empty' : '') + '" inputmode="numeric" enterkeyhint="done" autocomplete="off" id="bal-' + esc(b.name) + '" data-bal="' + esc(b.name) + '" value="' + yenTxt(b.balance) + '" placeholder="未入力">' + statusHTML(b, r) + '</div>' + afterHTML(b, r) + '<div class="cardacts end"><button class="small" data-act="xfer-from" data-acc="' + esc(b.name) + '">ほかの口座へ移す</button></div></article>').join('') : '';
-    return '<section id="banksSec" aria-label="銀行別の入金準備表"><div class="section-head"><h2>銀行別の入金準備</h2><span class="head-right"><span class="sub">' + r.activeCount + '口座</span><button class="small" data-act="xfer-to" data-acc="">口座間で移す</button></span></div>' +
+      '<div class="bank-foot"><label for="bal-' + esc(b.name) + '">残高</label><input class="amount' + (b.balance == null ? ' empty' : '') + '" inputmode="numeric" enterkeyhint="done" autocomplete="off" id="bal-' + esc(b.name) + '" data-bal="' + esc(b.name) + '" value="' + yenTxt(b.balance) + '" placeholder="未入力">' + statusHTML(b, r) + '<button class="small" data-act="xfer-from" data-acc="' + esc(b.name) + '">残高移動</button></div>' + afterHTML(b, r) + '</article>').join('') : '';
+    return '<section id="banksSec" aria-label="銀行別の入金準備表"><div class="section-head"><h2>銀行別の入金準備</h2><span class="head-right"><span class="sub">' + md(r.closing) + 'まで</span><button class="small" data-act="xfer-to" data-acc="">残高移動</button></span></div>' +
       '<div class="banks">' + (cards || '<div class="idle">この期間の引落はありません</div>') + idleTxt + '</div>' + transfersHTML() +
       '<p class="note">集計は確認日以降の引落だけです。土日・祝日・年末年始（12/31〜1/3）に当たる日は、項目ごとの設定（初期値は支出が後ろ、収入が前）でずらしています。締め日が休日の場合は、設定に合わせて締め日もずらします。</p></section>';
   }
@@ -822,11 +888,10 @@
     main.querySelectorAll('[data-act="add"]').forEach(btn => btn.addEventListener('click', () => openAddSheet(btn.dataset.kind)));
     main.querySelectorAll('[data-act="backup"]').forEach(b => b.addEventListener('click', doBackup));
     bindCloud();
-    main.querySelectorAll('[data-act="xfer-to"], [data-act="xfer-from"]').forEach(b => b.addEventListener('click', () => {
-      if (accountCatalog().length < 2) { toast('口座が2つ以上必要です'); return; }
-      if (b.dataset.act === 'xfer-from') openTransfer('', b.dataset.acc); else openTransfer(b.dataset.acc);
-    }));
+    bindXfer();
     bindCycle();
+    bindQuick();
+    bindLines();
     main.querySelectorAll('[data-act="bulk"]').forEach(b => b.addEventListener('click', openBulk));
     main.querySelectorAll('[data-act="xfer-undo"]').forEach(b => b.addEventListener('click', () => {
       const t = (state.transfers || []).find(x => x.id === b.closest('[data-xid]').dataset.xid); if (!t) return;
@@ -1301,14 +1366,14 @@
   $('#helpBtn').addEventListener('click', showHelp);
 
   /* ---------- 表示の明るさ（自動・ライト・ダーク） ---------- */
-  const THEMES = [['auto', '自動', '端末の設定に合わせる'], ['light', 'ライト', 'いつも明るい表示'], ['dark', 'ダーク', 'いつも暗い表示']];
-  function themeOf() { return ['light', 'dark'].includes(meta.theme) ? meta.theme : 'auto'; }
+  const THEMES = [['light', 'ライト', 'いつも明るい表示（標準）'], ['dark', 'ダーク', 'いつも暗い表示'], ['auto', '自動', '端末の設定に合わせる']];
+  function themeOf() { return ['auto', 'dark'].includes(meta.theme) ? meta.theme : 'light'; } // 標準はライト
   function applyTheme() {
     const t = themeOf(); const root = document.documentElement;
     if (t === 'auto') root.removeAttribute('data-theme'); else root.setAttribute('data-theme', t);
     const dark = t === 'dark' || (t === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
     document.querySelectorAll('meta[name="theme-color"]').forEach(m => { m.setAttribute('content', dark ? '#17191E' : '#FBF8F4'); m.removeAttribute('media'); });
-    $('#themeBtn').textContent = '表示：' + THEMES.find(x => x[0] === t)[1];
+    const lb = $('#themeBtn .lbl'); if (lb) lb.textContent = THEMES.find(x => x[0] === t)[1];
   }
   function openTheme() {
     const t = themeOf(); const m = $('#modal');
