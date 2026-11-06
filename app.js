@@ -284,7 +284,7 @@
       '<h3>できること</h3><p>登録した毎月の引落をもとに、口座ごとに「締め日までに必要な金額」を計算します。残高を入力すると、不足している口座と余っている口座がわかります。</p>' +
       '<h3>締め日と期間</h3><p>初めは締め日（毎月10日）が1つで、確認日から次の締め日までの引落で不足と余りを判定します。月末までなど、もう一つの期限の分も見たいときは「設定 → 帳簿」で「＋ もう一つの期限を追加」を押すと、参考として並びます。「設定 → 帳簿」で、それぞれ1〜28日または月末と、休日に当たったときの扱い（後ろ・前・ずらさない）に変えられます。確認日（今日）から次の締め日までの引落で、不足と余りを判定します。</p>' +
       '<h3>休日のずれ</h3><p>土日・祝日・年末年始（12/31〜1/3）に当たる日は、項目ごとに「後ろにずらす／前にずらす／ずらさない」を選べます。初期値は、支出が後ろ（翌営業日）、収入が前（前営業日）です。</p>' +
-      '<h3>表示の明るさ</h3><p>標準はライト（明るい表示）です。画面右上のボタンから、ライト・ダーク・自動（端末の設定に合わせる）を選べます。</p>' +
+      '<h3>表示モード</h3><p>標準はライトモード（明るい表示）です。「設定 → 表示」で、ライトモード・ダークモード・自動（iPhoneの設定に合わせる）を選べます。</p>' +
       '<h3>締め期間の収支</h3><p>準備ページの「締め期間の収支」に、締め日の翌日から次の締め日までの収入の合計・支出の合計・差し引きが出ます。‹ › で前後の期間も見られます。</p>' +
       '<h3>移動と追加</h3><p>下のタブで今のページをもう一度押すか、右下の「↑」で一番上に戻れます。変動費・固定費のページでは、右下の「＋」や見出しの「＋ 追加」から、ページを移らずに追加できます。「追加して続ける」で何件も続けて入れられます。</p>' +
       '<h3>帳簿</h3><p>家族のお金なども、人ごとに別の帳簿で管理できます。画面上の名前をタップすると切り替わり、「＋ 帳簿」で追加できます。バックアップは全部の帳簿をまとめて保存します。</p>' +
@@ -561,7 +561,7 @@
     if (row) { row.scrollIntoView({ block: 'nearest' }); const btn = row.querySelector('[data-mv="' + dir + '"]'); if (btn && !btn.disabled) btn.focus({ preventScroll: true }); }
   }
 
-  const STABS = [['out', '支出'], ['in', '収入'], ['acc', '口座'], ['books', '帳簿'], ['backup', '保存']];
+  const STABS = [['out', '支出'], ['in', '収入'], ['acc', '口座'], ['books', '帳簿'], ['backup', '保存'], ['view', '表示']];
   function settingsHTML() {
     const st = STABS.some(t => t[0] === meta.stab) ? meta.stab : 'out';
     const seg = '<div class="seg" role="tablist">' + STABS.map(t => '<button role="tab" aria-selected="' + (t[0] === st) + '" class="' + (t[0] === st ? 'on' : '') + '" data-stab="' + t[0] + '">' + t[1] + '</button>').join('') + '</div>';
@@ -570,6 +570,7 @@
     else if (st === 'in') body = inHTML();
     else if (st === 'acc') body = accHTML();
     else if (st === 'books') body = booksHTML();
+    else if (st === 'view') body = viewHTML();
     else body = backupHTML();
     const cs = C.closeSettings(state);
     const dayOpts = sel => { let o = ''; for (let i = 1; i <= 28; i++) o += '<option value="' + i + '"' + (i === sel ? ' selected' : '') + '>毎月' + i + '日</option>'; return o + '<option value="end"' + (sel === 'end' ? ' selected' : '') + '>毎月 月末</option>'; };
@@ -658,7 +659,19 @@
     saveBooks(); switchBook(id); return true;
   }
 
+  /** 表示モード（ライト・ダーク・自動） */
+  function viewHTML() {
+    const t = themeOf();
+    const desc = { light: '明るい表示（標準）', dark: '暗い表示。夜や暗い場所で見やすい', auto: 'iPhoneの設定（ライト／ダーク）に合わせて切り替え' };
+    return '<div class="card form"><div class="shead">表示モード<span class="sub">全部の帳簿で共通の設定です</span></div>' +
+      '<div class="modepick" role="radiogroup" aria-label="表示モード">' + THEMES.map(x => '<button role="radio" aria-checked="' + (x[0] === t) + '" class="mode m-' + x[0] + (x[0] === t ? ' on' : '') + '" data-mode="' + x[0] + '"><span class="sw"></span><b>' + { light: 'ライトモード', dark: 'ダークモード', auto: '自動' }[x[0]] + '</b><small>' + desc[x[0]] + '</small></button>').join('') + '</div></div>';
+  }
+
   function bindSettings() {
+    main.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => {
+      meta.theme = b.dataset.mode; saveMeta(); applyTheme(); renderKeep();
+      toast({ light: 'ライトモードにしました', dark: 'ダークモードにしました', auto: 'iPhoneの設定に合わせます' }[meta.theme]);
+    }));
     main.querySelectorAll('[data-book-id]').forEach(row => {
       const id = row.dataset.bookId; const bk = books.list.find(b => b.id === id);
       row.querySelector('input').addEventListener('change', e => {
@@ -1373,7 +1386,7 @@
     if (t === 'auto') root.removeAttribute('data-theme'); else root.setAttribute('data-theme', t);
     const dark = t === 'dark' || (t === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
     document.querySelectorAll('meta[name="theme-color"]').forEach(m => { m.setAttribute('content', dark ? '#17191E' : '#FBF8F4'); m.removeAttribute('media'); });
-    const lb = $('#themeBtn .lbl'); if (lb) lb.textContent = THEMES.find(x => x[0] === t)[1];
+
   }
   function openTheme() {
     const t = themeOf(); const m = $('#modal');
@@ -1389,7 +1402,7 @@
       m.querySelectorAll('[data-theme-pick]').forEach(x => x.classList.toggle('on', x === b));
     }));
   }
-  $('#themeBtn').addEventListener('click', openTheme);
+  $('#setBtn').addEventListener('click', () => { if (!state) return; meta.page = 'settings'; meta.reorder = null; saveMeta(); renderAll(); window.scrollTo(0, 0); });
   try { window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme); } catch (e) { /* 古い端末 */ }
   const fabTop = $('#fabTop'), fabAdd = $('#fabAdd');
   const syncFab = () => {
