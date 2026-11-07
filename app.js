@@ -159,7 +159,10 @@
       hiddenAccounts: Array.isArray(d.hiddenAccounts) ? d.hiddenAccounts.map(String).filter(a => d.accounts.map(String).includes(a)) : [],
       income: Array.isArray(d.income) && d.income.length ? d.income.map(i => ({ id: i.id || uid('i'), name: String(i.name), day: i.day, amount: i.amount == null ? null : Number(i.amount), hidden: !!i.hidden, shift: validShift(i.shift, 'before') }))
         : [],
-      transfers: Array.isArray(d.transfers) ? d.transfers.filter(t => t && t.from && t.to && Number(t.amount) > 0).map(t => ({ id: t.id || uid('t'), at: t.at || null, fromBook: t.fromBook || null, from: String(t.from), toBook: t.toBook || null, to: String(t.to), amount: Number(t.amount), fee: Number(t.fee) || 0, feeFrom: t.feeFrom === 'amount' ? 'amount' : 'source', undone: !!t.undone })).slice(0, 30) : []
+      transfers: Array.isArray(d.transfers) ? d.transfers.filter(t => t && t.from && t.to && Number(t.amount) > 0).map(t => ({ id: t.id || uid('t'), at: t.at || null, fromBook: t.fromBook || null, from: String(t.from), toBook: t.toBook || null, to: String(t.to), amount: Number(t.amount), fee: Number(t.fee) || 0, feeFrom: t.feeFrom === 'amount' ? 'amount' : 'source', undone: !!t.undone })).slice(0, 30) : [],
+      history: Array.isArray(d.history) ? d.history.filter(h => h && /^\d{4}-\d{2}-\d{2}$/.test(String(h.date))).map(h => ({ id: h.id || uid('h'), date: String(h.date), name: String(h.name || ''), account: String(h.account || ''), amount: h.amount == null ? null : Number(h.amount), kind: String(h.kind || 'その他'), src: h.src || null, auto: !!h.auto, edited: !!h.edited })) : [],
+      historySince: /^\d{4}-\d{2}-\d{2}$/.test(String(d.historySince || '')) ? d.historySince : null,
+      historyUntil: /^\d{4}-\d{2}-\d{2}$/.test(String(d.historyUntil || '')) ? d.historyUntil : null
     };
     for (const a of out.accounts) {
       const b = (d.balances || {})[a] || {};
@@ -185,11 +188,13 @@
       main.innerHTML = '<div class="notice"><div><b>アプリのファイルが一部だけ古いままです。</b><br>古いファイル：<b>' + staleFiles().join('、') + '</b><br>このファイルをアップロードし直してください。アップロード済みなら、アプリを閉じて数分後に開き直してください。（app.js：' + APP_VERSION + '／calc.js：' + (C && C.VERSION || '古い版') + '）</div></div>';
       return;
     }
+    recordPast();
     const r = C.compute(state, T);
     const page = PAGES.includes(meta.page) ? meta.page : 'prep';
     main.innerHTML = page === 'variable' ? listHTML('variable', '変動費', '毎月の金額をここで入力します。') + listHTML('once', '1回のみの引落', '日付を決めて1回だけ引き落とされるもの（年払い・臨時の支払いなど）。過ぎたものは「済み」にまとまります。')
       : page === 'fixed' ? listHTML('fixed', '固定費', '金額・引落日・口座が変わった時だけ変更します。')
       : page === 'settings' ? settingsHTML()
+      : page === 'history' ? historyHTML()
       : sampleBannerHTML() + (needsSetup() ? setupGuideHTML() : backupNoticeHTML()) + summaryHTML(r) + banksHTML(r) +
         '<p class="note">表示される金額と日付は、登録した内容から計算した目安です。実際の引落日・金額は金融機関やカード会社の案内で確認してください。</p>';
     if (typeof syncFab === 'function') setTimeout(syncFab, 0);
@@ -289,6 +294,7 @@
       '<h3>移動と追加</h3><p>下のタブで今のページをもう一度押すか、右下の「↑」で一番上に戻れます。変動費・固定費のページでは、右下の「＋」や見出しの「＋ 追加」から、ページを移らずに追加できます。「追加して続ける」で何件も続けて入れられます。</p>' +
       '<h3>帳簿</h3><p>家族のお金なども、人ごとに別の帳簿で管理できます。画面上の名前をタップすると切り替わり、「＋ 帳簿」で追加できます。バックアップは全部の帳簿をまとめて保存します。</p>' +
       '<h3>口座間の移動</h3><p>不足している口座の「ほかの口座から移す」は、その口座へ入れる移動です。それ以外の口座の「ほかの口座へ移す」は、その口座から出す移動です。ほかの帳簿の口座（自分 → 母など）や、非表示の口座とも移動できます。「不足をまとめて解消する」を押すと、余りのある口座から不足している口座へ移す案をまとめて作ります。準備ページの「ほかの口座から移す」「口座間で移す」で、実際に移したお金を記録すると、両方の残高が書きかわります。不足している口座から開くと、不足額が最初から入ります。手数料は「移動元から別に引く」か「移す金額から引く」を選べ、口座の組み合わせごとに前回の手数料を覚えます。間違えたときは「最近の移動」から取り消せます。</p>' +
+      '<h3>引き落としの記録</h3><p>下のタブの「記録」に、引落日が来た分がそのときの金額で自動で残ります。月ごとの合計・先月との差・口座ごとの合計が見られ、実際の金額と違うときは押して直せます。CSVで書き出すとExcelで開けます。</p>' +
       '<h3>何月分の引落か</h3><p>変動費の各行の「毎月同じ／○月分」で、入れた金額が何月の引落の分かを選べます。「○月分」にすると、その月の引落にだけ金額を使い、ほかの月は「未入力」として扱います。カードの請求のように毎月金額が変わるものに便利です。</p>' +
       '<h3>1回のみの引落</h3><p>年払いの保険や税金など、決まった日に1回だけ引き落とされるものは、「設定 → 支出 → 1回のみ」で日付を指定して追加します。変動費ページの下に並び、日付が過ぎると「済み」にまとまります。</p>' +
       '<h3>非表示</h3><p>使わなくなった項目・口座・収入は非表示にできます。非表示にしたものは計算に含みません。</p>' +
@@ -922,6 +928,7 @@
     bindCycle();
     bindQuick();
     bindLines();
+    bindHistory();
     main.querySelectorAll('[data-act="bulk"]').forEach(b => b.addEventListener('click', openBulk));
     main.querySelectorAll('[data-act="xfer-undo"]').forEach(b => b.addEventListener('click', () => {
       const t = (state.transfers || []).find(x => x.id === b.closest('[data-xid]').dataset.xid); if (!t) return;
@@ -1213,6 +1220,111 @@
     }));
   }
 
+  /* ---------- 引き落としの記録 ---------- */
+  function isoToday() { return isoOf(today()); }
+  function isoToObj(iso) { const [y, m, d] = iso.split('-').map(Number); return { y, m, d }; }
+  /** 引落日が来た分を自動で記録する（初めて使った日から。消した記録は作り直さない） */
+  function recordPast() {
+    if (!state) return;
+    const T = today(), iso = isoOf(T);
+    state.history = state.history || [];
+    if (!state.historySince) { state.historySince = iso; }
+    const startIso = state.historyUntil ? isoOf(C.addDays(isoToObj(state.historyUntil), 1)) : state.historySince;
+    if (startIso > iso) return;
+    const from = isoToObj(startIso);
+    const hiddenAcc = new Set(state.hiddenAccounts || []);
+    const kinds = [['variable', '変動費'], ['fixed', '固定費'], ['once', '1回のみ']];
+    let added = 0;
+    for (const [k, label] of kinds) {
+      for (const it of (state[k] || [])) {
+        if (it.hidden || hiddenAcc.has(it.account) || !state.accounts.includes(it.account)) continue;
+        for (const o of C.occurrencesIn(it, from, T, false)) {
+          const amt = C.amountFor(it, o);
+          if (amt === 0) continue;
+          state.history.push({ id: uid('h'), date: isoOf(o), name: it.name, account: it.account, amount: amt, kind: label, src: it.id, auto: true, edited: false });
+          added++;
+        }
+      }
+    }
+    state.historyUntil = iso;
+    if (added) state.history.sort((a, b) => a.date < b.date ? 1 : a.date > b.date ? -1 : 0);
+    save();
+  }
+  let histMonth = null; // 表示中の月（YYYY-MM）
+  function ymOf(iso) { return iso.slice(0, 7); }
+  function ymLabel(ym) { const [y, m] = ym.split('-').map(Number); return y + '年' + m + '月'; }
+  function ymShift(ym, n) { const [y, m] = ym.split('-').map(Number); const t = C.addMonth(y, m, n); return t.y + '-' + String(t.m).padStart(2, '0'); }
+  function historyHTML() {
+    const cur = isoToday().slice(0, 7);
+    histMonth = histMonth || cur;
+    const all = state.history || [];
+    const list = all.filter(h => ymOf(h.date) === histMonth).sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
+    const sum = l => l.reduce((s, h) => s + (h.amount || 0), 0);
+    const total = sum(list), prevTotal = sum(all.filter(h => ymOf(h.date) === ymShift(histMonth, -1)));
+    const missing = list.filter(h => h.amount == null).length;
+    const diff = total - prevTotal;
+    const byAcc = {}; list.forEach(h => { byAcc[h.account] = (byAcc[h.account] || 0) + (h.amount || 0); });
+    const accRows = Object.keys(byAcc).sort((a, b) => byAcc[b] - byAcc[a]).map((a, i) => '<div class="hacc">' + ICON.bank(BANK_COLORS[i % BANK_COLORS.length]) + '<span class="grow">' + esc(a) + '</span><b class="num">' + nf.format(byAcc[a]) + '円</b></div>').join('');
+    const rows = list.map(h => '<button class="hrec" data-hid="' + esc(h.id) + '"><span class="hd">' + dateLabel(h.date) + '</span><span class="hn"><b>' + esc(h.name) + '</b><span class="kchip k-' + ({ '変動費': 'v', '固定費': 'f', '1回のみ': 'o' }[h.kind] || 'o') + '">' + esc(h.kind) + '</span><small>' + esc(h.account) + (h.edited ? '・修正済み' : h.auto ? '' : '・手入力') + '</small></span><span class="ha num">' + (h.amount == null ? '<span class="flag">未入力</span>' : nf.format(h.amount) + '円') + '</span></button>').join('');
+    const since = state.historySince ? dateLabel(state.historySince) : '';
+    return '<section id="sec-history" aria-label="引き落としの記録"><div class="section-head"><h2>引き落としの記録</h2><span class="head-right"><button class="small primary" data-act="hist-add">＋ 追加</button></span></div>' +
+      '<div class="cycle hsum"><div class="cyc-head"><button class="small" data-hm="-1" aria-label="前の月">‹</button><div class="cyc-title"><b>' + ymLabel(histMonth) + '</b><span class="sub">' + list.length + '件の引き落とし</span></div><button class="small" data-hm="1" aria-label="次の月"' + (histMonth >= cur ? ' disabled' : '') + '>›</button></div>' +
+      '<div class="cyc-grid two-col"><div><span class="k">引き落としの合計</span><span class="v num">' + nf.format(total) + '<span class="yen">円</span></span>' + (missing ? '<span class="flag">金額未入力 ' + missing + '件</span>' : '') + '</div>' +
+      '<div class="diff ' + (diff > 0 ? 'neg' : 'pos') + '"><span class="k">先月との差</span><span class="v num">' + (diff > 0 ? '＋' : diff < 0 ? '−' : '±') + nf.format(Math.abs(diff)) + '<span class="yen">円</span></span><span class="sub">先月 ' + nf.format(prevTotal) + '円</span></div></div>' +
+      (accRows ? '<div class="haccs">' + accRows + '</div>' : '') + '</div>' +
+      '<div class="list hlist">' + (rows || '<div class="emptyrow sub">この月の記録はありません</div>') + '</div>' +
+      '<div class="btnrow" style="margin-top:12px"><button data-act="hist-csv" data-scope="month">この月をCSVで書き出す</button><button data-act="hist-csv" data-scope="all">全部をCSVで書き出す</button></div>' +
+      '<p class="note">引落日が来た分を、そのときの金額で自動で記録します（' + since + 'から）。実際の金額と違うときは、記録を押して直せます。それより前の分は「＋ 追加」で入れられます。</p></section>';
+  }
+  function bindHistory() {
+    main.querySelectorAll('[data-hm]').forEach(b => b.addEventListener('click', () => { histMonth = ymShift(histMonth, Number(b.dataset.hm)); renderKeep(); }));
+    main.querySelectorAll('[data-hid]').forEach(b => b.addEventListener('click', () => openHistEdit(b.dataset.hid)));
+    main.querySelectorAll('[data-act="hist-add"]').forEach(b => b.addEventListener('click', () => openHistEdit(null)));
+    main.querySelectorAll('[data-act="hist-csv"]').forEach(b => b.addEventListener('click', () => exportCSV(b.dataset.scope)));
+  }
+  function openHistEdit(id) {
+    const h = id ? (state.history || []).find(x => x.id === id) : null;
+    const accs = state.accounts.slice();
+    const kinds = ['変動費', '固定費', '1回のみ', 'その他'];
+    const def = h || { date: (histMonth && histMonth !== isoToday().slice(0, 7) ? histMonth + '-01' : isoToday()), name: '', account: '', amount: null, kind: '変動費' };
+    const m = $('#modal');
+    m.innerHTML = '<div class="sheet form xsheet" role="dialog" aria-modal="true" aria-labelledby="mt"><h2 id="mt">' + (h ? '記録を直す' : '記録を追加') + '</h2>' +
+      '<label>項目名<input class="text" id="hr-name" autocomplete="off" value="' + esc(def.name) + '" placeholder="例：クレジットカード"></label>' +
+      '<label>引き落とされた金額<input class="amount wide" id="hr-amt" inputmode="numeric" enterkeyhint="done" autocomplete="off" value="' + yenTxt(def.amount) + '" placeholder="未入力"></label>' +
+      '<div class="two"><label>日付<input class="text" type="date" id="hr-date" value="' + esc(def.date) + '"></label>' +
+      '<label>種類<select id="hr-kind">' + kinds.map(k => '<option' + (k === def.kind ? ' selected' : '') + '>' + k + '</option>').join('') + '</select></label></div>' +
+      '<label>口座<select id="hr-acc">' + (def.account ? '' : '<option value="" selected>選ぶ</option>') + accs.concat(def.account && !accs.includes(def.account) ? [def.account] : []).map(a => '<option' + (a === def.account ? ' selected' : '') + '>' + esc(a) + '</option>').join('') + '</select></label>' +
+      '<div class="btnrow">' + (h ? '<button class="danger" id="hr-del">削除</button>' : '') + '<button id="mCancel">やめる</button><button id="mOk" class="primary">保存</button></div></div>';
+    m.hidden = false;
+    const close = () => { m.hidden = true; m.innerHTML = ''; };
+    $('#mCancel').onclick = close; m.onclick = e => { if (e.target === m) close(); };
+    if (h) $('#hr-del').onclick = () => { state.history = state.history.filter(x => x.id !== h.id); save(); close(); renderKeep(); toast('記録を削除しました'); };
+    $('#mOk').onclick = () => {
+      const name = $('#hr-name').value.trim(), v = parseAmount($('#hr-amt').value), date = $('#hr-date').value, acc = $('#hr-acc').value, kind = $('#hr-kind').value;
+      if (!name) { toast('項目名を入力してください'); return; }
+      if (Number.isNaN(v)) { toast('金額は数字で入力してください'); return; }
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { toast('日付を選んでください'); return; }
+      if (!acc) { toast('口座を選んでください'); return; }
+      if (h) Object.assign(h, { name, amount: v, date, account: acc, kind, edited: true });
+      else (state.history = state.history || []).push({ id: uid('h'), date, name, account: acc, amount: v, kind, src: null, auto: false, edited: false });
+      state.history.sort((a, b) => a.date < b.date ? 1 : a.date > b.date ? -1 : 0);
+      histMonth = ymOf(date); save(); close(); renderKeep(); toast(h ? '記録を直しました' : '記録を追加しました');
+    };
+    $('#hr-name').focus();
+  }
+  async function exportCSV(scope) {
+    const rows = (state.history || []).filter(h => scope === 'all' || ymOf(h.date) === histMonth).slice().sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
+    if (!rows.length) { toast('書き出す記録がありません'); return; }
+    const q = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+    const book = curBook() ? curBook().name : '';
+    const text = '\ufeff' + ['日付,項目,種類,口座,金額,帳簿'].concat(rows.map(h => [h.date, h.name, h.kind, h.account, h.amount == null ? '' : h.amount, book].map(q).join(','))).join('\r\n');
+    const name = '引き落とし記録_' + book + '_' + (scope === 'all' ? '全部' : histMonth) + '.csv';
+    if (N.isNative) { try { await N.shareFile(name, text); } catch (e) { toast('書き出せませんでした'); } return; }
+    const file = new File([text], name, { type: 'text/csv' });
+    try { if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: name }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
+    const url = URL.createObjectURL(file); const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 4000);
+  }
+
   /* ---------- その場で追加するシート ---------- */
   function openAddSheet(kind) {
     kind = ['fixed', 'once'].includes(kind) ? kind : 'variable';
@@ -1370,7 +1482,7 @@
   }
 
   /* ---------- 移動ボタン ---------- */
-  const PAGES = ['prep', 'variable', 'fixed', 'settings'];
+  const PAGES = ['prep', 'variable', 'fixed', 'history', 'settings'];
   const TYPING = 'input:not([type="file"]):not([type="button"]):not([type="checkbox"]):not([type="radio"]), select, textarea';
   // 指が触れている間は下のタブを出し入れしない（ボタンを押した瞬間にタブが重なるのを防ぐ）
   let pointerDown = false;

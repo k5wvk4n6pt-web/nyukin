@@ -221,7 +221,7 @@ button.small { min-height: 36px; padding: 6px 10px; font-size: 14px; }
 .add { padding: 8px 14px 12px; }
 
 /* 下の移動ボタン */
-.nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
+.nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px;
   background: color-mix(in srgb, var(--surface) 92%, transparent); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
   border-top: 1px solid var(--line);
   padding: 8px max(16px, env(safe-area-inset-right, 0px)) calc(8px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
@@ -551,6 +551,23 @@ body { padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 170px); }
 .notice .btnrow > .primary { flex: 1.6 1 0; }
 .notice .btnrow button, .notice .btnrow .fileBtn { min-height: 52px; font-weight: 800; }
 .row-sub select[data-f="month"] { background-color: var(--c-peach-bg); color: var(--c-peach); }
+/* 記録ページ */
+.nav button { font-size: 13px; }
+.nav button svg { width: 28px; height: 28px; }
+.nav button[data-page="history"].on { background: var(--nav-on); }
+.cyc-grid.two-col { grid-template-columns: 1fr 1fr; }
+.haccs { display: grid; gap: 4px; border-top: 1px dashed var(--line); padding-top: 8px; }
+.hacc { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.hacc svg { width: 24px; height: 20px; }
+.hlist { margin-top: 12px; }
+.hrec { display: grid; grid-template-columns: 4.8em minmax(0, 1fr) auto; gap: 8px; align-items: center; width: 100%; text-align: left; padding: 10px 14px; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: var(--surface); color: var(--ink); min-height: 56px; }
+.hrec:last-child { border-bottom: 0; }
+.hrec .hd { font-size: 13px; color: var(--muted); }
+.hrec .hn { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; min-width: 0; }
+.hrec .hn b { font-size: 15px; overflow-wrap: anywhere; }
+.hrec .hn small { flex-basis: 100%; font-size: 12px; color: var(--muted); }
+.hrec .ha { font-weight: 800; font-size: 15px; }
+#sec-history h2 { color: var(--c-lav); }
 /* 金額欄の「×」 */
 .amtwrap { position: relative; display: inline-flex; flex: 0 1 auto; min-width: 0; max-width: 100%; }
 .amtwrap.wide { display: flex; width: 100%; }
@@ -633,6 +650,7 @@ body { padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 170px); }
   <button data-page="prep" class="on"><svg viewBox="0 0 40 40" aria-hidden="true"><path d="M6 19 L20 7 L34 19" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M10 17 V32 a2 2 0 0 0 2 2 H17 V25 H23 V34 H28 a2 2 0 0 0 2 -2 V17" fill="currentColor" opacity=".9"/></svg><span>準備</span></button>
   <button data-page="variable"><svg viewBox="0 0 40 40" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2.8"><ellipse cx="14" cy="28" rx="10" ry="4.5"/><path d="M4 28v4c0 2.5 4.5 4.5 10 4.5s10-2 10-4.5v-4"/><ellipse cx="26" cy="12" rx="10" ry="4.5"/><path d="M16 12v6c0 2.5 4.5 4.5 10 4.5s10-2 10-4.5v-6"/><path d="M16 18v4c0 2.5 4.5 4.5 10 4.5s10-2 10-4.5v-4"/></g></svg><span>変動費</span></button>
   <button data-page="fixed"><svg viewBox="0 0 40 40" aria-hidden="true"><rect x="8" y="8" width="24" height="28" rx="4" fill="none" stroke="currentColor" stroke-width="2.8"/><rect x="14" y="4" width="12" height="7" rx="2.5" fill="currentColor"/><path d="M13 21 l3 3 l5 -6 M20 27 l3 3 l5 -6" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span>固定費</span></button>
+  <button data-page="history"><svg viewBox="0 0 40 40" aria-hidden="true"><rect x="7" y="5" width="26" height="31" rx="4" fill="none" stroke="currentColor" stroke-width="2.8"/><path d="M13 13h14M13 19h14M13 25h8" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/><circle cx="28" cy="29" r="6" fill="currentColor"/><path d="M28 26v3.2l2 1.4" stroke="var(--surface)" stroke-width="2" stroke-linecap="round" fill="none"/></svg><span>記録</span></button>
   <button data-page="settings"><svg viewBox="0 0 40 40" aria-hidden="true"><path d="M17 4h6l1 5 4 2 4-3 4 4-3 4 2 4 5 1v6l-5 1-2 4 3 4-4 4-4-3-4 2-1 5h-6l-1-5-4-2-4 3-4-4 3-4-2-4-5-1v-6l5-1 2-4-3-4 4-4 4 3 4-2z" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round" transform="translate(0 0) scale(.95) translate(1 1)"/><circle cx="20" cy="20" r="5.5" fill="none" stroke="currentColor" stroke-width="2.8"/></svg><span>設定</span></button>
 </nav>
 <div class="fabs">
