@@ -796,7 +796,10 @@ body.pg-variable .fab.add, body.pg-fixed .fab.add, #sec-variable .section-head b
 .pbtn svg { width: 24px; height: 24px; }
 .pbtn .pl { font-size: 12px; line-height: 1.25; color: var(--muted); font-weight: 700; }
 .pbtn .pv { font-size: clamp(13px, 3.9vw, 16px); font-weight: 800; color: var(--navy); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
-.pst { display: inline-block; margin-top: 2px; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 800; line-height: 1.6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; background: var(--line); color: var(--muted); }
+.ptop { display: flex; align-items: center; justify-content: flex-start; gap: 6px; width: 100%; min-width: 0; }
+.ptop svg { flex: 0 0 auto; width: 22px; height: 22px; }
+.ptop .pst { padding: 1px 6px; font-size: 11px; letter-spacing: -.02em; min-width: 0; }
+.pst { display: inline-block; margin-top: 0; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 800; line-height: 1.6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; background: var(--line); color: var(--muted); }
 .pst.bad { background: var(--short-bg); color: var(--short); }
 .pst.warn { background: var(--warn-bg); color: var(--warn); }
 .pst.ok { background: var(--ok-bg); color: var(--ok); }

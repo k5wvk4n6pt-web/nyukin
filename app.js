@@ -428,14 +428,14 @@
     const total = withBal.reduce((a, b) => a + b.balance, 0);
     const w0 = r.windows.filter(w => w.inClose).pop() || r.windows[0];
     const missing = r.banks.filter(b => b.dueActive && b.balance == null).length;
-    const st = r.shortfallTotal > 0 ? '<span class="pst bad">不足 ¥' + nf.format(r.shortfallTotal) + '</span>'
-      : missing ? '<span class="pst warn">残高未入力 ' + missing + '件</span>'
-      : r.dueCount ? '<span class="pst ok">✓ 不足なし</span>' : '<span class="pst">引落なし</span>';
+    const st = r.shortfallTotal > 0 ? '<span class="pst bad" title="不足 ' + nf.format(r.shortfallTotal) + '円">不足</span>'
+      : missing ? '<span class="pst warn" title="残高未入力 ' + missing + '口座">未入力</span>'
+      : r.dueCount ? '<span class="pst ok">✓ 足りる</span>' : '<span class="pst">引落なし</span>';
     const act = r.banks.filter(b => b.active).length;
     let nextUp = null;
     for (const b of r.banks) for (const w of r.windows) for (const l of b.lines[w.key]) if (l.amount !== 0 && serial2(l.date) >= t0 && (!nextUp || serial2(l.date) < serial2(nextUp))) nextUp = l.date;
     const nextInc = r.income.filter(i => i.next && serial2(i.next) >= t0).map(i => i.next).sort((a, b) => serial2(a) - serial2(b))[0];
-    const btn = (k, ico, lab, val, cls, extra) => '<button class="pbtn' + (meta.prepPanel === k ? ' on' : '') + (cls ? ' ' + cls : '') + '" data-panel-btn="' + k + '" aria-expanded="' + (meta.prepPanel === k) + '">' + ico + '<span class="pl">' + lab + '</span><span class="pv num">' + val + '</span>' + (extra || '') + '</button>';
+    const btn = (k, ico, lab, val, cls, extra) => '<button class="pbtn' + (meta.prepPanel === k ? ' on' : '') + (cls ? ' ' + cls : '') + '" data-panel-btn="' + k + '" aria-expanded="' + (meta.prepPanel === k) + '">' + (extra ? '<span class="ptop">' + ico + extra + '</span>' : ico) + '<span class="pl">' + lab + '</span><span class="pv num">' + val + '</span></button>';
     return '<nav class="prepbtns" id="prepbtns" aria-label="準備ページの項目">' +
       btn('total', ICON.coins, '合計残高', meta.hideTotal ? '¥ •••••' : withBal.length ? '¥' + nf.format(total) : '未入力') +
       btn('need', ICON.cal('--c-blue'), w0 ? w0.label + 'に必要' : '必要額', w0 ? '¥' + nf.format(r.totals[w0.key] || 0) : '—', '', st) +
