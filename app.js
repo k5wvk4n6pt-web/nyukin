@@ -296,7 +296,8 @@
       '<h3>帳簿</h3><p>家族のお金なども、人ごとに別の帳簿で管理できます。画面上の名前をタップすると切り替わり、「＋ 帳簿」で追加できます。バックアップは全部の帳簿をまとめて保存します。</p>' +
       '<h3>口座間の移動</h3><p>不足している口座の「ほかの口座から移す」は、その口座へ入れる移動です。それ以外の口座の「ほかの口座へ移す」は、その口座から出す移動です。ほかの帳簿の口座（自分 → 母など）や、非表示の口座とも移動できます。「不足をまとめて解消する」を押すと、余りのある口座から不足している口座へ移す案をまとめて作ります。準備ページの「ほかの口座から移す」「口座間で移す」で、実際に移したお金を記録すると、両方の残高が書きかわります。不足している口座から開くと、不足額が最初から入ります。手数料は「移動元から別に引く」か「移す金額から引く」を選べ、口座の組み合わせごとに前回の手数料を覚えます。間違えたときは「最近の移動」から取り消せます。</p>' +
       '<h3>引き落としの記録</h3><p>下のタブの「記録」に、引落日が来た分がそのときの金額で自動で残ります。月ごとの合計・先月との差・口座ごとの合計が見られ、実際の金額と違うときは押して直せます。CSVで書き出すとExcelで開けます。</p>' +
-      '<h3>何月分の引落か</h3><p>変動費は金額が毎月変わるので、各行で「○月分」を選んで入力します。金額はその月の引落にだけ使い、ほかの月は「未入力」として扱います。選んだ月の引落が済むと、自動で次の月に進んで金額が空になり、次の請求額を入れられる状態になります（済んだ分は「記録」に残ります。0円の項目はそのまま引き継ぎます）。</p>' +
+      '<h3>電卓</h3><p>変動費・1回のみの引落の金額欄の右にある電卓のボタンで、明細の合計などをその場で計算できます。入っている金額から計算が始まり、「この金額にする」でそのまま金額欄に入ります（小数は四捨五入します）。</p>' +
+        '<h3>何月分の引落か</h3><p>変動費は金額が毎月変わるので、各行で「○月分」を選んで入力します。金額はその月の引落にだけ使い、ほかの月は「未入力」として扱います。選んだ月の引落が済むと、自動で次の月に進んで金額が空になり、次の請求額を入れられる状態になります（済んだ分は「記録」に残ります。0円の項目はそのまま引き継ぎます）。</p>' +
       '<h3>1回のみの引落</h3><p>年払いの保険や税金など、決まった日に1回だけ引き落とされるものは、「設定 → 支出 → 1回のみ」で日付を指定して追加します。変動費ページの下に並び、日付が過ぎると「済み」にまとまります。</p>' +
       '<h3>非表示</h3><p>使わなくなった項目・口座・収入は非表示にできます。非表示にしたものは計算に含みません。</p>' +
       '<h3>データの保存</h3><p>入力した内容は変更するたびに自動で、この端末の中だけに保存され、外部には送信しません（アプリ版でiCloudがオンの場合は、あなたのiCloudにも自動でバックアップします）。入力を間違えたときは「設定 → 保存」の自動の履歴から、前の日の状態に戻せます。機種変更やブラウザのデータ削除に備えて、ときどき「ファイル」アプリ（iCloud Driveなど）にバックアップを保存してください。お知らせの間隔は変えられます。</p>' +
@@ -521,7 +522,8 @@
       const ended = kind === 'fixed' && it.end && !C.activeIn(it, T.y, T.m);
       return '<div class="row' + (ended ? ' ended' : '') + '" data-kind="' + kind + '" data-id="' + esc(it.id) + '">' +
         '<div class="row-main"><span class="row-name">' + esc(it.name) + '</span>' +
-        '<input class="amount' + (it.amount == null ? ' empty' : '') + '" inputmode="numeric" enterkeyhint="done" autocomplete="off" id="amt-' + esc(it.id) + '" data-f="amount" value="' + yenTxt(it.amount) + '" placeholder="未入力" aria-label="' + esc(it.name) + 'の金額"></div>' +
+        '<input class="amount' + (it.amount == null ? ' empty' : '') + '" inputmode="numeric" enterkeyhint="done" autocomplete="off" id="amt-' + esc(it.id) + '" data-f="amount" value="' + yenTxt(it.amount) + '" placeholder="未入力" aria-label="' + esc(it.name) + 'の金額">' +
+        (kind !== 'fixed' ? '<button type="button" class="calcbtn" data-act="calc" aria-label="' + esc(it.name) + 'を電卓で計算">' + CALC_ICON + '</button>' : '') + '</div>' +
         '<div class="row-sub">' + (kind === 'once' ? '<input class="text datein" type="date" id="date-' + esc(it.id) + '" data-f="date" value="' + esc(it.date) + '" aria-label="引落日">' : daySelect('day-' + esc(it.id), it.day)) + (kind === 'variable' ? monthSelect('mon-' + esc(it.id), it) : '') + acctSelect('acc-' + esc(it.id), it.account) +
         '<span class="stamp" data-stamp>' + stampText(it.updatedAt) + '</span></div>' +
         ((it.memo || it.end) ? '<div class="memo">' + (it.end ? (ended ? '終了しました（' : '終了予定 ') + it.end.replace('-', '/') + (ended ? '）' : '') + (it.memo ? '　' : '') : '') + esc(it.memo) + '</div>' : '') +
@@ -884,6 +886,8 @@
       const amt = row.querySelector('[data-f="amount"]');
       amt.addEventListener('input', () => onAmountInput(amt, () => it.amount, v => { it.amount = v; }, () => touch(it, row)));
       amt.addEventListener('blur', () => { const v = parseAmount(amt.value); if (!Number.isNaN(v)) amt.value = yenTxt(v); });
+      const cb = row.querySelector('[data-act="calc"]');
+      if (cb) cb.addEventListener('click', () => openCalc(amt, it.name));
       const ms = row.querySelector('[data-f="month"]');
       if (ms) ms.addEventListener('change', e => { if (!e.target.value) return; it.month = e.target.value; touch(it, row); save(); renderKeep(); toast('「' + it.name + '」：' + Number(it.month.split('-')[1]) + '月分の金額にしました'); });
       const ds = row.querySelector('select[id^="day-"]');
@@ -996,6 +1000,80 @@
     renderAll();
     open.forEach(id => { const r = main.querySelector('.row[data-id="' + id + '"] [data-editor]'); if (r) r.hidden = false; });
     window.scrollTo(0, y);
+  }
+
+  /* ---------- 電卓（変動費などの金額をその場で計算して入れる） ---------- */
+  const CALC_ICON = '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="5" y="3" width="14" height="18" rx="2.5"/><rect x="8" y="6" width="8" height="3.2" rx=".8"/><path d="M8.5 13h.01M12 13h.01M15.5 13h.01M8.5 16.5h.01M12 16.5h.01M15.5 16.5h.01" stroke-width="2.4"/></svg>';
+  const OPS = { '+': '＋', '-': '−', '*': '×', '/': '÷' };
+  /** 式（数字と + - * /）を計算する。掛け算・割り算を先に。作れない式は null */
+  function calcEval(toks) {
+    const t = toks.slice(); if (!t.length) return null;
+    if (OPS[t[t.length - 1]]) t.pop();
+    if (!t.length) return null;
+    const nums = [], ops = [];
+    for (let i = 0; i < t.length; i++) {
+      if (i % 2 === 0) { const n = Number(t[i]); if (!isFinite(n)) return null; nums.push(n); } else ops.push(t[i]);
+    }
+    const n2 = [nums[0]], o2 = [];
+    for (let i = 0; i < ops.length; i++) {
+      const b = nums[i + 1];
+      if (ops[i] === '*') n2[n2.length - 1] *= b;
+      else if (ops[i] === '/') { if (b === 0) return null; n2[n2.length - 1] /= b; }
+      else { o2.push(ops[i]); n2.push(b); }
+    }
+    let v = n2[0]; for (let i = 0; i < o2.length; i++) v = o2[i] === '+' ? v + n2[i + 1] : v - n2[i + 1];
+    return Math.round(v * 1e6) / 1e6;
+  }
+  function openCalc(inp, name) {
+    const m = $('#modal');
+    const cur = parseAmount(inp.value);
+    let toks = (cur != null && !Number.isNaN(cur)) ? [String(cur)] : [];
+    let fresh = toks.length > 0; // 最初の数字は打つと置きかわる
+    const keys = [['C', 'clr'], ['⌫', 'bs'], ['÷', '/'], ['×', '*'], ['7'], ['8'], ['9'], ['−', '-'], ['4'], ['5'], ['6'], ['＋', '+'], ['1'], ['2'], ['3'], ['=', 'eq'], ['0'], ['00'], ['.', 'dot']];
+    m.innerHTML = '<div class="sheet calc" role="dialog" aria-modal="true" aria-labelledby="mt"><h2 id="mt">電卓<span class="sub">　' + esc(name) + '</span></h2>' +
+      '<div class="calc-disp"><div class="calc-expr" id="cExpr"></div><div class="calc-res" id="cRes" aria-live="polite"></div></div>' +
+      '<div class="calc-keys">' + keys.map(k => '<button type="button" data-k="' + (k[1] || k[0]) + '" class="' + (OPS[k[1]] ? 'op' : k[1] === 'eq' ? 'eq' : k[1] === 'clr' || k[1] === 'bs' ? 'fn' : '') + '">' + k[0] + '</button>').join('') + '</div>' +
+      '<div class="btnrow"><button id="mCancel">やめる</button><button id="mOk" class="primary">この金額にする</button></div></div>';
+    m.hidden = false;
+    const close = () => { m.hidden = true; m.innerHTML = ''; };
+    const result = () => calcEval(toks);
+    const draw = () => {
+      $('#cExpr').textContent = toks.length ? toks.map(x => OPS[x] ? ' ' + OPS[x] + ' ' : (x.indexOf('.') >= 0 ? x : nf.format(Number(x)))).join('') : '0';
+      const v = result(); const r = $('#cRes');
+      if (v == null) { r.textContent = toks.length ? '計算できません' : '0円'; r.classList.toggle('bad', !!toks.length); }
+      else { const y = Math.round(v); r.textContent = '= ' + nf.format(y) + '円' + (y !== v ? '（四捨五入）' : ''); r.classList.toggle('bad', y < 0); }
+      const ok = $('#mOk'); const y = v == null ? null : Math.round(v);
+      ok.disabled = toks.length > 0 && (y == null || y < 0);
+    };
+    const press = k => {
+      const last = toks[toks.length - 1]; const isOp = x => !!OPS[x];
+      if (k === 'clr') { toks = []; fresh = false; }
+      else if (k === 'bs') { fresh = false; if (!toks.length) return; if (isOp(last)) toks.pop(); else { const s2 = last.slice(0, -1); if (s2 === '' || s2 === '-') toks.pop(); else toks[toks.length - 1] = s2; } }
+      else if (k === 'eq') { const v = result(); if (v != null) { toks = [String(v)]; fresh = true; } }
+      else if (OPS[k]) { fresh = false; if (!toks.length) return; if (isOp(last)) toks[toks.length - 1] = k; else toks.push(k); }
+      else { // 数字・00・小数点
+        if (fresh) { toks = []; fresh = false; }
+        const l2 = toks[toks.length - 1];
+        if (!toks.length || isOp(l2)) toks.push(k === 'dot' ? '0.' : k === '00' ? '0' : k);
+        else if (k === 'dot') { if (l2.indexOf('.') < 0) toks[toks.length - 1] = l2 + '.'; }
+        else if (l2 === '0') toks[toks.length - 1] = k === '00' ? '0' : k;
+        else if (l2.replace('.', '').length < 12) toks[toks.length - 1] = l2 + k;
+      }
+      draw();
+    };
+    m.querySelector('.calc-keys').addEventListener('click', e => { const b = e.target.closest('[data-k]'); if (b) press(b.dataset.k); });
+    $('#mCancel').onclick = close;
+    m.onclick = e => { if (e.target === m) close(); };
+    $('#mOk').onclick = () => {
+      const v = result(); const y = toks.length ? (v == null ? null : Math.round(v)) : null;
+      if (toks.length && (y == null || y < 0)) return;
+      close();
+      inp.value = y == null ? '' : String(y);
+      inp.dispatchEvent(new Event('input', { bubbles: true })); // 保存・計算は通常の入力と同じ流れ
+      inp.dispatchEvent(new Event('blur'));
+      toast('「' + name + '」に ' + (y == null ? '未入力' : nf.format(y) + '円') + ' を入れました');
+    };
+    draw();
   }
 
   /* ---------- 確認シート（ブラウザ標準の確認ダイアログは使わない） ---------- */
