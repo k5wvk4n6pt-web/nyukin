@@ -71,6 +71,14 @@
     return serial(a) === serial(o) ? o : Object.assign({ orig: o }, a);
   }
 
+  /** 「○月分」を指定した項目は、その月の引落にだけ金額を使う（ほかの月は未入力） */
+  function amountFor(it, o) {
+    if (!it.month) return it.amount;
+    const n = o.orig || o;
+    const ym = n.y + '-' + String(n.m).padStart(2, '0');
+    return ym === it.month ? it.amount : null;
+  }
+
   /** 終了月（"2026-12" など）を過ぎた月の引落は数えない */
   function activeIn(item, y, m) {
     if (!item.end) return true;
@@ -199,7 +207,7 @@
       let sum = 0;
       for (const it of (data[k] || [])) {
         if (it.hidden || hiddenAcc.has(it.account) || !(data.accounts || []).includes(it.account)) continue;
-        for (const o of occurrencesIn(it, from, to, false)) { if (it.amount == null) out.unentered++; else sum += Number(it.amount); }
+        for (const o of occurrencesIn(it, from, to, false)) { const amt = amountFor(it, o); if (amt == null) out.unentered++; else sum += Number(amt); }
       }
       out.byKind[label] = sum; out.expense += sum;
     }
@@ -232,9 +240,10 @@
         if (it.account !== name) continue;
         for (const w of W) {
           for (const o of occurrencesIn(it, w.from, w.to)) {
-            if (it.amount == null) { b.unentered++; if (w.inClose) b.unenteredDue++; }
-            else b.sums[w.key] += Number(it.amount);
-            b.lines[w.key].push({ date: o, orig: o.orig || null, name: it.name, amount: it.amount, kind: it.kind });
+            const amt = amountFor(it, o);
+            if (amt == null) { b.unentered++; if (w.inClose) b.unenteredDue++; }
+            else b.sums[w.key] += Number(amt);
+            b.lines[w.key].push({ date: o, orig: o.orig || null, name: it.name + (it.month && amt == null ? '（' + Number(((o.orig || o).m)) + '月分は未入力）' : ''), amount: amt, kind: it.kind });
           }
         }
         if (it.amount !== 0) {
@@ -289,7 +298,7 @@
     };
   }
 
-  const api = { VERSION: '2026.11.07', cycle, onceDate, deadlineLabel, closeSettings, nextClosing, closingOf, holidays, holidayName, isBusinessDay, shiftDate, shiftMode, actual, addDays, WD, lastDay, serial, addMonth, weekday, fromDate, occurrence, activeIn, windows, occurrencesIn, nextDate, compute };
+  const api = { VERSION: '2026.11.07b', amountFor, cycle, onceDate, deadlineLabel, closeSettings, nextClosing, closingOf, holidays, holidayName, isBusinessDay, shiftDate, shiftMode, actual, addDays, WD, lastDay, serial, addMonth, weekday, fromDate, occurrence, activeIn, windows, occurrencesIn, nextDate, compute };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.KCalc = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   const C = window.KCalc;
-  const APP_VERSION = '2026.11.07';
+  const APP_VERSION = '2026.11.07b';
   /** ファイルの一部だけが新しい（アップロード漏れ・古いキャッシュ）と計算が合わなくなるので知らせる */
   /** 古いままのファイル名（なければ空）。native.js は中身が変わったときだけ気にする */
   function staleFiles() {
@@ -135,7 +135,7 @@
   function normalize(d) {
     if (!d || d.app !== 'kakeibo' || !Array.isArray(d.accounts) || !Array.isArray(d.variable) || !Array.isArray(d.fixed)) throw new Error('入金準備帳のデータではありません');
     const item = (x, fixed) => {
-      const o = { id: x.id || uid(fixed ? 'f' : 'v'), name: String(x.name || '').trim() || '（名称なし）', day: x.day, account: x.account || '', amount: x.amount == null ? null : Number(x.amount), memo: x.memo || '', updatedAt: x.updatedAt || null, hidden: !!x.hidden, shift: validShift(x.shift, 'after') };
+      const o = { id: x.id || uid(fixed ? 'f' : 'v'), name: String(x.name || '').trim() || '（名称なし）', day: x.day, account: x.account || '', amount: x.amount == null ? null : Number(x.amount), memo: x.memo || '', updatedAt: x.updatedAt || null, hidden: !!x.hidden, shift: validShift(x.shift, 'after'), month: /^\d{4}-\d{2}$/.test(String(x.month || '')) ? String(x.month) : null };
       if (fixed === 'once') {
         o.date = /^\d{4}-\d{2}-\d{2}$/.test(String(x.date || '')) ? String(x.date) : null; delete o.day;
         if (!o.date) throw new Error('日付が読み取れない項目があります：' + o.name);
@@ -289,6 +289,7 @@
       '<h3>移動と追加</h3><p>下のタブで今のページをもう一度押すか、右下の「↑」で一番上に戻れます。変動費・固定費のページでは、右下の「＋」や見出しの「＋ 追加」から、ページを移らずに追加できます。「追加して続ける」で何件も続けて入れられます。</p>' +
       '<h3>帳簿</h3><p>家族のお金なども、人ごとに別の帳簿で管理できます。画面上の名前をタップすると切り替わり、「＋ 帳簿」で追加できます。バックアップは全部の帳簿をまとめて保存します。</p>' +
       '<h3>口座間の移動</h3><p>不足している口座の「ほかの口座から移す」は、その口座へ入れる移動です。それ以外の口座の「ほかの口座へ移す」は、その口座から出す移動です。ほかの帳簿の口座（自分 → 母など）や、非表示の口座とも移動できます。「不足をまとめて解消する」を押すと、余りのある口座から不足している口座へ移す案をまとめて作ります。準備ページの「ほかの口座から移す」「口座間で移す」で、実際に移したお金を記録すると、両方の残高が書きかわります。不足している口座から開くと、不足額が最初から入ります。手数料は「移動元から別に引く」か「移す金額から引く」を選べ、口座の組み合わせごとに前回の手数料を覚えます。間違えたときは「最近の移動」から取り消せます。</p>' +
+      '<h3>何月分の引落か</h3><p>変動費の各行の「毎月同じ／○月分」で、入れた金額が何月の引落の分かを選べます。「○月分」にすると、その月の引落にだけ金額を使い、ほかの月は「未入力」として扱います。カードの請求のように毎月金額が変わるものに便利です。</p>' +
       '<h3>1回のみの引落</h3><p>年払いの保険や税金など、決まった日に1回だけ引き落とされるものは、「設定 → 支出 → 1回のみ」で日付を指定して追加します。変動費ページの下に並び、日付が過ぎると「済み」にまとまります。</p>' +
       '<h3>非表示</h3><p>使わなくなった項目・口座・収入は非表示にできます。非表示にしたものは計算に含みません。</p>' +
       '<h3>データの保存</h3><p>入力した内容は変更するたびに自動で、この端末の中だけに保存され、外部には送信しません（アプリ版でiCloudがオンの場合は、あなたのiCloudにも自動でバックアップします）。入力を間違えたときは「設定 → 保存」の自動の履歴から、前の日の状態に戻せます。機種変更やブラウザのデータ削除に備えて、ときどき「ファイル」アプリ（iCloud Driveなど）にバックアップを保存してください。お知らせの間隔は変えられます。</p>' +
@@ -471,6 +472,20 @@
       '<p class="note">集計は確認日以降の引落だけです。土日・祝日・年末年始（12/31〜1/3）に当たる日は、項目ごとの設定（初期値は支出が後ろ、収入が前）でずらしています。締め日が休日の場合は、設定に合わせて締め日もずらします。</p></section>';
   }
 
+  /** 何月分の引落か（変動費）。毎月同じ／先月〜3か月先 */
+  function monthSelect(id, it) {
+    const T = today(); let h = '<select id="' + id + '" data-f="month" aria-label="何月分の引落か"><option value=""' + (it.month ? '' : ' selected') + '>毎月同じ</option>';
+    const ms = [];
+    for (let i = -1; i <= 3; i++) { const ym = C.addMonth(T.y, T.m, i); ms.push(ym.y + '-' + String(ym.m).padStart(2, '0')); }
+    if (it.month && !ms.includes(it.month)) ms.unshift(it.month);
+    for (const v of ms) {
+      const [y, m] = v.split('-').map(Number);
+      let when = '';
+      if (it.day != null) { const a = C.actual(it, y, m, false); when = '（' + a.m + '/' + a.d + '）'; }
+      h += '<option value="' + v + '"' + (it.month === v ? ' selected' : '') + '>' + (y !== T.y ? y + '年' : '') + m + '月分' + when + '</option>';
+    }
+    return h + '</select>';
+  }
   function daySelect(id, d) {
     let h = '<select id="' + id + '" aria-label="引落日">';
     for (let i = 1; i <= 31; i++) h += '<option value="' + i + '"' + (d === i ? ' selected' : '') + '>' + i + '日</option>';
@@ -500,7 +515,7 @@
       return '<div class="row' + (ended ? ' ended' : '') + '" data-kind="' + kind + '" data-id="' + esc(it.id) + '">' +
         '<div class="row-main"><span class="row-name">' + esc(it.name) + '</span>' +
         '<input class="amount' + (it.amount == null ? ' empty' : '') + '" inputmode="numeric" enterkeyhint="done" autocomplete="off" id="amt-' + esc(it.id) + '" data-f="amount" value="' + yenTxt(it.amount) + '" placeholder="未入力" aria-label="' + esc(it.name) + 'の金額"></div>' +
-        '<div class="row-sub">' + (kind === 'once' ? '<input class="text datein" type="date" id="date-' + esc(it.id) + '" data-f="date" value="' + esc(it.date) + '" aria-label="引落日">' : daySelect('day-' + esc(it.id), it.day)) + acctSelect('acc-' + esc(it.id), it.account) +
+        '<div class="row-sub">' + (kind === 'once' ? '<input class="text datein" type="date" id="date-' + esc(it.id) + '" data-f="date" value="' + esc(it.date) + '" aria-label="引落日">' : daySelect('day-' + esc(it.id), it.day)) + (kind === 'variable' ? monthSelect('mon-' + esc(it.id), it) : '') + acctSelect('acc-' + esc(it.id), it.account) +
         '<span class="stamp" data-stamp>' + stampText(it.updatedAt) + '</span></div>' +
         ((it.memo || it.end) ? '<div class="memo">' + (it.end ? (ended ? '終了しました（' : '終了予定 ') + it.end.replace('-', '/') + (ended ? '）' : '') + (it.memo ? '　' : '') : '') + esc(it.memo) + '</div>' : '') +
         '<div class="row-acts"><button class="ghost small" data-act="edit">詳細（名前・休日・削除）</button><button class="ghost small" data-act="hide">非表示にする</button></div>' +
@@ -862,6 +877,8 @@
       const amt = row.querySelector('[data-f="amount"]');
       amt.addEventListener('input', () => onAmountInput(amt, () => it.amount, v => { it.amount = v; }, () => touch(it, row)));
       amt.addEventListener('blur', () => { const v = parseAmount(amt.value); if (!Number.isNaN(v)) amt.value = yenTxt(v); });
+      const ms = row.querySelector('[data-f="month"]');
+      if (ms) ms.addEventListener('change', e => { it.month = e.target.value || null; touch(it, row); save(); renderKeep(); toast('「' + it.name + '」：' + (it.month ? Number(it.month.split('-')[1]) + '月分の金額にしました' : '毎月同じ金額にしました')); });
       const ds = row.querySelector('select[id^="day-"]');
       if (ds) ds.addEventListener('change', e => { it.day = e.target.value === 'end' ? 'end' : Number(e.target.value); touch(it, row); save(); renderKeep(); });
       const di = row.querySelector('[data-f="date"]');
@@ -1210,6 +1227,7 @@
       '<label>金額（わからなければ空欄）<input class="amount wide" id="as-amt" inputmode="numeric" enterkeyhint="done" autocomplete="off" placeholder="未入力"></label>' +
       '<div class="two"><label>引落日' + (kind === 'once' ? '<input class="text" type="date" id="as-date" value="' + (meta.qdate || isoOf(today())) + '">' : daySelect('as-day', day)) + '</label>' +
       '<label>引落口座<select id="as-acc">' + (acc ? '' : '<option value="" selected>選ぶ</option>') + accs.map(a => '<option' + (a === acc ? ' selected' : '') + '>' + esc(a) + '</option>').join('') + '</select></label></div>' +
+      (kind === 'variable' ? '<label>何月分の引落か' + monthSelect('as-month', { month: (() => { const T = today(); const n = C.addMonth(T.y, T.m, T.d > 10 ? 1 : 0); return n.y + '-' + String(n.m).padStart(2, '0'); })(), day: null }) + '</label>' : '') +
       '<label>引落日が休日のとき' + shiftSelect('as-shift', validShift(meta.qshift, 'after')) + '</label>' +
       (kind === 'fixed' ? '<label>終了月（ローンなど。なければ空欄）<input class="text" type="month" id="as-end"></label>' : '') +
       '<p class="note" id="as-last" style="margin:0"></p>' +
@@ -1228,6 +1246,7 @@
       if (!a) { toast('引落口座を選んでください'); return false; }
       const shift = validShift($('#as-shift').value, 'after');
       const it = { id: uid(kind === 'fixed' ? 'f' : kind === 'once' ? 'o' : 'v'), name, account: a, amount: v, memo: '', updatedAt: new Date().toISOString(), hidden: false, shift };
+      const msel = $('#as-month'); if (kind === 'variable' && msel) it.month = msel.value || null;
       if (kind === 'once') {
         const dv = $('#as-date').value; if (!/^\d{4}-\d{2}-\d{2}$/.test(dv)) { toast('引落日を選んでください'); return false; }
         it.date = dv; meta.qdate = dv;
@@ -1420,9 +1439,38 @@
   });
 
   /* ---------- 起動 ---------- */
+  /* ---------- 金額欄の「×」（タップで消す） ---------- */
+  // 金額欄が作られるたびに自動で「×」を付ける（描き直し・確認画面の中も）
+  function addClear(inp) {
+    if (inp._clr || !inp.isConnected) return;
+    inp._clr = true;
+    const wrap = document.createElement('span'); wrap.className = 'amtwrap';
+    // 幅の指定は入れ物に引き継ぐ
+    if (inp.classList.contains('wide')) wrap.classList.add('wide');
+    inp.parentNode.insertBefore(wrap, inp); wrap.appendChild(inp);
+    const btn = document.createElement('button');
+    btn.type = 'button'; btn.className = 'clr'; btn.setAttribute('aria-label', '金額を消す'); btn.textContent = '×';
+    wrap.appendChild(btn);
+    const sync = () => wrap.classList.toggle('has', inp.value !== '');
+    inp.addEventListener('input', sync); sync();
+    btn.addEventListener('pointerdown', e => e.preventDefault()); // 入力中のキーボードを閉じない
+    btn.addEventListener('click', () => {
+      inp.value = '';
+      inp.dispatchEvent(new Event('input', { bubbles: true })); // 保存・計算は通常の入力と同じ流れ
+      inp.dispatchEvent(new Event('blur'));
+      sync(); inp.focus();
+    });
+  }
+  function scanAmounts(root) { (root || document).querySelectorAll('input.amount').forEach(addClear); }
+  try {
+    new MutationObserver(ms => { for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1) { if (n.matches && n.matches('input.amount')) addClear(n); else if (n.querySelectorAll) scanAmounts(n); } })
+      .observe(document.body, { childList: true, subtree: true });
+  } catch (e) { /* 古い端末では「×」なし */ }
+
   function boot() {
   load();
   applyTheme();
+  setTimeout(() => scanAmounts(), 0);
   renderAll();
   if (state) $('#saved').textContent = '保存済み';
   // 日付が変わったら確認日と集計を更新（入力中は邪魔しない）

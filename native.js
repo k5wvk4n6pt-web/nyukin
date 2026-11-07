@@ -32,7 +32,7 @@
   }
 
   const api = {
-    VERSION: '2026.11.07',
+    VERSION: '2026.11.07b',
     API: 1, // 画面側から使う機能の版。機能を変えたときだけ上げる
     isNative,
     ready: hydrate(),

@@ -550,6 +550,20 @@ body { padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 170px); }
 .notice .btnrow > * { flex: 1 1 0; min-width: 0; font-size: 15px; padding-left: 10px; padding-right: 10px; }
 .notice .btnrow > .primary { flex: 1.6 1 0; }
 .notice .btnrow button, .notice .btnrow .fileBtn { min-height: 52px; font-weight: 800; }
+.row-sub select[data-f="month"] { background-color: var(--c-peach-bg); color: var(--c-peach); }
+/* 金額欄の「×」 */
+.amtwrap { position: relative; display: inline-flex; flex: 0 1 auto; min-width: 0; max-width: 100%; }
+.amtwrap.wide { display: flex; width: 100%; }
+.amtwrap > input.amount { flex: 1 1 auto; min-width: 0; width: 100%; }
+.amtwrap.has > input.amount { padding-right: 38px; }
+.amtwrap .clr { display: none; position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 28px; height: 28px; min-height: 0; padding: 0; border-radius: 50%; border: 0; background: color-mix(in srgb, var(--muted) 28%, transparent); color: var(--surface); font-size: 16px; font-weight: 900; line-height: 28px; }
+.amtwrap.has .clr { display: block; }
+.amtwrap .clr:active { background: var(--muted); }
+.row-main .amtwrap { width: 140px; flex: 0 0 auto; }
+.bank-foot .amtwrap { flex: 1 1 80px; max-width: 160px; min-width: 80px; }
+.bank-foot .amtwrap > input.amount { max-width: none; }
+.income-row .amtwrap { width: 140px; flex: 0 0 auto; }
+.irow-top .amtwrap { width: 140px; flex: 0 0 auto; }
 /* 銀行別の入金準備：省スペース */
 /* 引落のある口座も同じ形の枠：青（足りている）・赤（不足）・黄（残高未入力） */
 .bank:not(.idlebank) { border: 2px solid color-mix(in srgb, var(--c-blue) 35%, transparent); background: linear-gradient(90deg, var(--c-blue-bg), var(--surface) 70%); box-shadow: inset 5px 0 0 var(--c-blue), 0 3px 0 color-mix(in srgb, var(--c-blue) 15%, transparent); }
