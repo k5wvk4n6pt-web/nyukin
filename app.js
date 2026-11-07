@@ -189,9 +189,10 @@
       return;
     }
     recordPast();
+    rollVariable();
     const r = C.compute(state, T);
     const page = PAGES.includes(meta.page) ? meta.page : 'prep';
-    main.innerHTML = page === 'variable' ? listHTML('variable', '変動費', '毎月の金額をここで入力します。') + listHTML('once', '1回のみの引落', '日付を決めて1回だけ引き落とされるもの（年払い・臨時の支払いなど）。過ぎたものは「済み」にまとまります。')
+    main.innerHTML = page === 'variable' ? listHTML('variable', '変動費', '何月分の引落かを選んで、金額を入力します。引落が済むと次の月に進みます。') + listHTML('once', '1回のみの引落', '日付を決めて1回だけ引き落とされるもの（年払い・臨時の支払いなど）。過ぎたものは「済み」にまとまります。')
       : page === 'fixed' ? listHTML('fixed', '固定費', '金額・引落日・口座が変わった時だけ変更します。')
       : page === 'settings' ? settingsHTML()
       : page === 'history' ? historyHTML()
@@ -295,7 +296,7 @@
       '<h3>帳簿</h3><p>家族のお金なども、人ごとに別の帳簿で管理できます。画面上の名前をタップすると切り替わり、「＋ 帳簿」で追加できます。バックアップは全部の帳簿をまとめて保存します。</p>' +
       '<h3>口座間の移動</h3><p>不足している口座の「ほかの口座から移す」は、その口座へ入れる移動です。それ以外の口座の「ほかの口座へ移す」は、その口座から出す移動です。ほかの帳簿の口座（自分 → 母など）や、非表示の口座とも移動できます。「不足をまとめて解消する」を押すと、余りのある口座から不足している口座へ移す案をまとめて作ります。準備ページの「ほかの口座から移す」「口座間で移す」で、実際に移したお金を記録すると、両方の残高が書きかわります。不足している口座から開くと、不足額が最初から入ります。手数料は「移動元から別に引く」か「移す金額から引く」を選べ、口座の組み合わせごとに前回の手数料を覚えます。間違えたときは「最近の移動」から取り消せます。</p>' +
       '<h3>引き落としの記録</h3><p>下のタブの「記録」に、引落日が来た分がそのときの金額で自動で残ります。月ごとの合計・先月との差・口座ごとの合計が見られ、実際の金額と違うときは押して直せます。CSVで書き出すとExcelで開けます。</p>' +
-      '<h3>何月分の引落か</h3><p>変動費の各行の「毎月同じ／○月分」で、入れた金額が何月の引落の分かを選べます。「○月分」にすると、その月の引落にだけ金額を使い、ほかの月は「未入力」として扱います。カードの請求のように毎月金額が変わるものに便利です。</p>' +
+      '<h3>何月分の引落か</h3><p>変動費は金額が毎月変わるので、各行で「○月分」を選んで入力します。金額はその月の引落にだけ使い、ほかの月は「未入力」として扱います。選んだ月の引落が済むと、自動で次の月に進んで金額が空になり、次の請求額を入れられる状態になります（済んだ分は「記録」に残ります。0円の項目はそのまま引き継ぎます）。</p>' +
       '<h3>1回のみの引落</h3><p>年払いの保険や税金など、決まった日に1回だけ引き落とされるものは、「設定 → 支出 → 1回のみ」で日付を指定して追加します。変動費ページの下に並び、日付が過ぎると「済み」にまとまります。</p>' +
       '<h3>非表示</h3><p>使わなくなった項目・口座・収入は非表示にできます。非表示にしたものは計算に含みません。</p>' +
       '<h3>データの保存</h3><p>入力した内容は変更するたびに自動で、この端末の中だけに保存され、外部には送信しません（アプリ版でiCloudがオンの場合は、あなたのiCloudにも自動でバックアップします）。入力を間違えたときは「設定 → 保存」の自動の履歴から、前の日の状態に戻せます。機種変更やブラウザのデータ削除に備えて、ときどき「ファイル」アプリ（iCloud Driveなど）にバックアップを保存してください。お知らせの間隔は変えられます。</p>' +
@@ -480,7 +481,7 @@
 
   /** 何月分の引落か（変動費）。毎月同じ／先月〜3か月先 */
   function monthSelect(id, it) {
-    const T = today(); let h = '<select id="' + id + '" data-f="month" aria-label="何月分の引落か"><option value=""' + (it.month ? '' : ' selected') + '>毎月同じ</option>';
+    const T = today(); let h = '<select id="' + id + '" data-f="month" aria-label="何月分の引落か">';
     const ms = [];
     for (let i = -1; i <= 3; i++) { const ym = C.addMonth(T.y, T.m, i); ms.push(ym.y + '-' + String(ym.m).padStart(2, '0')); }
     if (it.month && !ms.includes(it.month)) ms.unshift(it.month);
@@ -884,7 +885,7 @@
       amt.addEventListener('input', () => onAmountInput(amt, () => it.amount, v => { it.amount = v; }, () => touch(it, row)));
       amt.addEventListener('blur', () => { const v = parseAmount(amt.value); if (!Number.isNaN(v)) amt.value = yenTxt(v); });
       const ms = row.querySelector('[data-f="month"]');
-      if (ms) ms.addEventListener('change', e => { it.month = e.target.value || null; touch(it, row); save(); renderKeep(); toast('「' + it.name + '」：' + (it.month ? Number(it.month.split('-')[1]) + '月分の金額にしました' : '毎月同じ金額にしました')); });
+      if (ms) ms.addEventListener('change', e => { if (!e.target.value) return; it.month = e.target.value; touch(it, row); save(); renderKeep(); toast('「' + it.name + '」：' + Number(it.month.split('-')[1]) + '月分の金額にしました'); });
       const ds = row.querySelector('select[id^="day-"]');
       if (ds) ds.addEventListener('change', e => { it.day = e.target.value === 'end' ? 'end' : Number(e.target.value); touch(it, row); save(); renderKeep(); });
       const di = row.querySelector('[data-f="date"]');
@@ -1250,6 +1251,22 @@
     if (added) state.history.sort((a, b) => a.date < b.date ? 1 : a.date > b.date ? -1 : 0);
     save();
   }
+  /**
+   * 変動費は「○月分」で管理する。
+   * ・月が決まっていない項目は、次の引落の月にする（金額はそのまま）
+   * ・選んだ月の引落が済んだら、次の月に進めて金額を空にする（済んだ分は記録に残っている）。0円はそのまま引き継ぐ
+   */
+  function rollVariable() {
+    if (!state) return;
+    const T = today(); let changed = 0;
+    for (const it of state.variable || []) {
+      const nd = C.nextDate(it, T); if (!nd) continue;
+      const n = nd.orig || nd; const ym = n.y + '-' + String(n.m).padStart(2, '0');
+      if (!it.month) { it.month = ym; changed++; }
+      else if (it.month < ym) { it.month = ym; if (it.amount !== 0) { it.amount = null; it.updatedAt = null; } changed++; }
+    }
+    if (changed) save();
+  }
   let histMonth = null; // 表示中の月（YYYY-MM）
   function ymOf(iso) { return iso.slice(0, 7); }
   function ymLabel(ym) { const [y, m] = ym.split('-').map(Number); return y + '年' + m + '月'; }
@@ -1358,7 +1375,7 @@
       if (!a) { toast('引落口座を選んでください'); return false; }
       const shift = validShift($('#as-shift').value, 'after');
       const it = { id: uid(kind === 'fixed' ? 'f' : kind === 'once' ? 'o' : 'v'), name, account: a, amount: v, memo: '', updatedAt: new Date().toISOString(), hidden: false, shift };
-      const msel = $('#as-month'); if (kind === 'variable' && msel) it.month = msel.value || null;
+      const msel = $('#as-month'); if (kind === 'variable' && msel && msel.value) it.month = msel.value;
       if (kind === 'once') {
         const dv = $('#as-date').value; if (!/^\d{4}-\d{2}-\d{2}$/.test(dv)) { toast('引落日を選んでください'); return false; }
         it.date = dv; meta.qdate = dv;
