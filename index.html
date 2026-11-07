@@ -421,6 +421,16 @@ body.pg-fixed .fab.add { background: var(--c-teal); border-color: var(--c-teal);
 .book.b3.on { background: var(--c-peach); border-color: var(--c-peach); color: var(--surface); }
 .book.b4.on { background: var(--c-lav); border-color: var(--c-lav); color: var(--surface); }
 .book.b0:not(.on) { color: var(--c-blue); } .book.b1:not(.on) { color: var(--c-pink); } .book.b2:not(.on) { color: var(--c-teal); } .book.b3:not(.on) { color: var(--c-peach); } .book.b4:not(.on) { color: var(--c-lav); }
+.bookpill { position: fixed; z-index: 42; top: calc(env(safe-area-inset-top, 0px) + 8px); left: 50%; transform: translateX(-50%); display: inline-flex; align-items: center; gap: 7px; max-width: calc(100% - 32px); min-height: 36px; padding: 6px 14px 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: color-mix(in srgb, var(--surface) 94%, transparent); color: var(--ink); font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-shadow: 0 3px 12px color-mix(in srgb, var(--ink) 16%, transparent); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+.bookpill .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); flex: 0 0 auto; }
+.bookpill.b0 .dot { background: var(--c-blue); } .bookpill.b1 .dot { background: var(--c-pink); } .bookpill.b2 .dot { background: var(--c-teal); } .bookpill.b3 .dot { background: var(--c-peach); } .bookpill.b4 .dot { background: var(--c-lav); }
+.bookpill .lbl { color: var(--muted); font-size: 12px; font-weight: 600; margin-right: -2px; }
+.bookpill .chev { color: var(--muted); font-size: 11px; }
+body.typing .bookpill { display: none; }
+.modal:not([hidden]) ~ .bookpill, .bookpill:has(~ .modal:not([hidden])) { display: none; }
+.bookpick { display: flex; flex-wrap: wrap; gap: 8px; }
+.bookpick .book { min-height: 44px; }
+.bookpick .book .sub { color: inherit; opacity: .85; font-weight: 500; font-size: 12px; }
 /* 設定のタブ */
 .seg { background: var(--c-lav-bg); }
 .seg button { color: var(--c-lav); }
@@ -671,6 +681,7 @@ button:disabled { opacity: .45; }
   <button id="fabTop" class="fab top" aria-label="一番上へ" hidden>↑</button>
   <button id="fabAdd" class="fab add" hidden>＋ 変動費</button>
 </div>
+<button id="bookPill" class="bookpill" hidden></button>
 <div id="modal" class="modal" hidden></div>
 <div id="toast" class="toast" hidden role="status"></div>
 <script src="native.js"></script>

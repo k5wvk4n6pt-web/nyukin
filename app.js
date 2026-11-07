@@ -107,11 +107,12 @@
     if (books && !curBook()) books.current = books.list[0].id;
     state = books ? (readBook(books.current) || emptyState()) : null;
   }
-  function switchBook(id) {
+  function switchBook(id, keepPage) {
     if (!books || id === books.current) return;
     books.current = id; saveBooks();
     state = readBook(id) || emptyState();
-    meta.page = 'prep'; meta.reorder = null; saveMeta();
+    if (!keepPage) meta.page = 'prep';
+    meta.reorder = null; saveMeta();
     renderAll(); window.scrollTo(0, 0); toast('「' + curBook().name + '」の帳簿を開きました');
   }
   function save() {
@@ -173,6 +174,7 @@
 
   /* ---------- 画面 ---------- */
   function renderAll() {
+    requestAnimationFrame(syncPill);
     const T = today(); todayKey = keyOf(T);
     $('#nav').hidden = !state;
     const bk = $('#books');
@@ -1076,6 +1078,32 @@
     draw();
   }
 
+  /* ---------- 今開いている帳簿（帳簿の切り替えが画面の外に出たら上に小さく出す） ---------- */
+  function syncPill() {
+    const p = $('#bookPill'); if (!p) return;
+    const bk = $('#books');
+    const show = !!(state && books && books.list.length > 1 && !bk.hidden && bk.getBoundingClientRect().bottom < 4);
+    if (show) {
+      const i = books.list.findIndex(b => b.id === books.current); const b = books.list[i];
+      const name = b ? b.name : '';
+      if (p._k !== books.current + name) { p._k = books.current + name; p.className = 'bookpill b' + ((i < 0 ? 0 : i) % 5); p.innerHTML = '<span class="dot" aria-hidden="true"></span><span class="lbl">帳簿</span>' + esc(name) + '<span class="chev" aria-hidden="true">▾</span>'; p.setAttribute('aria-label', '開いている帳簿：' + name + '（タップで切り替え）'); }
+    }
+    p.hidden = !show;
+  }
+  function openBookSwitch() {
+    const m = $('#modal');
+    m.innerHTML = '<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="mt"><h2 id="mt">帳簿を切り替える</h2>' +
+      '<div class="bookpick">' + books.list.map((b, i) => '<button class="book b' + (i % 5) + (b.id === books.current ? ' on' : '') + '" data-pick="' + esc(b.id) + '">' + esc(b.name) + (b.id === books.current ? '<span class="sub">（開いています）</span>' : '') + '</button>').join('') + '</div>' +
+      '<div class="btnrow"><button id="mCancel">閉じる</button></div></div>';
+    m.hidden = false;
+    const close = () => { m.hidden = true; m.innerHTML = ''; };
+    $('#mCancel').onclick = close; m.onclick = e => { if (e.target === m) close(); };
+    m.querySelectorAll('[data-pick]').forEach(x => x.addEventListener('click', () => {
+      const id = x.dataset.pick; close();
+      if (id !== books.current) switchBook(id, true); // 今のページのまま帳簿だけ切り替える
+    }));
+  }
+
   /* ---------- 確認シート（ブラウザ標準の確認ダイアログは使わない） ---------- */
   function confirmSheet(title, bodyHTML, okLabel, onOk, danger) {
     const m = $('#modal');
@@ -1637,7 +1665,8 @@
     fabAdd.hidden = !state || !(pg === 'variable' || pg === 'fixed');
     if (!fabAdd.hidden) fabAdd.textContent = pg === 'fixed' ? '＋ 固定費' : '＋ 変動費';
   };
-  window.addEventListener('scroll', () => { cancelAnimationFrame(syncFab._r); syncFab._r = requestAnimationFrame(syncFab); }, { passive: true });
+  window.addEventListener('scroll', () => { cancelAnimationFrame(syncFab._r); syncFab._r = requestAnimationFrame(() => { syncFab(); syncPill(); }); }, { passive: true });
+  $('#bookPill').addEventListener('click', openBookSwitch);
   fabTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }));
   fabAdd.addEventListener('click', () => openAddSheet(meta.page === 'fixed' ? 'fixed' : 'variable'));
   $('#books').addEventListener('click', e => {
