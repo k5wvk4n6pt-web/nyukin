@@ -9,13 +9,13 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="入金ナビ">
+<meta name="apple-mobile-web-app-title" content="引き落とし管理">
 <meta name="theme-color" content="#FFE3EA" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#17191E" media="(prefers-color-scheme: dark)">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" href="icon-192.png">
-<title>入金ナビ</title>
+<title>引き落とし管理</title>
 <style>
 /* Layout: 1カラムの通帳風。上から 要約 → 銀行別 → 変動費 → 固定費 → バックアップ */
 :root {
@@ -535,8 +535,8 @@ button.primary.bulkbtn, .cta { min-height: 58px; font-size: 18px; font-weight: 9
 .roundbtn { width: 56px; height: 60px; border-radius: 20px; background: color-mix(in srgb, var(--surface) 92%, transparent); }
 .roundbtn svg { width: 26px; height: 26px; }
 .roundbtn span { font-size: 12px; font-weight: 800; }
-.hero-ill { width: 64px; margin-right: -2px; }
-.brand h1 { font-size: clamp(26px, 8.6vw, 40px); font-weight: 900; padding-right: 22px; }
+.hero-ill { width: 46px; margin-right: 0; }
+.brand h1 { font-size: clamp(19px, 5.6vw, 32px); font-weight: 900; padding-right: 22px; letter-spacing: 0; }
 .brand h1::after { height: 7px; left: 2%; right: 24px; }
 .brand h1 .spark { position: absolute; width: 26px; height: 20px; right: 26px; top: -14px; }
 .brand h1 .sprout { position: absolute; width: 26px; height: 26px; right: -4px; bottom: 6px; }
@@ -648,24 +648,175 @@ button:disabled { opacity: .45; }
 .bank .cardacts button.small { min-height: 32px; padding: 4px 12px; font-size: 13px; }
 .bank.idlebank { padding: 8px 12px; gap: 4px; }
 .idle-head { margin-top: 2px; }
-@media (max-width: 360px) { .hero-ill { width: 60px; } .roundbtn { width: 50px; height: 50px; } }
+@media (max-width: 360px) { .hero-ill { display: none; } .roundbtn { width: 50px; height: 50px; } }
+/* ===== 信頼感のある青のデザイン（口座管理アプリ風）===== */
+:root {
+  --bg: #F3F7FC; --surface: #FFFFFF; --ink: #1B2A44; --muted: #6A778C; --line: #E3EAF3; --field: #FAFCFF;
+  --accent: #1F5FC8; --accent-soft: #E7F0FD; --on-accent: #FFFFFF;
+  --c-blue: #1F5FC8; --c-blue-bg: #EAF2FE;
+  --navy: #14336B; --brown: #14336B; --pink: #F2B705; --gold: #F5BC1C;
+  --hero-top: #E3EEFB; --hero-mid: #EFF5FD;
+  --nav-on: #DCEAFD; --nav-on-ink: #1F5FC8;
+  --card-shadow: 0 1px 2px rgba(20, 51, 107, .06), 0 6px 18px rgba(20, 51, 107, .07);
+  --font-display: -apple-system, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", system-ui, sans-serif;
+  --font-body: -apple-system, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0F1726; --surface: #172235; --ink: #E6ECF5; --muted: #9AA8BD; --line: #263449; --field: #121C2C;
+  --accent: #6FA3F5; --accent-soft: #1C2D4A; --on-accent: #0B1630;
+  --c-blue: #6FA3F5; --c-blue-bg: #1A2A45;
+  --navy: #DCE7F7; --brown: #DCE7F7; --pink: #E9B12A; --gold: #E9B12A;
+  --hero-top: #13213A; --hero-mid: #111B2D; --nav-on: #1F3459; --nav-on-ink: #8CB6F7;
+  --card-shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 6px 18px rgba(0, 0, 0, .25); } }
+:root[data-theme="dark"] {
+  --bg: #0F1726; --surface: #172235; --ink: #E6ECF5; --muted: #9AA8BD; --line: #263449; --field: #121C2C;
+  --accent: #6FA3F5; --accent-soft: #1C2D4A; --on-accent: #0B1630;
+  --c-blue: #6FA3F5; --c-blue-bg: #1A2A45;
+  --navy: #DCE7F7; --brown: #DCE7F7; --pink: #E9B12A; --gold: #E9B12A;
+  --hero-top: #13213A; --hero-mid: #111B2D; --nav-on: #1F3459; --nav-on-ink: #8CB6F7;
+  --card-shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 6px 18px rgba(0, 0, 0, .25); }
+body { font-family: var(--font-body); background: linear-gradient(180deg, var(--hero-top) 0, var(--hero-mid) 260px, var(--bg) 520px) no-repeat, var(--bg); }
+h1, h2 { font-family: var(--font-display); }
+h2 { font-weight: 800; letter-spacing: .01em; }
+.num { font-feature-settings: "tnum"; }
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+/* ヘッダー */
+.hero { padding-top: 14px; padding-bottom: 0; display: grid; gap: 12px; }
+.hero-top { grid-template-columns: 48px minmax(0, 1fr) 48px; gap: 6px; }
+.roundbtn { width: 48px; height: 48px; padding: 0; border-radius: 50%; background: var(--surface); color: var(--navy); box-shadow: var(--card-shadow); }
+.roundbtn svg { width: 22px; height: 22px; }
+.brand { gap: 8px; }
+.brand-ico { width: 40px; height: 37px; flex: 0 0 auto; }
+.brand h1 { font-size: clamp(20px, 6.2vw, 28px); font-weight: 800; color: var(--navy); letter-spacing: .04em; padding: 0 0 6px; }
+.brand h1::after { left: 0; right: 0; bottom: -2px; height: 4px; background: linear-gradient(90deg, transparent, var(--gold) 12%, var(--gold) 88%, transparent); transform: rotate(-1deg); border-radius: 999px; }
+.todaycard { justify-self: center; display: inline-flex; align-items: center; gap: 8px; padding: 8px 20px; border-radius: 999px; background: color-mix(in srgb, var(--surface) 85%, transparent); border: 1px solid var(--line); box-shadow: var(--card-shadow); color: var(--navy); }
+.todaycard .ico { width: 22px; height: 22px; color: var(--navy); }
+.todaycard .tc-lab { font-weight: 700; font-size: 15px; }
+.todaycard b { font-size: 16px; font-weight: 800; letter-spacing: .02em; }
+.hero > .saved { justify-self: center; font-size: 11px; color: var(--muted); margin-top: -6px; min-height: 1em; }
+/* カード共通 */
+.summary, .cycle, .card, .backup, .guide, .welcome, .incomecard, .totalcard, .upcoming { border: 1px solid var(--line); border-radius: 18px; background: var(--surface); box-shadow: var(--card-shadow); }
+.list { border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--card-shadow); }
+.bank { border-radius: 16px; box-shadow: var(--card-shadow); }
+.notice { border-radius: 18px; box-shadow: none; color: var(--ink); }
+input.amount, input.text { border-radius: 12px; }
+.acchead { color: var(--navy); font-size: 17px; font-weight: 800; }
+.acchead svg { width: 28px; height: 28px; }
+.acchead { flex-wrap: wrap; row-gap: 0; }
+.acchead .sub { flex-basis: 100%; padding-left: 36px; font-size: 12px; font-weight: 500; color: var(--muted); margin-top: -2px; }
+.upcoming .acchead .sub { flex-basis: auto; }
+h1, h2, .bank-name, .lab, .k, .tl { color: var(--navy); }
+/* 合計残高 */
+.totalcard { position: relative; overflow: hidden; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 4px 14px; padding: 18px 18px; background: linear-gradient(135deg, var(--surface) 30%, color-mix(in srgb, var(--c-blue-bg) 90%, var(--surface))); }
+.totalcard::after { content: ""; position: absolute; right: -30px; bottom: -50px; width: 220px; height: 120px; border-radius: 50%; background: color-mix(in srgb, var(--c-blue) 7%, transparent); pointer-events: none; }
+.totalcard .coins { width: 52px; height: 52px; grid-row: span 2; }
+.totalcard .tl-body { display: grid; gap: 2px; min-width: 0; position: relative; z-index: 1; }
+.totalcard .tl-lab { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 14px; font-weight: 800; color: var(--navy); }
+.totalcard .tl-val { font-size: clamp(28px, 9vw, 38px); font-weight: 800; color: var(--navy); letter-spacing: .01em; line-height: 1.15; white-space: nowrap; }
+.totalcard .tl-val.masked { letter-spacing: .12em; }
+.totalcard .tl-note { font-size: 12px; color: var(--muted); }
+.totalcard .eye { position: relative; z-index: 1; display: inline-flex; align-items: center; gap: 4px; min-height: 32px; padding: 4px 12px; font-size: 12px; font-weight: 700; color: var(--navy); background: var(--surface); border: 1px solid var(--line); border-radius: 999px; box-shadow: 0 1px 3px rgba(20, 51, 107, .08); white-space: nowrap; }
+.totalcard .eye svg { width: 18px; height: 18px; }
+/* 口座ごと */
+.summary { padding: 16px; gap: 16px; }
+.acctable { border: 1px solid var(--line); border-radius: 14px; }
+.acrow { grid-template-columns: 32px minmax(0, 1fr) auto auto 14px; padding: 12px 12px; }
+.acrow svg { width: 30px; height: 26px; }
+.acrow .nm { font-size: 16px; color: var(--ink); }
+.acrow .am b { font-size: 16px; color: var(--navy); }
+.acrow .am.after b { color: #C2410C; }
+.acrow .am.short b { color: var(--short); }
+/* 期限のタイル（今後の予定） */
+.periods { gap: 10px; }
+.period { border-radius: 16px; border: 1px solid color-mix(in srgb, var(--c-blue) 25%, transparent); background: var(--c-blue-bg); box-shadow: none; padding: 12px 14px; }
+.period .lab { color: var(--navy); font-size: 14px; }
+.period .val { color: var(--c-blue); font-weight: 800; }
+.period.after { border-color: color-mix(in srgb, var(--short) 25%, transparent); background: var(--short-bg); box-shadow: none; }
+.period.after .val { color: var(--short); font-weight: 800; }
+.period.after .lab, .period.after .tag { color: var(--navy); }
+.period .rng { color: var(--muted); }
+/* これからの入出金 */
+.upcoming { padding: 16px; display: grid; gap: 4px; }
+.upcoming .acchead { justify-content: space-between; margin-bottom: 4px; }
+.upcoming .acchead > span { display: flex; align-items: center; gap: 8px; }
+.upcoming .more { min-height: 32px; padding: 4px 6px; border: 0; background: transparent; color: var(--accent); font-size: 13px; font-weight: 700; }
+.uprow { display: grid; grid-template-columns: 26px auto minmax(0, 1fr) auto auto; align-items: center; gap: 8px; padding: 10px 2px; border-top: 1px solid var(--line); font-size: 15px; }
+.uprow .ar { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; color: #fff; }
+.uprow .ar svg { width: 14px; height: 14px; }
+.uprow.in .ar { background: var(--ok); } .uprow.out .ar { background: var(--short); }
+.uprow .kd { font-weight: 700; color: var(--ink); font-size: 14px; }
+.uprow .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); }
+.uprow .dt { color: var(--muted); font-size: 13px; }
+.uprow .am { font-weight: 800; text-align: right; min-width: 6.5em; }
+.uprow.in .am { color: var(--ok); } .uprow.out .am { color: var(--short); }
+.uprow .am .flag { font-weight: 600; }
+/* 収入・収支 */
+.incomecard { padding: 16px; }
+.cycle { padding: 16px; }
+#banksSec h2, .section-head h2 { color: var(--navy); }
+/* 下のタブ */
+.nav { border: 1px solid var(--line); border-radius: 24px; background: color-mix(in srgb, var(--surface) 97%, transparent); box-shadow: 0 6px 24px rgba(20, 51, 107, .12); }
+.nav button { color: var(--muted); font-weight: 700; font-size: 13px; }
+.nav button svg { width: 28px; height: 28px; }
+.nav button.on, .nav button[data-page].on, .nav button[data-page="prep"].on { background: var(--nav-on); color: var(--accent); }
+.nav button.on svg { color: var(--accent); }
+.fab.add { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.fab { color: var(--accent); }
+.book.on, .book.b0.on { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.book { font-weight: 700; }
+button.primary.bulkbtn, .cta { background: var(--accent); color: var(--on-accent); box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 30%, transparent); }
+/* 銀行別のカード：白地＋左の色帯（状態の色は残す） */
+.bank:not(.idlebank), .bank.idlebank { background: var(--surface); border: 1px solid var(--line); border-left: 0; box-shadow: inset 4px 0 0 var(--c-blue), var(--card-shadow); padding-left: 16px; }
+.bank:not(.idlebank).nobal, .bank.idlebank.nobal { box-shadow: inset 4px 0 0 var(--warn), var(--card-shadow); }
+.bank:not(.idlebank).is-short { box-shadow: inset 4px 0 0 var(--short), var(--card-shadow); border-color: color-mix(in srgb, var(--short) 30%, var(--line)); }
+.bank.idlebank { box-shadow: inset 4px 0 0 var(--ok), var(--card-shadow); }
+.bank-name { color: var(--navy); }
+.cyc-title b { color: var(--navy); }
+.cyc-grid > div:nth-child(1), .cyc-grid > div:nth-child(2) { background: var(--c-blue-bg); }
+.cyc-grid > div:nth-child(1) .k, .cyc-grid > div:nth-child(2) .k { color: var(--navy); font-weight: 700; }
+.cyc-head button { color: var(--accent); }
+/* 色をすべて青系にそろえる */
+.bank:not(.idlebank).nobal, .bank.idlebank.nobal { background: var(--surface); border-color: var(--line); }
+.bank:not(.idlebank).is-short, .bank.idlebank { background: var(--surface); }
+.bank.idlebank { border-color: var(--line); }
+.nav button[data-page="prep"].on, .nav button[data-page="variable"].on, .nav button[data-page="fixed"].on, .nav button[data-page="history"].on, .nav button[data-page="settings"].on { background: var(--nav-on); color: var(--accent); }
+#sec-variable h2, #sec-fixed h2, #sec-once h2, #banksSec h2 { color: var(--navy); }
+#sec-variable .list, #sec-fixed .list, #sec-once .list { box-shadow: inset 0 3px 0 var(--accent), var(--card-shadow); }
+body.pg-variable .fab.add, body.pg-fixed .fab.add, #sec-variable .section-head button.primary, #sec-fixed .section-head button.primary, #sec-once .section-head button.primary, button.primary.bulkbtn { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.row-sub select[data-f="month"] { background-color: var(--accent-soft); color: var(--accent); }
+.seg button[data-qkind].on { color: var(--accent); }
+.seg { background: var(--accent-soft); }
+.seg button { color: var(--accent); }
+.theme-seg button.on { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+.allline { background: var(--accent-soft); color: var(--navy); }
+.section-head h2, main h2, #sec-history h2 { color: var(--navy); }
+/* 準備ページ上のボタン */
+.prepbtns { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.pbtn { display: grid; justify-items: start; align-content: start; gap: 2px; min-height: 76px; padding: 10px 10px 9px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); box-shadow: var(--card-shadow); text-align: left; color: var(--navy); font-weight: 700; }
+.pbtn svg { width: 24px; height: 24px; }
+.pbtn .pl { font-size: 12px; line-height: 1.25; color: var(--muted); font-weight: 700; }
+.pbtn .pv { font-size: clamp(13px, 3.9vw, 16px); font-weight: 800; color: var(--navy); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.pbtn.warn .pv { color: var(--short); }
+.pbtn.on { background: var(--accent-soft); border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.pbtn.on .pl { color: var(--accent); }
+.ppanel[hidden] { display: none !important; }
+.ppanel { animation: ppIn .18s ease-out; }
+@keyframes ppIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .ppanel { animation: none; } }
+@media (max-width: 360px) { .brand-ico { display: none; } .roundbtn { width: 44px; height: 44px; } }
 </style>
 </head>
 <body>
 <div class="wrap" id="app">
   <header class="hero">
     <div class="hero-top">
-      <button id="helpBtn" class="roundbtn" aria-label="使い方"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" fill="none"/></svg><span>使い方</span></button>
-      <div class="brand"><img class="hero-ill" src="hero.png" alt="" width="240" height="192"><h1>入金ナビ<svg class="spark" viewBox="0 0 40 30" aria-hidden="true"><g stroke="#F6C32B" stroke-width="4" stroke-linecap="round"><path d="M6 22 L3 10"/><path d="M17 18 L19 4"/><path d="M28 20 L36 10"/></g></svg><svg class="sprout" viewBox="0 0 40 40" aria-hidden="true"><path d="M20 38 C 20 28, 20 22, 21 16" stroke="#6BB54A" stroke-width="3.5" fill="none" stroke-linecap="round"/><path d="M21 18 C 12 18, 6 12, 5 5 C 13 5, 20 9, 21 18 Z" fill="#8ACB5C"/><path d="M21 16 C 27 9, 33 6, 39 7 C 37 14, 30 19, 21 16 Z" fill="#6BB54A"/></svg></h1></div>
-      <button id="setBtn" class="roundbtn" aria-label="設定を開く"><svg viewBox="0 0 40 40" aria-hidden="true"><path d="M17 4h6l1 5 4 2 4-3 4 4-3 4 2 4 5 1v6l-5 1-2 4 3 4-4 4-4-3-4 2-1 5h-6l-1-5-4-2-4 3-4-4 3-4-2-4-5-1v-6l5-1 2-4-3-4 4-4 4 3 4-2z" fill="currentColor" transform="scale(.95) translate(1 1)"/><circle cx="20" cy="20" r="5.5" fill="var(--surface)"/></svg><span>設定</span></button>
+      <button id="helpBtn" class="roundbtn" aria-label="使い方"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" fill="none"/></svg></button>
+      <div class="brand"><svg class="brand-ico" viewBox="0 0 48 44" aria-hidden="true"><defs><linearGradient id="bkg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3F86E8"/><stop offset="1" stop-color="#1D56B8"/></linearGradient></defs><path d="M24 2 L45 13 V16 H3 V13 Z" fill="url(#bkg)"/><circle cx="24" cy="10" r="2.6" fill="#fff" opacity=".9"/><rect x="5" y="18" width="38" height="3" rx="1" fill="url(#bkg)"/><g fill="url(#bkg)"><rect x="8" y="22" width="5" height="13" rx="1"/><rect x="17" y="22" width="5" height="13" rx="1"/><rect x="26" y="22" width="5" height="13" rx="1"/><rect x="35" y="22" width="5" height="13" rx="1"/></g><rect x="3" y="36" width="42" height="6" rx="2" fill="url(#bkg)"/></svg><h1>引き落とし管理</h1></div>
+      <button id="setBtn" class="roundbtn" aria-label="設定を開く"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.1-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1.55-1.1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V9a1.7 1.7 0 0 0 1.55 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1z"/></svg></button>
     </div>
-    <p class="tagline">いつ・どの口座に・いくら必要か ひと目でわかる</p>
-  </header>
-  <div class="todaycard">
-    <svg class="ico" viewBox="0 0 40 40" aria-hidden="true"><rect x="5" y="8" width="30" height="27" rx="6" fill="var(--c-pink-bg)" stroke="var(--c-pink)" stroke-width="2.4"/><path d="M5 16h30" stroke="var(--c-pink)" stroke-width="2.4"/><path d="M13 5v6M27 5v6" stroke="var(--brown)" stroke-width="2.8" stroke-linecap="round"/><g fill="var(--c-pink)"><circle cx="13" cy="23" r="2"/><circle cx="20" cy="23" r="2"/><circle cx="27" cy="23" r="2"/><circle cx="13" cy="29" r="2"/><circle cx="20" cy="29" r="2"/></g></svg>
-    <div class="tc-text"><span class="sub">今日の確認日</span><b id="today">—</b></div>
+    <div class="todaycard"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/><g fill="currentColor" stroke="none"><circle cx="8" cy="14" r="1.1"/><circle cx="12" cy="14" r="1.1"/><circle cx="16" cy="14" r="1.1"/><circle cx="8" cy="17.3" r="1.1"/><circle cx="12" cy="17.3" r="1.1"/></g></svg><span class="tc-lab">今日</span><b id="today">—</b></div>
     <span class="saved" id="saved" aria-live="polite"></span>
-  </div>
+  </header>
   <div id="books" class="books" role="navigation" aria-label="帳簿の切り替え" hidden></div>
   <noscript>このアプリはJavaScriptを使います。</noscript>
   <div id="main"></div>

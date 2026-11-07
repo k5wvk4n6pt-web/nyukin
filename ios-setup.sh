@@ -1,5 +1,5 @@
 #!/bin/bash
-# 入金ナビ：iPhoneアプリのプロジェクトを組み立てる（Codemagic の Mac 上で実行）
+# 引き落とし管理：iPhoneアプリのプロジェクトを組み立てる（Codemagic の Mac 上で実行）
 # リポジトリはフォルダなし（iPhoneからアップロードできるように）なので、ここで並べ直す。
 set -euo pipefail
 
@@ -42,7 +42,7 @@ echo "== 5. Info.plist"
 PL="$APP/Info.plist"
 PB=/usr/libexec/PlistBuddy
 setp () { $PB -c "Set :$1 $3" "$PL" 2>/dev/null || $PB -c "Add :$1 $2 $3" "$PL"; }
-setp CFBundleDisplayName string "入金ナビ"
+setp CFBundleDisplayName string "引き落とし管理"
 setp CFBundleDevelopmentRegion string "ja"
 setp ITSAppUsesNonExemptEncryption bool false
 $PB -c "Delete :UISupportedInterfaceOrientations" "$PL" 2>/dev/null || true

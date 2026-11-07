@@ -2,7 +2,7 @@ import Foundation
 import UIKit
 import Capacitor
 
-/// 入金ナビのアプリ版だけの機能
+/// 引き落とし管理のアプリ版だけの機能
 /// - 端末の設定領域（UserDefaults）への二重保存
 /// - iCloud キー値ストアへの自動バックアップ（全帳簿で数十KB程度。上限1MB）
 /// - バックアップファイルの共有シート

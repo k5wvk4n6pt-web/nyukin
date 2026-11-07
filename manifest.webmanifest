@@ -1,6 +1,6 @@
 {
-  "name": "入金ナビ",
-  "short_name": "入金ナビ",
+  "name": "引き落とし管理",
+  "short_name": "引き落とし管理",
   "lang": "ja",
   "start_url": "./",
   "scope": "./",
