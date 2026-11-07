@@ -120,6 +120,7 @@
       ensureBooks();
       localStorage.setItem(dataKey(books.current), JSON.stringify(state));
       clearTimeout(save._h); save._h = setTimeout(snapshot, 1500);
+      queueNotify();
       lastSavedAt = new Date();
       $('#saved').textContent = '自動保存 ' + timeText(lastSavedAt);
     } catch (e) {
@@ -301,7 +302,8 @@
       '<h3>帳簿</h3><p>家族のお金なども、人ごとに別の帳簿で管理できます。画面上の名前をタップすると切り替わり、「＋ 帳簿」で追加できます。バックアップは全部の帳簿をまとめて保存します。</p>' +
       '<h3>口座間の移動</h3><p>不足している口座の「ほかの口座から移す」は、その口座へ入れる移動です。それ以外の口座の「ほかの口座へ移す」は、その口座から出す移動です。ほかの帳簿の口座（自分 → 母など）や、非表示の口座とも移動できます。「不足をまとめて解消する」を押すと、余りのある口座から不足している口座へ移す案をまとめて作ります。準備ページの「ほかの口座から移す」「口座間で移す」で、実際に移したお金を記録すると、両方の残高が書きかわります。不足している口座から開くと、不足額が最初から入ります。手数料は「移動元から別に引く」か「移す金額から引く」を選べ、口座の組み合わせごとに前回の手数料を覚えます。間違えたときは「最近の移動」から取り消せます。</p>' +
       '<h3>引き落としの記録</h3><p>下のタブの「記録」に、引落日が来た分がそのときの金額で自動で残ります。月ごとの合計・先月との差・口座ごとの合計が見られ、実際の金額と違うときは押して直せます。CSVで書き出すとExcelで開けます。</p>' +
-      '<h3>電卓</h3><p>変動費・1回のみの引落の金額欄の右にある電卓のボタンで、明細の合計などをその場で計算できます。入っている金額から計算が始まり、「この金額にする」でそのまま金額欄に入ります（小数は四捨五入します）。</p>' +
+      '<h3>引落前のお知らせ</h3><p>iPhoneアプリ版では、「設定 → 通知」で、引落日の当日・前日・2日前などに通知でお知らせできます（時刻も選べます）。通知の予約はiPhoneの中だけで行い、外部には送りません。ロック画面に金額を出したくないときは「金額も表示する」をオフにしてください。Webアプリ版では通知は届きません。</p>' +
+        '<h3>電卓</h3><p>変動費・1回のみの引落の金額欄の右にある電卓のボタンで、明細の合計などをその場で計算できます。入っている金額から計算が始まり、「この金額にする」でそのまま金額欄に入ります（小数は四捨五入します）。</p>' +
         '<h3>何月分の引落か</h3><p>変動費は金額が毎月変わるので、各行で「○月分」を選んで入力します。金額はその月の引落にだけ使い、ほかの月は「未入力」として扱います。選んだ月の引落が済むと、自動で次の月に進んで金額が空になり、次の請求額を入れられる状態になります（済んだ分は「記録」に残ります。0円の項目はそのまま引き継ぎます）。</p>' +
       '<h3>1回のみの引落</h3><p>年払いの保険や税金など、決まった日に1回だけ引き落とされるものは、「設定 → 支出 → 1回のみ」で日付を指定して追加します。変動費ページの下に並び、日付が過ぎると「済み」にまとまります。</p>' +
       '<h3>非表示</h3><p>使わなくなった項目・口座・収入は非表示にできます。非表示にしたものは計算に含みません。</p>' +
@@ -663,7 +665,7 @@
     if (row) { row.scrollIntoView({ block: 'nearest' }); const btn = row.querySelector('[data-mv="' + dir + '"]'); if (btn && !btn.disabled) btn.focus({ preventScroll: true }); }
   }
 
-  const STABS = [['out', '支出'], ['in', '収入'], ['acc', '口座'], ['books', '帳簿'], ['backup', '保存'], ['view', '表示']];
+  const STABS = [['out', '支出'], ['in', '収入'], ['acc', '口座'], ['books', '帳簿'], ['backup', '保存'], ['notify', '通知'], ['view', '表示']];
   function settingsHTML() {
     const st = STABS.some(t => t[0] === meta.stab) ? meta.stab : 'out';
     const seg = '<div class="seg" role="tablist">' + STABS.map(t => '<button role="tab" aria-selected="' + (t[0] === st) + '" class="' + (t[0] === st ? 'on' : '') + '" data-stab="' + t[0] + '">' + t[1] + '</button>').join('') + '</div>';
@@ -673,6 +675,7 @@
     else if (st === 'acc') body = accHTML();
     else if (st === 'books') body = booksHTML();
     else if (st === 'view') body = viewHTML();
+    else if (st === 'notify') body = notifyHTML();
     else body = backupHTML();
     const cs = C.closeSettings(state);
     const dayOpts = sel => { let o = ''; for (let i = 1; i <= 28; i++) o += '<option value="' + i + '"' + (i === sel ? ' selected' : '') + '>毎月' + i + '日</option>'; return o + '<option value="end"' + (sel === 'end' ? ' selected' : '') + '>毎月 月末</option>'; };
@@ -769,7 +772,96 @@
       '<div class="modepick" role="radiogroup" aria-label="表示モード">' + THEMES.map(x => '<button role="radio" aria-checked="' + (x[0] === t) + '" class="mode m-' + x[0] + (x[0] === t ? ' on' : '') + '" data-mode="' + x[0] + '"><span class="sw"></span><b>' + { light: 'ライトモード', dark: 'ダークモード', auto: '自動' }[x[0]] + '</b><small>' + desc[x[0]] + '</small></button>').join('') + '</div></div>';
   }
 
+  /* ---------- 引落前のお知らせ（iPhoneアプリ版の通知。端末の中だけで予約し、外部には送らない） ---------- */
+  const NDAYS = [[0, '当日'], [1, '前日'], [2, '2日前'], [3, '3日前'], [7, '1週間前']];
+  function notifyCfg() {
+    const n = meta.notify || {};
+    return { on: !!n.on, days: Array.isArray(n.days) && n.days.length ? n.days : [1], hour: Number.isInteger(n.hour) ? n.hour : 8, amount: !!n.amount };
+  }
+  function notifyHTML() {
+    const c = notifyCfg(); const can = !!(N.isNative && N.notifySchedule);
+    const hours = []; for (let h = 5; h <= 22; h++) hours.push(h);
+    return '<div class="card form notifycard"><div class="shead">引落前のお知らせ<span class="sub">全部の帳簿の引き落としが対象です</span></div>' +
+      (can ? '' : '<p class="note">この機能は<b>iPhoneアプリ版（App Store）</b>で使えます。Webアプリ版では、外部のサーバーを使わずに通知を出すことができないため、通知は届きません。ここで選んだ内容は、アプリ版を使い始めたときの参考にしてください。</p>') +
+      '<label class="switchrow"><span><b>お知らせする</b><small>引落日が近づくと、iPhoneの通知でお知らせします</small></span><input type="checkbox" id="nfOn" role="switch"' + (c.on ? ' checked' : '') + (can ? '' : ' disabled') + '></label>' +
+      '<div class="nfopts"' + (c.on && can ? '' : ' aria-disabled="true"') + '>' +
+      '<div class="flabel">いつお知らせするか（複数選べます）</div><div class="chips" role="group" aria-label="お知らせする日">' +
+      NDAYS.map(d => '<button class="chip' + (c.days.includes(d[0]) ? ' on' : '') + '" data-nday="' + d[0] + '" aria-pressed="' + c.days.includes(d[0]) + '">' + d[1] + '</button>').join('') + '</div>' +
+      '<label class="flabel" for="nfHour">時刻</label><select id="nfHour">' + hours.map(h => '<option value="' + h + '"' + (h === c.hour ? ' selected' : '') + '>' + h + ':00</option>').join('') + '</select>' +
+      '<label class="switchrow"><span><b>金額も表示する</b><small>オフにすると、ロック画面に金額を出しません</small></span><input type="checkbox" id="nfAmt" role="switch"' + (c.amount ? ' checked' : '') + '></label>' +
+      '<div class="nfprev"><div class="flabel">お知らせの例</div><div class="nfbubble"><b>明日は引き落とし日です</b><span>' + esc(notifySample(c)) + '</span></div></div>' +
+      (can ? '<p class="sub" id="nfStatus">' + esc(notifyStatus) + '</p>' : '') +
+      '</div></div>';
+  }
+  function notifySample(c) {
+    const list = notifyList(Object.assign({}, c, { days: [1] }), 1);
+    if (list.length) return list[0].body;
+    return 'T-NEOメイン：カード代ほか1件' + (c.amount ? '　合計 52,000円' : '');
+  }
+  let notifyStatus = '';
+  /** 予約する通知の一覧を作る（最大 limit 件・今から40日先まで） */
+  function notifyList(c, limit) {
+    const T = today(), to = C.addDays(T, 40);
+    const now = new Date(), multi = books.list.length > 1;
+    const groups = new Map();
+    for (const bk of books.list) {
+      const data = bk.id === books.current ? state : readBook(bk.id); if (!data) continue;
+      const hiddenAcc = new Set(data.hiddenAccounts || []); const accs = data.accounts || [];
+      for (const kind of ['variable', 'fixed', 'once']) for (const it of data[kind] || []) {
+        if (it.hidden || hiddenAcc.has(it.account) || !accs.includes(it.account)) continue;
+        for (const o of C.occurrencesIn(it, T, to)) {
+          const amt = C.amountFor(it, o); if (amt === 0) continue;
+          const key = bk.id + '|' + it.account + '|' + C.serial(o);
+          if (!groups.has(key)) groups.set(key, { book: bk.name, account: it.account, date: o, names: [], total: 0, missing: 0 });
+          const g = groups.get(key); g.names.push(it.name); if (amt == null) g.missing++; else g.total += amt;
+        }
+      }
+    }
+    const out = [];
+    for (const g of groups.values()) for (const d of c.days) {
+      const day = C.addDays(g.date, -d);
+      const at = new Date(day.y, day.m - 1, day.d, c.hour, 0, 0);
+      if (at <= now) continue;
+      const title = d === 0 ? '今日は引き落とし日です' : d === 1 ? '明日は引き落とし日です' : d + '日後（' + g.date.m + '/' + g.date.d + '）に引き落としがあります';
+      const names = g.names.length > 2 ? g.names.slice(0, 2).join('・') + 'ほか' + (g.names.length - 2) + '件' : g.names.join('・');
+      const body = (multi ? '【' + g.book + '】' : '') + g.account + '：' + names + (c.amount ? (g.missing && !g.total ? '　金額未入力' : '　合計 ' + nf.format(g.total) + '円' + (g.missing ? '（金額未入力あり）' : '')) : '');
+      out.push({ at: at.getTime(), title, body });
+    }
+    return out.sort((a, b) => a.at - b.at).slice(0, limit);
+  }
+  function queueNotify() { if (!(N.isNative && N.notifySchedule)) return; clearTimeout(queueNotify._h); queueNotify._h = setTimeout(applyNotify, 1500); }
+  async function applyNotify(ask) {
+    if (!(N.isNative && N.notifySchedule) || !books) return;
+    const c = notifyCfg();
+    try {
+      if (!c.on) { await N.notifySchedule([]); notifyStatus = ''; return; }
+      const perm = await N.notifyPermission(!!ask);
+      if (perm !== 'granted') {
+        notifyStatus = '通知が許可されていません。iPhoneの「設定」→「通知」→「引き落とし管理」で許可してください。';
+      } else {
+        const list = notifyList(c, 60);
+        await N.notifySchedule(list);
+        notifyStatus = list.length ? '次のお知らせ：' + new Date(list[0].at).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', weekday: 'short', hour: 'numeric', minute: '2-digit' }) + '（予約 ' + list.length + '件）' : '40日先までにお知らせする引き落としはありません';
+      }
+    } catch (e) { notifyStatus = 'お知らせを予約できませんでした'; }
+    const el = $('#nfStatus'); if (el) el.textContent = notifyStatus;
+  }
+  function bindNotify() {
+    const on = $('#nfOn'); if (!on) return;
+    const set = (patch, ask) => { meta.notify = Object.assign(notifyCfg(), patch); saveMeta(); renderKeep(); applyNotify(ask); };
+    on.addEventListener('change', () => { set({ on: on.checked }, on.checked); toast(on.checked ? '引落前にお知らせします' : 'お知らせを止めました'); });
+    main.querySelectorAll('[data-nday]').forEach(b => b.addEventListener('click', () => {
+      const d = Number(b.dataset.nday); let days = notifyCfg().days.slice();
+      days = days.includes(d) ? days.filter(x => x !== d) : days.concat(d).sort((a, c) => a - c);
+      if (!days.length) { toast('少なくとも1つ選んでください'); return; }
+      set({ days });
+    }));
+    $('#nfHour').addEventListener('change', e => set({ hour: Number(e.target.value) }));
+    $('#nfAmt').addEventListener('change', e => set({ amount: e.target.checked }));
+  }
+
   function bindSettings() {
+    bindNotify();
     main.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => {
       meta.theme = b.dataset.mode; saveMeta(); applyTheme(); renderKeep();
       toast({ light: 'ライトモードにしました', dark: 'ダークモードにしました', auto: 'iPhoneの設定に合わせます' }[meta.theme]);
@@ -1793,6 +1885,7 @@
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
   if (!N.isNative && 'serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(() => {});
   if (N.isNative) {
+    applyNotify();
     // iCloudの状態を確認（ウェルカム画面で復元を出す・自動バックアップ）
     N.cloudAvailable().then(async ok => {
       cloud.available = ok;

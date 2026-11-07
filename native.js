@@ -11,6 +11,8 @@
   if (isNative) {
     try { plugin = typeof Cap.registerPlugin === 'function' ? Cap.registerPlugin('NyukinNative') : (Cap.Plugins && Cap.Plugins.NyukinNative); } catch (e) { plugin = null; }
   }
+  let LN = null; // 端末の通知（@capacitor/local-notifications）
+  if (isNative) { try { LN = typeof Cap.registerPlugin === 'function' ? Cap.registerPlugin('LocalNotifications') : (Cap.Plugins && Cap.Plugins.LocalNotifications); } catch (e) { LN = null; } }
   const MIRROR = k => typeof k === 'string' && k.indexOf('kakeibo.') === 0 && k !== 'kakeibo.history.v1';
   const CLOUD_KEY = 'nyukin.books.v1';
 
@@ -46,6 +48,19 @@
     async cloudLoad() {
       if (!plugin) return null;
       try { const r = await plugin.cloudGet({ key: CLOUD_KEY }); return r && r.value ? JSON.parse(r.value) : null; } catch (e) { return null; }
+    },
+    /** 通知の許可。ask=true なら許可を求める。'granted' / 'denied' / 'prompt' / 'unavailable' */
+    async notifyPermission(ask) {
+      if (!LN) return 'unavailable';
+      try { let p = await LN.checkPermissions(); if (p.display !== 'granted' && ask) p = await LN.requestPermissions(); return p.display; } catch (e) { return 'unavailable'; }
+    },
+    /** 予約中のお知らせを入れ替える。list: [{ at: ミリ秒, title, body }] */
+    async notifySchedule(list) {
+      if (!LN) return false;
+      const pend = await LN.getPending();
+      if (pend && pend.notifications && pend.notifications.length) await LN.cancel({ notifications: pend.notifications.map(n => ({ id: n.id })) });
+      if (list.length) await LN.schedule({ notifications: list.map((n, i) => ({ id: i + 1, title: n.title, body: n.body, schedule: { at: new Date(n.at), allowWhileIdle: true } })) });
+      return true;
     },
     /** ファイルを共有シートで保存。true=保存した / false=やめた */
     async shareFile(filename, text) {
