@@ -1,11 +1,13 @@
 import Foundation
 import UIKit
 import Capacitor
+import StoreKit
 
 /// 引き落とし管理のアプリ版だけの機能
 /// - 端末の設定領域（UserDefaults）への二重保存
 /// - iCloud キー値ストアへの自動バックアップ（全帳簿で数十KB程度。上限1MB）
 /// - バックアップファイルの共有シート
+/// - 有料版（買い切りのアプリ内課金・StoreKit 2）の購入・復元・確認
 @objc(NyukinNativePlugin)
 public class NyukinNativePlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "NyukinNativePlugin"
@@ -17,8 +19,14 @@ public class NyukinNativePlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "cloudStatus", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "cloudSet", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "cloudGet", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "shareText", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "shareText", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "proStatus", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "proPurchase", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "proRestore", returnType: CAPPluginReturnPromise)
     ]
+    /// App Store Connect で作る「非消耗型」のアプリ内課金の製品ID
+    private let proID = "com.k5wvk4n6pt.nyukinnavi.pro"
+    private var updatesTask: Task<Void, Never>?
 
     private let defaults = UserDefaults.standard
     private let prefix = "nyukin.store."
@@ -26,6 +34,82 @@ public class NyukinNativePlugin: CAPPlugin, CAPBridgedPlugin {
 
     override public func load() {
         kv.synchronize()
+        if #available(iOS 15.0, *) {
+            // 別の端末での購入・返金などの知らせを受け取って完了させる
+            updatesTask = Task.detached {
+                for await result in Transaction.updates {
+                    if case .verified(let transaction) = result { await transaction.finish() }
+                }
+            }
+        }
+    }
+
+    // MARK: 有料版（アプリ内課金）
+
+    @available(iOS 15.0, *)
+    private func ownsPro() async -> Bool {
+        for await result in Transaction.currentEntitlements {
+            if case .verified(let transaction) = result, transaction.productID == proID, transaction.revocationDate == nil {
+                return true
+            }
+        }
+        return false
+    }
+
+    @objc func proStatus(_ call: CAPPluginCall) {
+        guard #available(iOS 15.0, *) else {
+            call.resolve(["owned": false, "available": false, "price": ""])
+            return
+        }
+        Task {
+            let owned = await self.ownsPro()
+            let product = try? await Product.products(for: [self.proID]).first
+            call.resolve(["owned": owned, "available": product != nil, "price": product?.displayPrice ?? ""])
+        }
+    }
+
+    @objc func proPurchase(_ call: CAPPluginCall) {
+        guard #available(iOS 15.0, *) else {
+            call.resolve(["owned": false, "reason": "このiPhoneのiOSでは購入できません（iOS 15以降が必要です）"])
+            return
+        }
+        Task {
+            do {
+                guard let product = try await Product.products(for: [self.proID]).first else {
+                    call.resolve(["owned": false, "reason": "notfound"])
+                    return
+                }
+                let result = try await product.purchase()
+                switch result {
+                case .success(let verification):
+                    if case .verified(let transaction) = verification {
+                        await transaction.finish()
+                        call.resolve(["owned": true])
+                    } else {
+                        call.resolve(["owned": false, "reason": "購入を確認できませんでした"])
+                    }
+                case .userCancelled:
+                    call.resolve(["owned": false, "reason": "cancelled"])
+                case .pending:
+                    call.resolve(["owned": false, "reason": "pending"])
+                @unknown default:
+                    call.resolve(["owned": false, "reason": "unknown"])
+                }
+            } catch {
+                call.resolve(["owned": false, "reason": error.localizedDescription])
+            }
+        }
+    }
+
+    @objc func proRestore(_ call: CAPPluginCall) {
+        guard #available(iOS 15.0, *) else {
+            call.resolve(["owned": false])
+            return
+        }
+        Task {
+            try? await AppStore.sync()
+            call.resolve(["owned": await self.ownsPro()])
+        }
     }
 
     // MARK: 端末の設定領域
