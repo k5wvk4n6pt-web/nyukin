@@ -935,7 +935,8 @@
     const sOpts = sel => { let o = ''; for (let i = 1; i <= 31; i++) o += '<option value="' + i + '"' + (i === sel ? ' selected' : '') + '>毎月' + i + '日</option>'; return o; };
     const T0 = today(), nc = C.nextClosing(T0, cs.d1), ns = C.addDays({ y: nc.y, m: nc.m, d: nc.d }, 1);
     const closeCard = '<div class="card form closecard" id="closecard"><div class="shead">始期日（期間の始まり）<span class="sub">帳簿「' + esc(curBook() ? curBook().name : '') + '」の設定です。始期日の前日が締め日になり、締め日までの引落で不足と余りを判定します。収支記録も始期日から区切ります</span></div>' +
-      '<div class="dl"><b>始期日</b><div class="two"><label>日付<select id="close-day">' + sOpts(cs.d1.start || 11) + '</select></label><label>休日のとき' + sh('close-shift', cs.d1.shift) + '</label></div>' +
+      '<div class="dl"><b>始期日</b><label>日付<select id="close-day">' + sOpts(cs.d1.start || 11) + '</select></label>' +
+      '<div class="sshift"><span class="k">始期日が土日・祝日のとき</span><input type="hidden" id="close-shift" value="' + cs.d1.shift + '"><div class="seg">' + [['before', '前の平日'], ['after', '後ろの平日'], ['none', 'ずらさない']].map(x => '<button type="button" data-sshift="' + x[0] + '" class="' + (cs.d1.shift === x[0] ? 'on' : '') + '" aria-pressed="' + (cs.d1.shift === x[0]) + '">' + x[1] + '</button>').join('') + '</div></div>' +
       '<span class="sub">次の締め日：' + md(nc) + '（' + C.WD[C.weekday(nc)] + '）／次の始期日：' + md(ns) + '（' + C.WD[C.weekday(ns)] + '）</span></div>' +
       (cs.d2
         ? '<div class="dl"><div class="dlhead"><b>もう一つの期限（参考）</b><button class="small danger" data-act="close2-off">外す</button></div><span class="sub">準備ページに、この期限までの必要額も参考として並びます</span><div class="two"><label>日付<select id="close2-day">' + dayOpts(cs.d2.day) + '</select></label><label>休日のとき' + sh('close2-shift', cs.d2.shift) + '</label></div></div>'
@@ -1275,8 +1276,9 @@
         const p = { startDay: sd, startShift: sh0, closeDay: sd === 1 ? 'end' : sd - 1, closeShift: sh0 };
         if ($('#close2-day')) { p.close2Day = dv($('#close2-day').value); p.close2Shift = validShift($('#close2-shift').value, 'none'); }
         setS(p);
-        toast('始期日：' + state.settings.startDay + '日（締め日はその前日）' + (state.settings.close2On ? '／もう一つの期限：' + lab(state.settings.close2Day) : ''));
+        toast('始期日：' + state.settings.startDay + '日・休みなら' + { before: '前の平日', after: '後ろの平日', none: 'ずらさない' }[state.settings.startShift] + '（締め日はその前日）' + (state.settings.close2On ? '／もう一つの期限：' + lab(state.settings.close2Day) : ''));
       };
+      main.querySelectorAll('[data-sshift]').forEach(b => b.addEventListener('click', () => { $('#close-shift').value = b.dataset.sshift; upd(); }));
       ['#close-day', '#close-shift', '#close2-day', '#close2-shift'].forEach(id => { const el = $(id); if (el) el.addEventListener('change', upd); });
       const on = main.querySelector('[data-act="close2-on"]'); if (on) on.addEventListener('click', () => { setS({ close2On: true }); toast('もう一つの期限を追加しました（' + lab(state.settings.close2Day) + '）'); });
       const off = main.querySelector('[data-act="close2-off"]'); if (off) off.addEventListener('click', () => { setS({ close2On: false }); toast('もう一つの期限を外しました'); });
