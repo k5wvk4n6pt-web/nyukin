@@ -168,6 +168,9 @@
       history: Array.isArray(d.history) ? d.history.filter(h => h && /^\d{4}-\d{2}-\d{2}$/.test(String(h.date))).map(h => ({ id: h.id || uid('h'), date: String(h.date), name: String(h.name || ''), account: String(h.account || ''), amount: h.amount == null ? null : Number(h.amount), kind: String(h.kind || 'その他'), src: h.src || null, auto: !!h.auto, edited: !!h.edited, deductChecked: !!h.deductChecked, deducted: !!h.deducted })) : [],
       historySince: /^\d{4}-\d{2}-\d{2}$/.test(String(d.historySince || '')) ? d.historySince : null,
       deductSince: /^\d{4}-\d{2}-\d{2}$/.test(String(d.deductSince || '')) ? d.deductSince : null,
+      incHistory: Array.isArray(d.incHistory) ? d.incHistory.filter(h => h && /^\d{4}-\d{2}-\d{2}$/.test(String(h.date))).map(h => ({ id: h.id || uid('r'), date: String(h.date), name: String(h.name || ''), amount: h.amount == null ? null : Number(h.amount), src: h.src || null, auto: !!h.auto, edited: !!h.edited })) : [],
+      incSince: /^\d{4}-\d{2}-\d{2}$/.test(String(d.incSince || '')) ? d.incSince : null,
+      incUntil: /^\d{4}-\d{2}-\d{2}$/.test(String(d.incUntil || '')) ? d.incUntil : null,
       autoDeduct: d.autoDeduct !== false,
       historyUntil: /^\d{4}-\d{2}-\d{2}$/.test(String(d.historyUntil || '')) ? d.historyUntil : null
     };
@@ -649,7 +652,14 @@
       }
     }
     const pastOnly = toIso < tIso;
-    return { off, from: cy.from, to: cy.to, income: cy.income, incomeMissing: cy.incomeMissing, expense, unentered, items, diff: cy.income - expense, noRecord: pastOnly && !recorded };
+    // 収入：過ぎた日は「収入の記録」、今日からあとは登録している収入
+    let income = 0, incomeMissing = 0, incRecorded = false;
+    for (const h of state.incHistory || []) { if (h.date < fIso || h.date > toIso || h.date >= tIso) continue; incRecorded = true; if (h.amount == null) incomeMissing++; else income += h.amount; }
+    if (toIso >= tIso) {
+      const from = fIso > tIso ? cy.from : T;
+      for (const i of state.income || []) { if (i.hidden) continue; for (const o of C.occurrencesIn(i, from, cy.to, true)) { if (i.amount == null) incomeMissing++; else income += Number(i.amount); } }
+    }
+    return { off, from: cy.from, to: cy.to, income, incomeMissing, expense, unentered, items, diff: income - expense, noRecord: pastOnly && !recorded, noIncRecord: pastOnly && !incRecorded };
   }
   function flowHTML() {
     const data = []; for (let o = FLOW_FROM; o <= FLOW_TO; o++) data.push(flowData(o));
@@ -664,7 +674,7 @@
       const cx = L + gw * i + gw / 2, sel = d.off === flowSel;
       g += '<g class="fg-col' + (sel ? ' sel' : '') + '" data-flow="' + d.off + '" tabindex="0" role="button" aria-label="' + md(d.to) + '締め 収入' + nf.format(d.income) + '円 支出' + nf.format(d.expense) + '円">' +
         '<rect class="fg-hit" x="' + (L + gw * i + 1) + '" y="' + (T0 - 8) + '" width="' + (gw - 2) + '" height="' + (ch + 8 + B) + '" rx="8"/>' +
-        bar(cx - bw - 1, d.income, 'fg-in') + bar(cx + 1, d.expense, 'fg-out' + (d.noRecord ? ' faint' : '')) +
+        bar(cx - bw - 1, d.income, 'fg-in' + (d.noIncRecord ? ' faint' : '')) + bar(cx + 1, d.expense, 'fg-out' + (d.noRecord ? ' faint' : '')) +
         '<text x="' + cx + '" y="' + (H - B + 15) + '" class="fg-lab" text-anchor="middle">' + md(d.to) + '</text>' +
         '<text x="' + cx + '" y="' + (H - B + 28) + '" class="fg-sub" text-anchor="middle">' + (d.off === 0 ? '今回' : d.off === -1 ? '前回' : d.off === 1 ? '次回' : '') + '</text></g>';
     });
@@ -677,10 +687,10 @@
       '<div class="fd-grid"><div><span class="k"><i class="sw in"></i>収入</span><span class="v num">' + nf.format(d.income) + '<small>円</small></span>' + (d.incomeMissing ? '<span class="flag">金額未入力 ' + d.incomeMissing + '件</span>' : '') + '</div>' +
       '<div><span class="k"><i class="sw out"></i>支出</span><span class="v num">' + nf.format(d.expense) + '<small>円</small></span>' + (d.unentered ? '<span class="flag">金額未入力 ' + d.unentered + '件</span>' : '') + '</div>' +
       '<div class="' + (neg ? 'neg' : 'pos') + '"><span class="k">差し引き</span><span class="v num">' + (neg ? '−' : '＋') + nf.format(Math.abs(d.diff)) + '<small>円</small></span></div></div>' +
-      (d.noRecord ? '<p class="sub" style="margin:0">この期間は記録がないため、支出は0円になっています（記録は使い始めた日から残ります）。</p>' : '') +
+      (d.noRecord || d.noIncRecord ? '<p class="sub" style="margin:0">この期間は' + (d.noRecord && d.noIncRecord ? '引き落としと収入' : d.noRecord ? '引き落とし' : '収入') + 'の記録がないため、0円になっています。前の分は「記録を見る」から入れられます。</p>' : '') +
       (top5.length ? '<div class="fd-list">' + top5.map(([n, v]) => '<div class="fd-row"><span>' + esc(n) + '</span><span class="num">' + nf.format(v) + '円</span></div>').join('') + '</div>' : '') + '</div>';
     return '<section class="flowcard"><div class="fg-legend"><span><i class="sw in"></i>収入</span><span><i class="sw out"></i>支出</span><span class="sub">棒を押すと内訳</span></div>' + svg + detail +
-      '<button class="small histlink" data-act="go-history">引落の記録を見る ›</button><p class="note" style="margin:0">過ぎた日の支出は「記録」、今日からあとは登録している金額で計算しています。収入は下のタブの「収入」の金額です。</p></section>';
+      '<button class="small histlink" data-act="go-history">記録を見る（引き落とし・収入）›</button><p class="note" style="margin:0">過ぎた日は「記録」（引き落とし・収入）、今日からあとは登録している金額で計算しています。</p></section>';
   }
   /* ---------- 締め期間ごとの引落予定 ---------- */
   let schedOff = 0;
@@ -1887,6 +1897,7 @@
     state.historyUntil = iso;
     if (added) state.history.sort((a, b) => a.date < b.date ? 1 : a.date > b.date ? -1 : 0);
     deductPast(iso);
+    recordIncome(iso);
     save();
   }
   /** 引落日が過ぎた引き落としを、口座の残高から一度だけ引く（この機能を入れた日以降の引落が対象） */
@@ -1929,6 +1940,100 @@
   function ymLabel(ym) { const [y, m] = ym.split('-').map(Number); return y + '年' + m + '月'; }
   function ymShift(ym, n) { const [y, m] = ym.split('-').map(Number); const t = C.addMonth(y, m, n); return t.y + '-' + String(t.m).padStart(2, '0'); }
   function historyHTML() {
+    if (meta.histType === 'in') return incHistoryHTML();
+    return histTabs() + histOutHTML();
+  }
+  function histTabs() {
+    const t = meta.histType === 'in' ? 'in' : 'out';
+    return '<button class="backlink" data-act="back-flow">‹ 収支記録に戻る</button><div class="seg htabs" role="tablist">' + [['out', '引き落とし'], ['in', '収入']].map(x => '<button role="tab" data-htype="' + x[0] + '" class="' + (x[0] === t ? 'on' : '') + '" aria-selected="' + (x[0] === t) + '">' + x[1] + 'の記録</button>').join('') + '</div>';
+  }
+  function incHistoryHTML() {
+    const cur = isoToday().slice(0, 7); histMonth = histMonth || cur;
+    const all = state.incHistory || [];
+    const list = all.filter(h => ymOf(h.date) === histMonth).sort((a, b) => a.date < b.date ? -1 : 1);
+    const sum = l => l.reduce((s2, h) => s2 + (h.amount || 0), 0);
+    const total = sum(list), prevTotal = sum(all.filter(h => ymOf(h.date) === ymShift(histMonth, -1)));
+    const missing = list.filter(h => h.amount == null).length, diff = total - prevTotal;
+    const rows = list.map(h => '<button class="hrec" data-rid="' + esc(h.id) + '"><span class="hd">' + dateLabel(h.date) + '</span><span class="hn"><b>' + esc(h.name) + '</b><small>' + (h.edited ? '修正済み' : h.auto ? '自動で記録' : '手入力') + '</small></span><span class="ha num">' + (h.amount == null ? '<span class="flag">未入力</span>' : nf.format(h.amount) + '<small>円</small>') + '</span></button>').join('');
+    return histTabs() + '<section id="sec-history" aria-label="収入の記録"><div class="section-head"><h2>収入の記録</h2><span class="head-right"><button class="small primary" data-act="inc-add">＋ 追加</button></span></div>' +
+      '<div class="cycle hsum"><div class="cyc-head"><button class="small" data-hm="-1" aria-label="前の月">‹</button><div class="cyc-title"><b>' + ymLabel(histMonth) + '</b><span class="sub">' + list.length + '件の収入</span></div><button class="small" data-hm="1" aria-label="次の月"' + (histMonth >= cur ? ' disabled' : '') + '>›</button></div>' +
+      '<div class="cyc-grid two-col"><div><span class="k">収入の合計</span><span class="v num">' + nf.format(total) + '<span class="yen">円</span></span>' + (missing ? '<span class="flag">金額未入力 ' + missing + '件</span>' : '') + '</div>' +
+      '<div class="diff ' + (diff < 0 ? 'neg' : 'pos') + '"><span class="k">先月との差</span><span class="v num">' + (diff > 0 ? '＋' : diff < 0 ? '−' : '±') + nf.format(Math.abs(diff)) + '<span class="yen">円</span></span><span class="sub">先月 ' + nf.format(prevTotal) + '円</span></div></div></div>' +
+      '<div class="list hlist">' + (rows || '<div class="emptyrow sub">この月の収入の記録はありません</div>') + '</div>' +
+      '<button class="fixback" data-act="inc-back">登録している収入を記録に反映する</button>' +
+      '<p class="note">入金日が来た収入を、そのときの金額で自動で記録します（' + (state.incSince ? dateLabel(state.incSince) : '') + 'から）。実際の金額と違うときは、記録を押して直せます。それより前の分は「＋ 追加」か「登録している収入を記録に反映する」で入れられます。</p></section>';
+  }
+  function openIncEdit(id) {
+    const h = id ? (state.incHistory || []).find(x => x.id === id) : null;
+    const cur = isoToday().slice(0, 7);
+    const def = h || { date: histMonth && histMonth !== cur ? histMonth + '-01' : isoToday(), name: '', amount: null };
+    const reg = state.income.filter(i => !i.hidden || (h && i.name === h.name));
+    const known = reg.find(i => i.name === def.name);
+    const sel = !def.name ? '' : known ? known.id : '__other';
+    const m = $('#modal');
+    m.innerHTML = '<div class="sheet form xsheet" role="dialog" aria-modal="true" aria-labelledby="mt"><h2 id="mt">' + (h ? '収入の記録を直す' : '収入の記録を追加') + '</h2>' +
+      '<label>項目名<select id="ri-pick"><option value=""' + (sel ? '' : ' selected') + '>選んでください</option>' + reg.map(i => '<option value="' + esc(i.id) + '"' + (i.id === sel ? ' selected' : '') + '>' + esc(i.name) + '</option>').join('') + '<option value="__other"' + (sel === '__other' ? ' selected' : '') + '>臨時・その他（自分で入力）</option></select></label>' +
+      '<label id="ri-name-wrap"' + (sel === '__other' ? '' : ' hidden') + '>項目名（臨時など）<input class="text" id="ri-name" autocomplete="off" value="' + esc(sel === '__other' ? def.name : '') + '" placeholder="例：お祝い・還付金"></label>' +
+      '<label>入金された金額<input class="amount wide" id="ri-amt" inputmode="numeric" enterkeyhint="done" autocomplete="off" value="' + yenTxt(def.amount) + '" placeholder="未入力"></label>' +
+      '<label>日付<input class="text" type="date" id="ri-date" value="' + esc(def.date) + '"></label>' +
+      '<div class="btnrow">' + (h ? '<button class="danger" id="ri-del">削除</button>' : '') + '<button id="mCancel">やめる</button><button id="mOk" class="primary">保存</button></div></div>';
+    m.hidden = false;
+    const close = () => { m.hidden = true; m.innerHTML = ''; };
+    $('#mCancel').onclick = close; m.onclick = e => { if (e.target === m) close(); };
+    const pick = $('#ri-pick');
+    pick.addEventListener('change', () => {
+      const v = pick.value; $('#ri-name-wrap').hidden = v !== '__other'; if (v === '__other') { $('#ri-name').focus(); return; }
+      const i = state.income.find(x => x.id === v); if (!i) return;
+      const amt = $('#ri-amt'); if (!amt.value && i.amount != null) { amt.value = yenTxt(i.amount); amt.dispatchEvent(new Event('input')); }
+      const dIn = $('#ri-date'); const ym = dIn.value.slice(0, 7) || cur;
+      if (i.date) dIn.value = i.date; else if (i.day != null) { const [yy, mm] = ym.split('-').map(Number); dIn.value = isoOf(C.actual(i, yy, mm, true)); }
+    });
+    if (h) $('#ri-del').onclick = () => { state.incHistory = state.incHistory.filter(x => x.id !== h.id); save(); close(); renderKeep(); toast('記録を削除しました'); };
+    $('#mOk').onclick = () => {
+      const pv = pick.value; const pi = state.income.find(x => x.id === pv);
+      const name = (pv === '__other' ? $('#ri-name').value : pi ? pi.name : '').trim(), v = parseAmount($('#ri-amt').value), date = $('#ri-date').value;
+      if (!name) { toast(pv === '__other' ? '項目名を入力してください' : '項目を選んでください'); return; }
+      if (Number.isNaN(v)) { toast('金額は数字で入力してください'); return; }
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { toast('日付を選んでください'); return; }
+      if (h) Object.assign(h, { name, amount: v, date, edited: true });
+      else (state.incHistory = state.incHistory || []).push({ id: uid('r'), date, name, amount: v, src: pi ? pi.id : null, auto: false, edited: false });
+      histMonth = ymOf(date); save(); close(); renderKeep(); toast(h ? '記録を直しました' : '記録を追加しました');
+    };
+  }
+  function incBackPlan(ym, months) {
+    const tIso = isoToday(); const [y0, m0] = ym.split('-').map(Number);
+    const have = new Set((state.incHistory || []).map(h => h.date + '|' + h.name)); const out = [];
+    for (let k = 0; k < months; k++) {
+      const p = C.addMonth(y0, m0, -k), nx = C.addMonth(p.y, p.m, 1);
+      for (const i of state.income || []) {
+        if (i.hidden || i.amount == null || i.amount === 0) continue;
+        for (const o of C.occurrencesIn(i, { y: p.y, m: p.m, d: 1 }, C.addDays({ y: nx.y, m: nx.m, d: 1 }, -1), true)) {
+          const iso = isoOf(o); if (iso >= tIso) continue; const key = iso + '|' + i.name; if (have.has(key)) continue;
+          have.add(key); out.push({ date: iso, name: i.name, amount: Number(i.amount), src: i.id });
+        }
+      }
+    }
+    return out.sort((a, b) => a.date < b.date ? -1 : 1);
+  }
+  function openIncBack() {
+    const ym = histMonth || isoToday().slice(0, 7); const [yy, mm] = ym.split('-').map(Number);
+    const m = $('#modal'); const opts = [[1, yy + '年' + mm + '月だけ'], [3, '3か月分（' + mm + '月からさかのぼる）'], [6, '6か月分'], [12, '12か月分']];
+    m.innerHTML = '<div class="sheet form" role="dialog" aria-modal="true" aria-labelledby="mt"><h2 id="mt">収入を記録に反映</h2>' +
+      '<p class="sub" style="margin:0">登録している収入を、今の金額で過去の記録にまとめて入れます。すでに同じ日・同じ項目の記録があるものは入れません。</p>' +
+      '<label>どこまで入れるか<select id="fb-n">' + opts.map(o => '<option value="' + o[0] + '">' + o[1] + '</option>').join('') + '</select></label><div id="fb-prev" class="fbprev"></div>' +
+      '<div class="btnrow"><button id="mCancel">やめる</button><button id="mOk" class="primary">記録に入れる</button></div></div>';
+    m.hidden = false;
+    const close = () => { m.hidden = true; m.innerHTML = ''; };
+    const show = () => { const plan = incBackPlan(ym, Number($('#fb-n').value)); const sum = plan.reduce((a, x) => a + x.amount, 0);
+      $('#fb-prev').innerHTML = plan.length ? '<b>' + plan.length + '件・合計 ' + nf.format(sum) + '円</b><div class="fbl">' + plan.slice(0, 40).map(x => '<div><span>' + md(isoToObj(x.date)) + ' ' + esc(x.name) + '</span><span class="num">' + nf.format(x.amount) + '円</span></div>').join('') + '</div>' : '<span class="sub">入れる記録はありません</span>';
+      $('#mOk').disabled = !plan.length; };
+    $('#fb-n').addEventListener('change', show); show();
+    $('#mCancel').onclick = close; m.onclick = e => { if (e.target === m) close(); };
+    $('#mOk').onclick = () => { const plan = incBackPlan(ym, Number($('#fb-n').value)); if (!plan.length) return;
+      state.incHistory = state.incHistory || []; for (const x of plan) state.incHistory.push({ id: uid('r'), date: x.date, name: x.name, amount: x.amount, src: x.src, auto: false, edited: false });
+      save(); close(); renderKeep(); toast('収入を' + plan.length + '件、記録に入れました'); };
+  }
+  function histOutHTML() {
     const cur = isoToday().slice(0, 7);
     histMonth = histMonth || cur;
     const all = state.history || [];
@@ -1941,7 +2046,7 @@
     const accRows = Object.keys(byAcc).sort((a, b) => byAcc[b] - byAcc[a]).map((a, i) => '<div class="hacc">' + ICON.bank(BANK_COLORS[i % BANK_COLORS.length]) + '<span class="grow">' + esc(a) + '</span><b class="num">' + nf.format(byAcc[a]) + '円</b></div>').join('');
     const rows = list.map(h => '<button class="hrec" data-hid="' + esc(h.id) + '"><span class="hd">' + dateLabel(h.date) + '</span><span class="hn"><b>' + esc(h.name) + '</b><span class="kchip k-' + ({ '変動費': 'v', '固定費': 'f', '1回のみ': 'o' }[h.kind] || 'o') + '">' + esc(h.kind) + '</span><small>' + esc(h.account) + (h.edited ? '・修正済み' : h.auto ? '' : '・手入力') + (h.deducted ? '・残高から引き済み' : '') + '</small></span><span class="ha num">' + (h.amount == null ? '<span class="flag">未入力</span>' : nf.format(h.amount) + '円') + '</span></button>').join('');
     const since = state.historySince ? dateLabel(state.historySince) : '';
-    return '<section id="sec-history" aria-label="引き落としの記録"><button class="backlink" data-act="back-flow">‹ 収支記録に戻る</button><div class="section-head"><h2>引き落としの記録</h2><span class="head-right"><button class="small primary" data-act="hist-add">＋ 追加</button></span></div>' +
+    return '<section id="sec-history" aria-label="引き落としの記録"><div class="section-head"><h2>引き落としの記録</h2><span class="head-right"><button class="small primary" data-act="hist-add">＋ 追加</button></span></div>' +
       '<div class="cycle hsum"><div class="cyc-head"><button class="small" data-hm="-1" aria-label="前の月">‹</button><div class="cyc-title"><b>' + ymLabel(histMonth) + '</b><span class="sub">' + list.length + '件の引き落とし</span></div><button class="small" data-hm="1" aria-label="次の月"' + (histMonth >= cur ? ' disabled' : '') + '>›</button></div>' +
       '<div class="cyc-grid two-col"><div><span class="k">引き落としの合計</span><span class="v num">' + nf.format(total) + '<span class="yen">円</span></span>' + (missing ? '<span class="flag">金額未入力 ' + missing + '件</span>' : '') + '</div>' +
       '<div class="diff ' + (diff > 0 ? 'neg' : 'pos') + '"><span class="k">先月との差</span><span class="v num">' + (diff > 0 ? '＋' : diff < 0 ? '−' : '±') + nf.format(Math.abs(diff)) + '<span class="yen">円</span></span><span class="sub">先月 ' + nf.format(prevTotal) + '円</span></div></div>' +
@@ -1951,7 +2056,27 @@
       '<div class="btnrow" style="margin-top:12px"><button data-act="hist-csv" data-scope="month">この月をCSVで書き出す</button><button data-act="hist-csv" data-scope="all">全部をCSVで書き出す</button></div>' +
       '<p class="note">引落日が来た分を、そのときの金額で自動で記録します（' + since + 'から）。実際の金額と違うときは、記録を押して直せます。それより前の分は「＋ 追加」で入れられます。</p></section>';
   }
+  /** 入金日が来た収入を、そのときの金額で記録する（使い始めた日から） */
+  function recordIncome(todayIso) {
+    if (!state.incSince) state.incSince = todayIso;
+    state.incHistory = state.incHistory || [];
+    const start = state.incUntil ? isoOf(C.addDays(isoToObj(state.incUntil), 1)) : state.incSince;
+    if (start > todayIso) return;
+    const have = new Set(state.incHistory.map(h => h.date + '|' + h.name));
+    for (const i of state.income || []) {
+      if (i.hidden) continue;
+      for (const o of C.occurrencesIn(i, isoToObj(start), isoToObj(todayIso), true)) {
+        const d = isoOf(o), k = d + '|' + i.name; if (have.has(k)) continue; have.add(k);
+        state.incHistory.push({ id: uid('r'), date: d, name: i.name, amount: i.amount == null ? null : Number(i.amount), src: i.id, auto: true, edited: false });
+      }
+    }
+    state.incUntil = todayIso;
+  }
   function bindHistory() {
+    main.querySelectorAll('[data-htype]').forEach(b => b.addEventListener('click', () => { meta.histType = b.dataset.htype; saveMeta(); renderKeep(); }));
+    main.querySelectorAll('[data-rid]').forEach(b => b.addEventListener('click', () => openIncEdit(b.dataset.rid)));
+    main.querySelectorAll('[data-act="inc-add"]').forEach(b => b.addEventListener('click', () => openIncEdit(null)));
+    main.querySelectorAll('[data-act="inc-back"]').forEach(b => b.addEventListener('click', openIncBack));
     main.querySelectorAll('[data-hm]').forEach(b => b.addEventListener('click', () => { histMonth = ymShift(histMonth, Number(b.dataset.hm)); renderKeep(); }));
     main.querySelectorAll('[data-hid]').forEach(b => b.addEventListener('click', () => openHistEdit(b.dataset.hid)));
     main.querySelectorAll('[data-act="hist-add"]').forEach(b => b.addEventListener('click', () => openHistEdit(null)));
