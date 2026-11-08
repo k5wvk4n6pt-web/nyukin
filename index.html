@@ -838,6 +838,11 @@ body.pg-variable .fab.add, body.pg-fixed .fab.add, #sec-variable .section-head b
 .procard .btnrow { display: flex; gap: 8px; flex-wrap: wrap; }
 .procard .btnrow button { flex: 1 1 auto; }
 .proline.ok { margin: 0; padding: 8px 12px; border-radius: 12px; background: var(--ok-bg); color: var(--ok); font-weight: 700; font-size: 13px; }
+/* スクロール時の帳簿名：帳簿の色で塗って目立たせる */
+.bookpill { --bp: var(--accent); background: var(--bp); border-color: var(--bp); color: var(--surface); box-shadow: 0 4px 14px color-mix(in srgb, var(--bp) 40%, transparent), 0 0 0 3px color-mix(in srgb, var(--surface) 85%, transparent); -webkit-backdrop-filter: none; backdrop-filter: none; font-size: 15px; }
+.bookpill.b1 { --bp: var(--c-pink); } .bookpill.b2 { --bp: var(--c-teal); } .bookpill.b3 { --bp: var(--c-peach); } .bookpill.b4 { --bp: var(--c-lav); }
+.bookpill .dot, .bookpill.b0 .dot, .bookpill.b1 .dot, .bookpill.b2 .dot, .bookpill.b3 .dot, .bookpill.b4 .dot { background: var(--surface); }
+.bookpill .lbl, .bookpill .chev { color: var(--surface); opacity: .85; }
 @media (max-width: 360px) { .brand-ico { display: none; } .roundbtn { width: 44px; height: 44px; } }
 </style>
 </head>
