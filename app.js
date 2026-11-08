@@ -1008,6 +1008,50 @@
   function monthsPick(id, sel) {
     return '<div class="mpick" id="' + id + '" role="group" aria-label="入金がある月">' + [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(m => '<button type="button" class="chip' + (sel.includes(m) ? ' on' : '') + '" data-m="' + m + '" aria-pressed="' + sel.includes(m) + '">' + m + '月</button>').join('') + '</div>';
   }
+  /** 収入を追加するシート（毎月・年に数回・1回だけを選べる） */
+  function openIncAddSheet(kind, keep) {
+    kind = ['monthly', 'months', 'once'].includes(kind) ? kind : 'monthly';
+    keep = keep || {}; meta.incNewKind = kind; saveMeta();
+    const T = today(); const m = $('#modal');
+    m.innerHTML = '<div class="sheet form xsheet" role="dialog" aria-modal="true" aria-labelledby="mt"><h2 id="mt">収入を追加</h2>' +
+      '<div class="seg askind" role="tablist" aria-label="収入の種類">' + ['monthly', 'months', 'once'].map(k => '<button type="button" role="tab" data-iakind="' + k + '" class="' + (k === kind ? 'on' : '') + '" aria-selected="' + (k === kind) + '">' + { monthly: '毎月', months: '年に数回', once: '1回のみ' }[k] + '</button>').join('') + '</div>' +
+      '<p class="sub askhint" style="margin:0">' + { monthly: '毎月入るもの（給料・年金など）', months: '決まった月だけ入るもの（ボーナス・児童手当など）', once: '1回だけ入るもの（お祝い・還付金など）' }[kind] + '</p>' +
+      '<label>名前<input class="text" id="ia-name" autocomplete="off" placeholder="' + (kind === 'monthly' ? '例：給料' : kind === 'months' ? '例：ボーナス' : '例：お祝い・還付金') + '" value="' + esc(keep.name || '') + '"></label>' +
+      '<label>金額（わからなければ空欄）<input class="amount wide" id="ia-amt" inputmode="numeric" enterkeyhint="done" autocomplete="off" placeholder="未入力" value="' + esc(keep.amt || '') + '"></label>' +
+      (kind === 'once' ? '<label>入金日<input type="date" class="text" id="ia-date" value="' + isoOf(T) + '"></label>'
+        : (kind === 'months' ? '<div class="flabel">入金がある月（複数選べます）</div>' + monthsPick('ia-months', [6, 12]) : '') + '<label>入金日' + daySelect('ia-day', kind === 'months' ? 10 : 25) + '</label>') +
+      '<label>入金日が休日のとき' + shiftSelect('ia-shift', 'before') + '</label>' +
+      '<p class="note" id="ia-last" style="margin:0"></p>' +
+      '<div class="btnrow"><button id="mCancel">閉じる</button><button id="ia-more">追加して続ける</button><button id="mOk" class="primary">追加</button></div></div>';
+    m.hidden = false;
+    const close = () => { m.hidden = true; m.innerHTML = ''; };
+    $('#mCancel').onclick = close; m.onclick = e => { if (e.target === m) close(); };
+    m.querySelectorAll('[data-iakind]').forEach(b => b.addEventListener('click', () => { if (b.dataset.iakind !== kind) openIncAddSheet(b.dataset.iakind, { name: $('#ia-name').value, amt: $('#ia-amt').value }); }));
+    m.querySelectorAll('#ia-months [data-m]').forEach(b => b.addEventListener('click', () => { const on = !b.classList.contains('on'); b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); }));
+    const amt = $('#ia-amt');
+    amt.addEventListener('blur', () => { const v = parseAmount(amt.value); if (!Number.isNaN(v)) amt.value = yenTxt(v); });
+    let added = null;
+    const add = () => {
+      const n = $('#ia-name').value.trim(); const v = parseAmount(amt.value);
+      if (!n) { toast('名前を入力してください'); $('#ia-name').focus(); return false; }
+      if (Number.isNaN(v)) { toast('金額は数字で入力してください'); amt.focus(); return false; }
+      const it = { id: uid('i'), name: n, day: 25, amount: v, hidden: false, shift: validShift($('#ia-shift').value, 'before') };
+      if (kind === 'once') { const dt = $('#ia-date').value; if (!/^\d{4}-\d{2}-\d{2}$/.test(dt)) { toast('入金日を選んでください'); return false; } it.date = dt; it.day = Number(dt.slice(8)); }
+      else { const dv = $('#ia-day').value; it.day = dv === 'end' ? 'end' : Number(dv); }
+      if (kind === 'months') { const ms = [...m.querySelectorAll('#ia-months .chip.on')].map(b => Number(b.dataset.m)); if (!ms.length) { toast('入金がある月を選んでください'); return false; } it.months = ms; }
+      state.income.push(it); save(); added = it.id;
+      toast('「' + n + '」を収入（' + { monthly: '毎月', months: '年に数回', once: '1回のみ' }[kind] + '）に追加しました');
+      return true;
+    };
+    $('#mOk').onclick = () => {
+      if (!add()) return; close();
+      if (meta.page !== 'income') { meta.page = 'income'; saveMeta(); renderAll(); } else renderKeep();
+      const row = main.querySelector('.irow[data-inc-id="' + added + '"], [data-inc="' + added + '"]');
+      if (row) { row.scrollIntoView({ block: 'center' }); row.classList.add('flash'); setTimeout(() => row.classList.remove('flash'), 1600); }
+    };
+    $('#ia-more').onclick = () => { if (!add()) return; $('#ia-last').textContent = '追加しました：' + $('#ia-name').value.trim(); $('#ia-name').value = ''; amt.value = ''; $('#ia-name').focus(); renderKeep(); };
+    $('#ia-name').focus();
+  }
   function incWhen(i) {
     const k = incKind(i);
     if (k === 'once') { const o = isoToObj(i.date); return o.y + '/' + o.m + '/' + o.d; }
@@ -1030,13 +1074,7 @@
     const nk = ['monthly', 'months', 'once'].includes(meta.incNewKind) ? meta.incNewKind : 'monthly';
     const T = today();
     return '<div class="card"><div class="pad">' + headHTML('登録している収入', state.income.length + '件', 'income') + '</div>' + (groups || '<p class="sub" style="padding:0 16px">収入はまだありません。</p>') +
-      '<div class="form addform"><div class="shead">収入を追加</div>' +
-      '<div class="seg inkind" role="tablist">' + ['monthly', 'months', 'once'].map(k => '<button role="tab" data-inkind="' + k + '" class="' + (k === nk ? 'on' : '') + '" aria-selected="' + (k === nk) + '">' + INKIND[k] + '</button>').join('') + '</div>' +
-      '<label>名前<input class="text" id="inc-new-name" autocomplete="off" placeholder="' + (nk === 'monthly' ? '例：給料' : nk === 'months' ? '例：ボーナス' : '例：お祝い・還付金') + '"></label>' +
-      (nk === 'once' ? '<label>入金日<input type="date" class="text" id="inc-new-date" value="' + isoOf(T) + '"></label>'
-        : (nk === 'months' ? '<div class="flabel">入金がある月（複数選べます）</div>' + monthsPick('inc-new-months', [6, 12]) : '') + '<label>入金日' + daySelect('inc-new-day', nk === 'months' ? 10 : 25) + '</label>') +
-      '<div class="two"><label>金額（任意）<input class="amount wide" id="inc-new-amt" inputmode="numeric" enterkeyhint="done" autocomplete="off" placeholder="未入力"></label><label>休日のとき' + shiftSelect('inc-new-shift', 'before') + '</label></div>' +
-      '<button class="primary" data-act="incadd">収入に追加</button></div></div>';
+      '<div class="add"><button class="ghost" data-act="incadd-open">＋ 収入を追加</button></div></div>';
   }
 
 
@@ -1364,6 +1402,7 @@
         state.income = state.income.filter(x => x.id !== inc.id); save(); renderKeep(); toast('削除しました');
       }, true));
     });
+    main.querySelectorAll('[data-act="incadd-open"]').forEach(b => b.addEventListener('click', () => openIncAddSheet(meta.incNewKind)));
     main.querySelectorAll('[data-inkind]').forEach(b => b.addEventListener('click', () => { meta.incNewKind = b.dataset.inkind; saveMeta(); renderKeep(); }));
     main.querySelectorAll('#inc-new-months [data-m]').forEach(b => b.addEventListener('click', () => { const on = !b.classList.contains('on'); b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); }));
     const incadd = main.querySelector('[data-act="incadd"]');
@@ -2490,13 +2529,13 @@
   const syncFab = () => {
     fabTop.hidden = !state || window.scrollY < 500;
     const pg = meta.page;
-    fabAdd.hidden = !state || !(pg === 'variable' || pg === 'fixed');
-    if (!fabAdd.hidden) fabAdd.textContent = pg === 'fixed' ? '＋ 固定費' : '＋ 変動費';
+    fabAdd.hidden = !state || !(pg === 'variable' || pg === 'fixed' || pg === 'income');
+    if (!fabAdd.hidden) fabAdd.textContent = pg === 'fixed' ? '＋ 固定費' : pg === 'income' ? '＋ 収入' : '＋ 変動費';
   };
   window.addEventListener('scroll', () => { cancelAnimationFrame(syncFab._r); syncFab._r = requestAnimationFrame(() => { syncFab(); syncPill(); }); }, { passive: true });
   $('#bookPill').addEventListener('click', openBookSwitch);
   fabTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }));
-  fabAdd.addEventListener('click', () => openAddSheet(meta.page === 'fixed' ? 'fixed' : 'variable'));
+  fabAdd.addEventListener('click', () => meta.page === 'income' ? openIncAddSheet(meta.incNewKind) : openAddSheet(meta.page === 'fixed' ? 'fixed' : 'variable'));
   $('#books').addEventListener('click', e => {
     const b = e.target.closest('[data-book]'); if (b) { switchBook(b.dataset.book); return; }
     if (e.target.closest('[data-act="book-add"]')) { meta.page = 'settings'; meta.stab = 'books'; meta.reorder = null; saveMeta(); renderAll(); window.scrollTo(0, 0); const n = $('#booknew'); if (n) n.focus(); }
