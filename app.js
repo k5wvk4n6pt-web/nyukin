@@ -210,7 +210,7 @@
       : page === 'fixed' ? listHTML('fixed', '固定費', '金額・引落日・口座が変わった時だけ変更します。')
       : page === 'settings' ? settingsHTML()
       : page === 'history' ? historyHTML()
-      : page === 'income' ? '<div class="card"><div class="pad"><div class="section-head"><h2>収入</h2></div><p class="sub" style="margin:0">毎月の収入のほか、ボーナスのように年に何回かの収入や、1回だけの臨時収入も登録できます。未入金の収入は口座残高に足しません。</p></div></div>' + inHTML()
+      : page === 'income' ? inHTML()
       : sampleBannerHTML() + (needsSetup() ? setupGuideHTML() : backupNoticeHTML()) + summaryHTML(r) +
         '<p class="note">表示される金額と日付は、登録した内容から計算した目安です。実際の引落日・金額は金融機関やカード会社の案内で確認してください。</p>';
     if (typeof syncFab === 'function') setTimeout(syncFab, 0);
@@ -882,7 +882,7 @@
     const visible = state[kind].filter(x => !x.hidden && !isPast(x)), hiddenItems = state[kind].filter(x => x.hidden && !isPast(x));
     const pastItems = state[kind].filter(isPast);
     if (meta.reorder === kind) {
-      return '<section id="sec-' + kind + '" aria-label="' + title + '">' + headHTML(title, '表示 ' + visible.length + '件', kind) +
+      return '<section id="sec-' + kind + '" aria-label="' + title + '">' + headHTML(title, '登録' + visible.length + '件', kind) +
         '<p class="sub" style="margin:-4px 0 10px">↑↓で順番を変えます。終わったら「完了」を押してください。</p>' +
         '<div class="list">' + orderRows(kind, visible.map(it => ({ key: it.id, label: it.name, sub: itemWhen(it) + '・' + (it.account || '口座なし') + '・' + (it.amount == null ? '未入力' : nf.format(it.amount) + '円') }))) + '</div></section>';
     }
@@ -911,11 +911,11 @@
       pastItems.slice().reverse().map(it => '<div class="hrow" data-kind="once" data-id="' + esc(it.id) + '"><span class="row-name">' + esc(it.name) + '<span class="sub">' + dateLabel(it.date) + '・' + esc(it.account || '口座なし') + '・' + (it.amount == null ? '未入力' : nf.format(it.amount) + '円') + '</span></span><button class="small danger" data-act="pastdel">削除</button></div>').join('') + '</details>' : '';
     if (kind === 'once') {
       const rowsOnce = visible.length ? rows : '<div class="emptyrow sub">予定はありません</div>';
-      return '<section id="sec-once" aria-label="' + title + '" style="margin-top:28px">' + headHTML(title, visible.length + '件', null, 'once') +
+      return '<section id="sec-once" aria-label="' + title + '" style="margin-top:28px">' + headHTML(title, '登録' + visible.length + '件', null, 'once') +
         '<p class="sub" style="margin:-4px 0 10px">' + lead + '</p>' +
         '<div class="list">' + rowsOnce + '<div class="add"><button class="ghost" data-act="add" data-kind="once">＋ 1回のみの引落を追加</button></div></div>' + hid + past + '</section>';
     }
-    return '<section id="sec-' + kind + '" aria-label="' + title + '">' + headHTML(title, '表示 ' + visible.length + '件', kind, kind) +
+    return '<section id="sec-' + kind + '" aria-label="' + title + '">' + headHTML(title, '登録' + visible.length + '件', kind, kind) +
       '<p class="sub" style="margin:-4px 0 10px">' + lead + '</p>' +
       '<div class="list">' + rows + '<div class="add"><button class="ghost" data-act="add" data-kind="' + kind + '">＋ ' + title + 'を追加</button></div></div>' + hid + '</section>';
   }
@@ -1046,7 +1046,7 @@
     $('#mOk').onclick = () => {
       if (!add()) return; close();
       if (meta.page !== 'income') { meta.page = 'income'; saveMeta(); renderAll(); } else renderKeep();
-      const row = main.querySelector('.irow[data-inc-id="' + added + '"], [data-inc="' + added + '"]');
+      const row = main.querySelector('[data-inc-id="' + added + '"]');
       if (row) { row.scrollIntoView({ block: 'center' }); row.classList.add('flash'); setTimeout(() => row.classList.remove('flash'), 1600); }
     };
     $('#ia-more').onclick = () => { if (!add()) return; $('#ia-last').textContent = '追加しました：' + $('#ia-name').value.trim(); $('#ia-name').value = ''; amt.value = ''; $('#ia-name').focus(); renderKeep(); };
@@ -1059,24 +1059,31 @@
     return '毎月' + dayLabel(i.day);
   }
   function inHTML() {
-    const on = meta.reorder === 'income';
-    if (on) return '<div class="card"><div class="pad">' + headHTML('収入', state.income.length + '件', 'income') + '</div>' + orderRows('income', state.income.map(i => ({ key: i.id, label: i.name, sub: incWhen(i) + (i.hidden ? '・非表示' : '') }))) + '</div>';
-    const row = i => { const k = incKind(i);
-      return '<div class="irow' + (i.hidden ? ' is-hidden' : '') + (i.amount == null ? ' noamt' : '') + '" data-inc-id="' + esc(i.id) + '">' +
-        '<div class="irow-head"><span class="ih-kind">' + INKIND[k] + '・' + esc(incWhen(i)) + '</span>' + (i.amount == null ? '<span class="pst warn">金額未入力</span>' : '') + '</div>' +
-        '<div class="irow-top"><input class="text" id="incname-' + esc(i.id) + '" value="' + esc(i.name) + '" aria-label="収入の名前">' +
-        '<input class="amount" inputmode="numeric" enterkeyhint="done" autocomplete="off" id="incamt-' + esc(i.id) + '" data-inc="' + esc(i.id) + '" value="' + yenTxt(i.amount) + '" placeholder="金額" aria-label="' + esc(i.name) + 'の金額"></div>' +
-        (k === 'once' ? '<div class="irow-bot"><label class="inl">入金日<input type="date" class="text" id="incdate-' + esc(i.id) + '" value="' + esc(i.date) + '"></label></div>'
-          : (k === 'months' ? monthsPick('incmon-' + esc(i.id), i.months) : '') + '<div class="irow-bot">' + daySelect('incday-' + esc(i.id), i.day) + '</div>') +
-        '<div class="irow-bot">' + shiftSelect('incshift-' + esc(i.id), i.shift || 'before', '入金日が休日のとき') + '</div>' +
-        '<div class="irow-bot irow-act"><span class="grow"></span>' + hideBtn(!!i.hidden, 'inchide') + '<button class="danger small" data-act="incdel" aria-label="「' + esc(i.name) + '」を削除">「' + esc(i.name.length > 8 ? i.name.slice(0, 8) + '…' : i.name) + '」を削除</button></div></div>'; };
-    const groups = ['monthly', 'months', 'once'].map(k => { const l = state.income.filter(i => incKind(i) === k); return l.length ? '<div class="igroup"><div class="ig-h">' + INKIND[k] + '<span class="sub">' + l.length + '件</span></div>' + l.map(row).join('') + '</div>' : ''; }).join('');
-    const nk = ['monthly', 'months', 'once'].includes(meta.incNewKind) ? meta.incNewKind : 'monthly';
-    const T = today();
-    return '<div class="card"><div class="pad">' + headHTML('収入一覧', state.income.length + '件', 'income', 'income') + '</div>' + (groups || '<p class="sub" style="padding:0 16px">収入はまだありません。</p>') +
-      '<div class="add"><button class="ghost" data-act="incadd-open">＋ 収入を追加</button></div></div>';
+    const lead = '毎月の収入のほか、ボーナスのように年に何回かの収入や、1回だけの臨時収入も登録できます。未入金の収入は口座残高に足しません。';
+    const visible = state.income.filter(i => !i.hidden), hiddenItems = state.income.filter(i => i.hidden);
+    if (meta.reorder === 'income') return '<section id="sec-income" aria-label="収入">' + headHTML('収入', '登録' + visible.length + '件', 'income') +
+      '<p class="sub" style="margin:-4px 0 10px">↑↓で順番を変えます。終わったら「完了」を押してください。</p>' +
+      '<div class="list">' + orderRows('income', state.income.map(i => ({ key: i.id, label: i.name, sub: INKIND[incKind(i)] + '・' + incWhen(i) + (i.hidden ? '・非表示' : '') + '・' + (i.amount == null ? '未入力' : nf.format(i.amount) + '円') }))) + '</div></section>';
+    const KL = { monthly: '毎月', months: '年に数回', once: '1回のみ' };
+    const rows = visible.map(i => { const k = incKind(i), id = esc(i.id);
+      return '<div class="row irow2" data-inc-id="' + id + '">' +
+        '<div class="row-main"><span class="row-name">' + esc(i.name) + '</span>' +
+        '<input class="amount' + (i.amount == null ? ' empty' : '') + '" inputmode="numeric" enterkeyhint="done" autocomplete="off" id="incamt-' + id + '" data-inc="' + id + '" value="' + yenTxt(i.amount) + '" placeholder="未入力" aria-label="' + esc(i.name) + 'の金額"></div>' +
+        '<div class="row-sub"><span class="ikchip k-' + k + '">' + KL[k] + '</span>' +
+        (k === 'once' ? '<input class="text datein" type="date" id="incdate-' + id + '" value="' + esc(i.date) + '" aria-label="入金日">'
+          : (k === 'months' ? '<span class="imons">' + i.months.join('・') + '月</span>' : '') + daySelect('incday-' + id, i.day)) + '</div>' +
+        '<div class="row-acts"><button class="ghost small" data-act="incedit">詳細（名前・休日・削除）</button><button class="ghost small" data-act="inchide">非表示にする</button></div>' +
+        '<div class="edit" hidden data-ieditor>' +
+        '<label>名前<input class="text" id="incname-' + id + '" value="' + esc(i.name) + '"></label>' +
+        (k === 'months' ? '<div class="flabel">入金がある月（複数選べます）</div>' + monthsPick('incmon-' + id, i.months) : '') +
+        '<label>入金日が休日のとき' + shiftSelect('incshift-' + id, i.shift || 'before') + '</label>' +
+        '<div class="btns"><button class="danger small" data-act="incdel">この収入を削除</button><button class="small" data-act="incclose">閉じる</button></div></div></div>'; }).join('');
+    const hid = hiddenItems.length ? '<details class="hiddenbox"' + (meta['open-income'] ? ' open' : '') + ' data-kind="income"><summary>非表示の収入 ' + hiddenItems.length + '件（計算に含みません）</summary>' +
+      hiddenItems.map(i => '<div class="hrow" data-inc-h="' + esc(i.id) + '"><span class="row-name">' + esc(i.name) + '<span class="sub">' + KL[incKind(i)] + '・' + esc(incWhen(i)) + '・' + (i.amount == null ? '未入力' : nf.format(i.amount) + '円') + '</span></span><button class="small" data-act="incunhide">表示する</button></div>').join('') + '</details>' : '';
+    return '<section id="sec-income" aria-label="収入">' + headHTML('収入', '登録' + visible.length + '件', 'income', 'income') +
+      '<p class="sub" style="margin:-4px 0 10px">' + lead + '</p>' +
+      '<div class="list">' + (rows || '<div class="emptyrow sub">収入はまだありません</div>') + '<div class="add"><button class="ghost" data-act="incadd-open">＋ 収入を追加</button></div></div>' + hid + '</section>';
   }
-
 
   function accHTML() {
     const on = meta.reorder === 'accounts';
@@ -1391,17 +1398,21 @@
     }
     // 収入
     main.querySelectorAll('[data-inc-id]').forEach(row => {
-      const inc = state.income.find(x => x.id === row.dataset.incId);
-      row.querySelector('input.text').addEventListener('change', e => { const n = e.target.value.trim(); if (!n) { e.target.value = inc.name; return; } inc.name = n; save(); renderKeep(); });
+      const inc = state.income.find(x => x.id === row.dataset.incId); if (!inc) return;
+      const ed = row.querySelector('[data-ieditor]');
+      row.querySelector('[data-act="incedit"]').addEventListener('click', () => { ed.hidden = !ed.hidden; });
+      row.querySelector('[data-act="incclose"]').addEventListener('click', () => { ed.hidden = true; });
+      row.querySelector('input[id^="incname-"]').addEventListener('change', e => { const n = e.target.value.trim(); if (!n) { e.target.value = inc.name; return; } inc.name = n; save(); renderKeep(); });
       const dsel = row.querySelector('select[id^="incday-"]'); if (dsel) dsel.addEventListener('change', e => { inc.day = e.target.value === 'end' ? 'end' : Number(e.target.value); save(); renderKeep(); });
-      const dt = row.querySelector('input[id^="incdate-"]'); if (dt) dt.addEventListener('change', e => { if (/^\d{4}-\d{2}-\d{2}$/.test(e.target.value)) { inc.date = e.target.value; save(); renderKeep(); } });
-      row.querySelectorAll('.mpick [data-m]').forEach(b => b.addEventListener('click', () => { const m = Number(b.dataset.m); let ms = (inc.months || []).slice(); ms = ms.includes(m) ? ms.filter(x => x !== m) : ms.concat(m).sort((a, c) => a - c); if (!ms.length) { toast('少なくとも1つの月を選んでください'); return; } inc.months = ms; save(); renderKeep(); }));
+      const dt = row.querySelector('input[id^="incdate-"]'); if (dt) dt.addEventListener('change', e => { if (/^\d{4}-\d{2}-\d{2}$/.test(e.target.value)) { inc.date = e.target.value; inc.day = Number(e.target.value.slice(8)); save(); renderKeep(); } });
+      row.querySelectorAll('.mpick [data-m]').forEach(b => b.addEventListener('click', () => { const m = Number(b.dataset.m); let ms = (inc.months || []).slice(); ms = ms.includes(m) ? ms.filter(x => x !== m) : ms.concat(m).sort((a, c) => a - c); if (!ms.length) { toast('少なくとも1つの月を選んでください'); return; } inc.months = ms; save(); renderKeep(); const r2 = main.querySelector('[data-inc-id="' + inc.id + '"] [data-ieditor]'); if (r2) r2.hidden = false; }));
       row.querySelector('select[id^="incshift-"]').addEventListener('change', e => { inc.shift = validShift(e.target.value, 'before'); save(); renderKeep(); toast('「' + inc.name + '」：' + SHIFT_LABEL[inc.shift]); });
-      row.querySelector('[data-act="inchide"]').addEventListener('click', () => { inc.hidden = !inc.hidden; save(); renderKeep(); toast(inc.hidden ? '「' + inc.name + '」を非表示にしました' : '「' + inc.name + '」を表示しました'); });
+      row.querySelector('[data-act="inchide"]').addEventListener('click', () => { inc.hidden = true; save(); renderKeep(); toast('「' + inc.name + '」を非表示にしました（計算に含みません）'); });
       row.querySelector('[data-act="incdel"]').addEventListener('click', () => confirmSheet('収入「' + inc.name + '」を削除しますか？', '', '削除する', () => {
         state.income = state.income.filter(x => x.id !== inc.id); save(); renderKeep(); toast('削除しました');
       }, true));
     });
+    main.querySelectorAll('[data-inc-h] [data-act="incunhide"]').forEach(b => b.addEventListener('click', () => { const inc = state.income.find(x => x.id === b.closest('[data-inc-h]').dataset.incH); if (!inc) return; inc.hidden = false; save(); renderKeep(); toast('「' + inc.name + '」を表示しました'); }));
     main.querySelectorAll('[data-act="incadd-open"]').forEach(b => b.addEventListener('click', () => openIncAddSheet(meta.incNewKind)));
     main.querySelectorAll('[data-inkind]').forEach(b => b.addEventListener('click', () => { meta.incNewKind = b.dataset.inkind; saveMeta(); renderKeep(); }));
     main.querySelectorAll('#inc-new-months [data-m]').forEach(b => b.addEventListener('click', () => { const on = !b.classList.contains('on'); b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); }));
@@ -1517,7 +1528,7 @@
   }
 
   function bindAll() {
-    main.querySelectorAll('.row').forEach(row => {
+    main.querySelectorAll('.row[data-kind]').forEach(row => {
       const it = findItem(row);
       const amt = row.querySelector('[data-f="amount"]');
       amt.addEventListener('input', () => onAmountInput(amt, () => it.amount, v => { it.amount = v; }, () => touch(it, row)));
