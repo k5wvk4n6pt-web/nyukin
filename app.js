@@ -770,7 +770,7 @@
       '<div class="bank-head"><span class="bank-name">' + esc(b.name) + '</span><span class="next">' + nextHTML(b) + '</span></div>' +
       '<div class="bank-foot"><label for="bal-' + esc(b.name) + '">残高</label><input class="amount' + (b.balance == null ? ' empty' : '') + '" inputmode="numeric" enterkeyhint="done" autocomplete="off" id="bal-' + esc(b.name) + '" data-bal="' + esc(b.name) + '" value="' + yenTxt(b.balance) + '" placeholder="未入力">' + statusHTML(b, r) + '<button class="small" data-act="xfer-from" data-acc="' + esc(b.name) + '">残高移動</button></div>' + afterHTML(b, r) + '</article>').join('') : '';
     return '<section id="banksSec" aria-label="銀行別の入金準備表"><div class="section-head"><h2>銀行別の入金準備</h2><span class="head-right"><span class="sub">' + md(r.closing) + 'まで</span><button class="small" data-act="xfer-to" data-acc="">残高移動</button></span></div>' +
-      '<div class="banks">' + (cards || '<div class="idle">この期間の引落はありません</div>') + idleTxt + '</div>' + transfersHTML() +
+      '<div class="banks">' + (cards || '<div class="idle">この期間の引落はありません</div>') + '</div>' + transfersHTML() +
       '<p class="note">集計は確認日以降の引落だけです。土日・祝日・年末年始（12/31〜1/3）に当たる日は、項目ごとの設定（初期値は支出が後ろ、収入が前）でずらしています。締め日が休日の場合は、設定に合わせて締め日もずらします。</p></section>';
   }
 
