@@ -857,6 +857,9 @@ body.pg-variable .fab.add, body.pg-fixed .fab.add, #sec-variable .section-head b
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"])[data-color="orange"] { --accent: #F3A673; --accent-soft: #472C1B; --c-blue: #F3A673; --c-blue-bg: #472C1B; --navy: #FBE2D1; --brown: #FBE2D1; --hero-top: #382315; --hero-mid: #22160E; --bg: #18100A; --line: #3F2C1F; --field: #20160F; --nav-on: #4E301D; --nav-on-ink: #F3A673; --surface: #261B13; } }
 :root[data-theme="dark"][data-color="orange"] { --accent: #F3A673; --accent-soft: #472C1B; --c-blue: #F3A673; --c-blue-bg: #472C1B; --navy: #FBE2D1; --brown: #FBE2D1; --hero-top: #382315; --hero-mid: #22160E; --bg: #18100A; --line: #3F2C1F; --field: #20160F; --nav-on: #4E301D; --nav-on-ink: #F3A673; --surface: #261B13; }
 :root[data-color] body { background: linear-gradient(180deg, var(--hero-top) 0, var(--hero-mid) 300px, var(--bg) 640px) no-repeat, var(--bg); }
+.brand-img { display: none; width: 44px; height: 44px; border-radius: 11px; box-shadow: 0 2px 8px color-mix(in srgb, var(--accent) 30%, transparent); flex: 0 0 auto; }
+:root[data-color="pink"] .brand-img { display: block; }
+:root[data-color="pink"] .brand-ico { display: none; }
 :root[data-color] .nav { background: color-mix(in srgb, var(--surface) 92%, var(--accent-soft)); border-color: var(--line); }
 :root[data-color] .seg { background: var(--accent-soft); }
 :root[data-color] .todaycard, :root[data-color] .roundbtn { border-color: var(--line); }
@@ -876,7 +879,7 @@ body.pg-variable .fab.add, body.pg-fixed .fab.add, #sec-variable .section-head b
 .colorcard { display: grid; gap: 12px; }
 .note .probadge { vertical-align: 1px; }
 .brand h1 { font-size: clamp(24px, 8vw, 34px); }
-@media (max-width: 360px) { .brand-ico { display: none; } .roundbtn { width: 44px; height: 44px; } }
+@media (max-width: 360px) { .brand-ico, .brand-img, :root[data-color="pink"] .brand-img { display: none; } .roundbtn { width: 44px; height: 44px; } }
 </style>
 </head>
 <body>
@@ -884,7 +887,7 @@ body.pg-variable .fab.add, body.pg-fixed .fab.add, #sec-variable .section-head b
   <header class="hero">
     <div class="hero-top">
       <button id="helpBtn" class="roundbtn" aria-label="使い方"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" fill="none"/></svg></button>
-      <div class="brand"><svg class="brand-ico" viewBox="0 0 48 44" aria-hidden="true"><defs><linearGradient id="bkg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color: color-mix(in srgb, var(--accent) 75%, #fff)"/><stop offset="1" style="stop-color: var(--accent)"/></linearGradient></defs><path d="M24 2 L45 13 V16 H3 V13 Z" fill="url(#bkg)"/><circle cx="24" cy="10" r="2.6" fill="#fff" opacity=".9"/><rect x="5" y="18" width="38" height="3" rx="1" fill="url(#bkg)"/><g fill="url(#bkg)"><rect x="8" y="22" width="5" height="13" rx="1"/><rect x="17" y="22" width="5" height="13" rx="1"/><rect x="26" y="22" width="5" height="13" rx="1"/><rect x="35" y="22" width="5" height="13" rx="1"/></g><rect x="3" y="36" width="42" height="6" rx="2" fill="url(#bkg)"/></svg><h1>引落ナビ</h1></div>
+      <div class="brand"><img class="brand-img" src="brand-pink.png" alt="" width="44" height="44"><svg class="brand-ico" viewBox="0 0 48 44" aria-hidden="true"><defs><linearGradient id="bkg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color: color-mix(in srgb, var(--accent) 75%, #fff)"/><stop offset="1" style="stop-color: var(--accent)"/></linearGradient></defs><path d="M24 2 L45 13 V16 H3 V13 Z" fill="url(#bkg)"/><circle cx="24" cy="10" r="2.6" fill="#fff" opacity=".9"/><rect x="5" y="18" width="38" height="3" rx="1" fill="url(#bkg)"/><g fill="url(#bkg)"><rect x="8" y="22" width="5" height="13" rx="1"/><rect x="17" y="22" width="5" height="13" rx="1"/><rect x="26" y="22" width="5" height="13" rx="1"/><rect x="35" y="22" width="5" height="13" rx="1"/></g><rect x="3" y="36" width="42" height="6" rx="2" fill="url(#bkg)"/></svg><h1>引落ナビ</h1></div>
       <button id="setBtn" class="roundbtn" aria-label="設定を開く"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.1-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1.55-1.1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V9a1.7 1.7 0 0 0 1.55 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1z"/></svg></button>
     </div>
     <div class="todaycard"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/><g fill="currentColor" stroke="none"><circle cx="8" cy="14" r="1.1"/><circle cx="12" cy="14" r="1.1"/><circle cx="16" cy="14" r="1.1"/><circle cx="8" cy="17.3" r="1.1"/><circle cx="12" cy="17.3" r="1.1"/></g></svg><span class="tc-lab">今日</span><b id="today">—</b></div>

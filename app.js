@@ -799,7 +799,7 @@
   }
   /** 起動直後に色がちらつかないよう、確認できた購入状態を覚えておく（確認のたびに上書き） */
   function cachePro() { meta.proSeen = !!pro.owned; saveMeta(); }
-  function proActive() { return pro.checked ? pro.owned : !!(N.isNative && meta.proSeen); }
+  function proActive() { if (window.__NAVI_PREVIEW__ === true) return true; /* 確認版だけはプレミアムの見た目を試せる */ return pro.checked ? pro.owned : !!(N.isNative && meta.proSeen); }
   async function refreshPro() {
     if (!(N.isNative && N.proStatus)) return;
     const r = await N.proStatus();

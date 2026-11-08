@@ -5,7 +5,7 @@ set -euo pipefail
 
 echo "== 1. アプリの画面ファイルを www/ に集める"
 rm -rf www && mkdir www
-cp index.html app.js calc.js native.js hero.png www/
+cp index.html app.js calc.js native.js hero.png brand-pink.png www/
 
 echo "== 2. iOSプロジェクトを作る"
 rm -rf ios
