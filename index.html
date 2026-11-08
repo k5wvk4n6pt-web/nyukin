@@ -861,7 +861,10 @@ body.pg-variable .fab.add, body.pg-fixed .fab.add, #sec-variable .section-head b
 :root[data-color] .brand-img { display: none; }
 :root[data-color] .brand-ico { display: block; }
 /* タイトルの下の線：ブルーは金色、ほかは選んだ色 */
-:root[data-color] .brand h1::after { background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent) 70%, #fff) 12%, color-mix(in srgb, var(--accent) 70%, #fff) 88%, transparent); }
+/* タイトルの下の線：筆で引いたような波線。ブルーは金色、ほかは選んだ色 */
+.brand h1 { --uline: var(--gold); }
+:root[data-color] .brand h1 { --uline: color-mix(in srgb, var(--accent) 75%, #fff); }
+.brand h1::after, :root[data-color] .brand h1::after { left: -3%; right: -5%; bottom: -10px; height: 14px; border-radius: 0; transform: none; background: var(--uline); -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 14' preserveAspectRatio='none'><path d='M2 4.5 C 50 10.5, 130 11, 198 1.5 C 192 8.5, 140 15.5, 80 15 C 40 14.6, 12 10.5, 2 4.5 Z' fill='black'/></svg>") center / 100% 100% no-repeat; mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 14' preserveAspectRatio='none'><path d='M2 4.5 C 50 10.5, 130 11, 198 1.5 C 192 8.5, 140 15.5, 80 15 C 40 14.6, 12 10.5, 2 4.5 Z' fill='black'/></svg>") center / 100% 100% no-repeat; }
 :root[data-color] .nav { background: color-mix(in srgb, var(--surface) 92%, var(--accent-soft)); border-color: var(--line); }
 :root[data-color] .seg { background: var(--accent-soft); }
 :root[data-color] .todaycard, :root[data-color] .roundbtn { border-color: var(--line); }
