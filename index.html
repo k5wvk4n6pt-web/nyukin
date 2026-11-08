@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'none'; form-action https://docs.google.com; frame-src https://docs.google.com">
 <meta name="referrer" content="no-referrer">
 <meta name="format-detection" content="telephone=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1013,6 +1013,9 @@ body.pp-none-unused { display: none !important; }
 .sshift .seg { margin-bottom: 0; }
 .sshift .seg button { font-size: 13px; padding: 6px 2px; }
 .flowchart .fg-axlab { font-weight: 700; fill: var(--navy); }
+.fbopen { width: 100%; margin-bottom: 8px; font-weight: 700; color: var(--accent); background: var(--accent-soft); border-color: transparent; }
+.fbsheet textarea { width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--field); color: var(--ink); font: inherit; font-size: 16px; resize: vertical; }
+.fbsheet .fbkind { margin-bottom: 0; }
 .fd-lh { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-top: 4px; }
 .fd-lh b { color: var(--navy); font-size: 15px; }
 .fd-lh .sub { font-size: 12px; }

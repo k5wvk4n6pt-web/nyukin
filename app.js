@@ -310,8 +310,43 @@
       '</section>';
   }
 
+  /* ---------- ご意見・ご要望 ----------
+     送信先は Google フォーム（運営が作成）。action と各項目の entry 番号を入れると送れるようになる。
+     送るのは、書いた文章・種類・返信先（任意）・アプリの版だけ。家計データは送らない。 */
+  const FEEDBACK = { action: '', kind: '', body: '', reply: '', ver: '' };
+  const feedbackReady = () => /^https:\/\/docs\.google\.com\/forms\/d\/e\/[\w-]+\/formResponse$/.test(FEEDBACK.action) && !!FEEDBACK.body;
+  function openFeedback() {
+    const m = $('#modal'); const ready = feedbackReady();
+    m.innerHTML = '<div class="sheet form fbsheet" role="dialog" aria-modal="true" aria-labelledby="mt"><h2 id="mt">ご意見・ご要望</h2>' +
+      '<p class="sub" style="margin:0">使ってみた感想、ほしい機能、不具合などをお聞かせください。いただいた内容は今後の改善に使います。</p>' +
+      '<div class="seg fbkind" role="radiogroup" aria-label="種類">' + ['ご要望', '不具合', 'その他'].map((k, i) => '<button type="button" role="radio" data-fbk="' + k + '" class="' + (i ? '' : 'on') + '" aria-checked="' + !i + '">' + k + '</button>').join('') + '</div>' +
+      '<label>内容<textarea id="fb-body" rows="6" maxlength="2000" placeholder="例：こういう画面がほしい／ここで止まってしまう など"></textarea></label>' +
+      '<label>返信先のメールアドレス（任意）<input class="text" id="fb-reply" type="email" inputmode="email" autocomplete="email" maxlength="200" placeholder="返事が必要なときだけ"></label>' +
+      '<p class="note" style="margin:0">送られるのは、ここに書いた内容と種類・返信先・アプリの版（' + APP_VERSION + '）だけです。口座や金額などの家計データは送られません。金額や口座番号などは書かないでください。</p>' +
+      (ready ? '' : '<p class="flag" style="margin:0">送信の準備中です。もうしばらくお待ちください。</p>') +
+      '<div class="btnrow"><button id="mCancel">やめる</button><button id="mOk" class="primary"' + (ready ? '' : ' disabled') + '>送る</button></div></div>';
+    m.hidden = false;
+    const close = () => { m.hidden = true; m.innerHTML = ''; };
+    $('#mCancel').onclick = close; m.onclick = e => { if (e.target === m) close(); };
+    let kind = 'ご要望';
+    m.querySelectorAll('[data-fbk]').forEach(b => b.addEventListener('click', () => { kind = b.dataset.fbk; m.querySelectorAll('[data-fbk]').forEach(x => { x.classList.toggle('on', x === b); x.setAttribute('aria-checked', x === b); }); }));
+    $('#mOk').onclick = () => {
+      const body = $('#fb-body').value.trim(), reply = $('#fb-reply').value.trim();
+      if (!body) { toast('内容を入力してください'); return; }
+      if (reply && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(reply)) { toast('メールアドレスの形を確かめてください'); return; }
+      if (!feedbackReady()) return;
+      // 見えないフォームで Google フォームへ送る（画面は移動しない）
+      const name = 'fbsink' + Date.now(); const ifr = document.createElement('iframe'); ifr.name = name; ifr.hidden = true; document.body.appendChild(ifr);
+      const f = document.createElement('form'); f.method = 'POST'; f.action = FEEDBACK.action; f.target = name; f.hidden = true;
+      const add = (k, v) => { if (!k) return; const i = document.createElement('input'); i.type = 'hidden'; i.name = 'entry.' + k; i.value = v; f.appendChild(i); };
+      add(FEEDBACK.kind, kind); add(FEEDBACK.body, body); add(FEEDBACK.reply, reply); add(FEEDBACK.ver, APP_VERSION + (N.isNative ? '（アプリ版）' : '（Web版）'));
+      document.body.appendChild(f); f.submit();
+      setTimeout(() => { f.remove(); ifr.remove(); }, 8000);
+      close(); toast('送りました。ありがとうございます');
+    };
+  }
   function helpHTML() {
-    return '<div class="help">' +
+    return '<div class="help"><button class="fbopen" data-act="feedback">ご意見・ご要望を送る ›</button>' +
       '<h3>できること</h3><p>登録した毎月の引落をもとに、口座ごとに「締め日までに必要な金額」を計算します。残高を入力すると、不足している口座と余っている口座がわかります。</p>' +
       '<h3>締め日と期間</h3><p>初めは締め日（毎月10日）が1つで、確認日から次の締め日までの引落で不足と余りを判定します。月末までなど、もう一つの期限の分も見たいときは「設定 → 帳簿」で「＋ もう一つの期限を追加」を押すと、参考として並びます。「設定 → 帳簿」で、それぞれ1〜28日または月末と、休日に当たったときの扱い（後ろ・前・ずらさない）に変えられます。確認日（今日）から次の締め日までの引落で、不足と余りを判定します。</p>' +
       '<h3>休日のずれ</h3><p>土日・祝日・年末年始（12/31〜1/3）に当たる日は、項目ごとに「後ろにずらす／前にずらす／ずらさない」を選べます。初期値は、支出が後ろ（翌営業日）、収入が前（前営業日）です。</p>' +
@@ -331,7 +366,7 @@
       '<h3>ご注意</h3><p>計算結果は目安です。実際の引落日・金額は、金融機関やカード会社の案内で確認してください。</p>' +
       '<p style="margin-top:14px"><a href="https://k5wvk4n6pt-web.github.io/nyukin/privacy.html" target="_blank" rel="noopener">プライバシーポリシー</a>　<a href="https://k5wvk4n6pt-web.github.io/nyukin/support.html" target="_blank" rel="noopener">サポート</a></p></div>';
   }
-  function showHelp() { confirmSheet('使い方', helpHTML(), null, null); }
+  function showHelp() { confirmSheet('使い方', helpHTML(), null, null); const fb = $('#modal [data-act="feedback"]'); if (fb) fb.addEventListener('click', openFeedback); }
 
   function backupNoticeHTML() {
     const every = backupEvery();
@@ -927,7 +962,7 @@
     else if (st === 'in') body = inHTML();
     else if (st === 'acc') body = accHTML();
     else if (st === 'books') body = booksHTML();
-    else if (st === 'view') body = viewHTML();
+    else if (st === 'view') body = viewHTML() + '<div class="card form"><div class="shead">ご意見・ご要望<span class="sub">感想やほしい機能、不具合を運営に送れます（家計データは送られません）</span></div><button data-act="feedback">ご意見・ご要望を送る</button></div>';
     else if (st === 'notify') body = notifyHTML();
     else body = backupHTML();
     const cs = C.closeSettings(state);
@@ -1233,6 +1268,7 @@
   }
 
   function bindSettings() {
+    main.querySelectorAll('[data-act="feedback"]').forEach(b => b.addEventListener('click', openFeedback));
     bindNotify();
     const ad = $('#autoDeduct'); if (ad) ad.addEventListener('change', () => { state.autoDeduct = ad.checked; if (ad.checked) { /* 入れ直したときは、その日以降の引落から */ const t = isoOf(today()); for (const h of state.history || []) if (h.date < t) h.deductChecked = true; } save(); toast(ad.checked ? '引落日が過ぎたら残高から引きます' : '残高から自動で引くのをやめました'); });
     const oc = main.querySelector('[data-act="owner-code"]'); if (oc) oc.addEventListener('click', openOwnerCode);
