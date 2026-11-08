@@ -972,7 +972,18 @@ body.pg-variable .fab.add, body.pg-fixed .fab.add, #sec-variable .section-head b
 /* 過不足だけのページ */
 body.pp-need #banksSec, body.pp-need #prepBottom, body.pp-need main > .note, body.pp-need .closecard,
 body.pp-money #banksSec, body.pp-money #prepBottom, body.pp-money main > .note,
-body.pp-flow #banksSec, body.pp-flow #prepBottom, body.pp-flow main > .note { display: none !important; }
+body.pp-flow #banksSec, body.pp-flow #prepBottom, body.pp-flow main > .note,
+body.pp-sched #banksSec, body.pp-sched #prepBottom, body.pp-sched main > .note { display: none !important; }
+.ppanel[data-panel="sched"] { display: grid; gap: 12px; }
+.schedcard { display: grid; gap: 10px; padding: 14px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); box-shadow: var(--card-shadow); }
+.sc-nav { display: grid; grid-template-columns: 40px minmax(0, 1fr) 40px; align-items: center; gap: 8px; }
+.sc-nav button { min-height: 40px; padding: 0; font-size: 20px; }
+.sc-t { display: grid; justify-items: center; gap: 2px; color: var(--navy); text-align: center; }
+.sc-list { display: grid; border-top: 1px solid var(--line); }
+.srow2 { display: grid; grid-template-columns: auto 24px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.srow2.done { opacity: .6; }
+.sc-total { display: flex; justify-content: space-between; align-items: baseline; padding: 4px 2px; font-weight: 700; color: var(--navy); }
+.sc-total b { font-size: 20px; }
 .ppanel[data-panel="flow"] { display: grid; gap: 12px; }
 .flowcard { display: grid; gap: 12px; padding: 14px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); box-shadow: var(--card-shadow); --fin: #4C7FD3; --fout: #C9682E; }
 :root[data-color="pink"] .flowcard { --fin: #CB5E85; --fout: #3A7BC8; }

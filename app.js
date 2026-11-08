@@ -218,6 +218,7 @@
     const sb = $('#shortbox'); if (sb) { sb.outerHTML = shortboxHTML(r); const bb = main.querySelector('#shortbox [data-act="bulk"]'); if (bb) bb.addEventListener('click', openBulk); bindSurBrk(); }
     const cyc = $('#cycleSec'); if (cyc) { cyc.outerHTML = cycleHTML(); bindCycle(); }
     const fb = $('#flowBox'); if (fb) { fb.innerHTML = flowHTML(); bindFlow(); }
+    const scb = $('#schedBox'); if (scb) { scb.innerHTML = schedHTML(); bindSched(); }
     const tt = main.querySelector('[data-total]'); if (tt) { tt.innerHTML = totalInner(r); bindTotal(); }
     const bl = $('#ballist'); if (bl && !bl.contains(document.activeElement)) { bl.innerHTML = balListHTML(r); bindBalList(); }
     const ptH = prepTopHTML(r);
@@ -467,6 +468,7 @@
     return '<div id="prepTop">' + pt.top + '</div>' +
       P('money', '<div class="pphead"><span>口座の残高</span><button class="pclose" data-panel-btn="money" aria-label="口座の残高を閉じる">閉じる ✕</button></div>' + totalHTML(r) + '<div id="ballist">' + balListHTML(r) + '</div>') +
       P('need', '<section class="summary" id="sec-top" aria-label="過不足"><div class="acchead">' + QI.scale.replace('<svg ', '<svg class="pico" ') + '過不足<button class="pclose" data-panel-btn="need" aria-label="過不足を閉じる">閉じる ✕</button></div>' + shortboxHTML(r) + '</section>') +
+      P('sched', '<div class="pphead"><span>引落予定</span><button class="pclose" data-panel-btn="sched" aria-label="引落予定を閉じる">閉じる ✕</button></div><div id="schedBox">' + schedHTML() + '</div>') +
       P('flow', '<div class="pphead"><span>締め期間ごとの収支</span><button class="pclose" data-panel-btn="flow" aria-label="収支を閉じる">閉じる ✕</button></div><div id="flowBox">' + flowHTML() + '</div>') +
       '<div id="prepBottom">' + pt.near + prepNoticeHTML(r) + '</div>';
   }
@@ -511,7 +513,7 @@
       '<span class="hc-r"><span class="hc-lab">' + (w0 ? esc(w0.label) + 'に必要な金額' : '必要な金額') + st + '</span><span class="hc-amt num">¥' + nf.format(w0 ? (r.totals[w0.key] || 0) : 0) + '</span></span>' +
       '<span class="hc-chev" aria-hidden="true">›</span></button>';
     const q = (k, ico, lab) => '<button class="qbtn' + (meta.prepPanel === k ? ' on' : '') + '" ' + (k === 'manage' ? 'data-act="go-variable"' : 'data-panel-btn="' + k + '" aria-expanded="' + (meta.prepPanel === k) + '"') + '>' + ico + '<span>' + lab + '</span></button>';
-    const quick = '<div class="quick4">' + q('need', QI.scale, '過不足') + q('money', QI.bank, '口座の残高') + q('flow', QI.chart, '収支の確認') + q('manage', QI.manage, '引落の管理') + '</div>';
+    const quick = '<div class="quick4">' + q('need', QI.scale, '過不足') + q('money', QI.bank, '口座の残高') + q('flow', QI.chart, '収支の確認') + q('sched', QI.sched, '引落予定') + '</div>';
     const rows = list.slice(0, 3).map(x => '<div class="nrow"><span class="ndate' + (x.short ? ' bad' : '') + '">' + md(x.date) + '</span><span class="nico">' + lineIcon(x.name) + '</span><span class="nname">' + esc(x.name) + '<small>' + esc(x.bank) + '</small></span><span class="namt num">' + (x.amount == null ? '<span class="flag">未入力</span>' : '¥' + nf.format(x.amount)) + '</span></div>').join('');
     const near = '<section class="nearlist" aria-label="直近の引落予定"><div class="nhead"><h2>直近の引落予定</h2><button class="more" data-act="go-banks">すべて見る ›</button></div>' +
       '<div class="ncard">' + (rows || '<p class="sub" style="margin:0;padding:14px">これからの引き落としはありません。</p>') + '</div></section>';
@@ -554,7 +556,7 @@
       '</nav>';
   }
   /** 過不足を開いている間は、過不足だけのページにする（銀行別の入金準備などは隠す） */
-  function syncPanelPage() { const onPrep = meta.page === 'prep'; document.body.classList.toggle('pp-need', onPrep && meta.prepPanel === 'need'); document.body.classList.toggle('pp-money', onPrep && meta.prepPanel === 'money'); document.body.classList.toggle('pp-flow', onPrep && meta.prepPanel === 'flow'); }
+  function syncPanelPage() { const onPrep = meta.page === 'prep'; document.body.classList.toggle('pp-need', onPrep && meta.prepPanel === 'need'); document.body.classList.toggle('pp-money', onPrep && meta.prepPanel === 'money'); document.body.classList.toggle('pp-flow', onPrep && meta.prepPanel === 'flow'); document.body.classList.toggle('pp-sched', onPrep && meta.prepPanel === 'sched'); }
   function bindPanels() {
     main.querySelectorAll('[data-panel-btn]').forEach(b => { if (b._pb) return; b._pb = 1; b.addEventListener('click', () => {
       const k = b.dataset.panelBtn; const was = meta.prepPanel; meta.prepPanel = meta.prepPanel === k ? null : k; saveMeta();
@@ -614,7 +616,7 @@
     for (const h of state.history || []) {
       if (h.date < fIso || h.date > toIso || h.date >= tIso) continue;
       recorded = true;
-      if (h.amount == null) { unentered++; continue; }
+      if (h.amount == null) { unentered++; items.push({ name: h.name, account: h.account, date: h.date, amount: null, past: true }); continue; }
       expense += h.amount; items.push({ name: h.name, account: h.account, date: h.date, amount: h.amount, past: true });
     }
     if (toIso >= tIso) {
@@ -624,7 +626,7 @@
         if (it.hidden || hiddenAcc.has(it.account) || !state.accounts.includes(it.account)) continue;
         for (const o of C.occurrencesIn(it, from, cy.to, false)) {
           const amt = C.amountFor(it, o); if (amt === 0) continue;
-          if (amt == null) { unentered++; continue; }
+          if (amt == null) { unentered++; items.push({ name: it.name, account: it.account, date: isoOf(o), amount: null, past: false }); continue; }
           expense += amt; items.push({ name: it.name, account: it.account, date: isoOf(o), amount: amt, past: false });
         }
       }
@@ -652,7 +654,7 @@
     const svg = '<svg class="flowchart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="締め期間ごとの収入と支出">' + g + '</svg>';
     const d = data.find(x => x.off === flowSel) || data[-FLOW_FROM];
     const neg = d.diff < 0;
-    const byName = {}; for (const it of d.items) { const k = it.name; byName[k] = (byName[k] || 0) + it.amount; }
+    const byName = {}; for (const it of d.items) { if (it.amount == null) continue; const k = it.name; byName[k] = (byName[k] || 0) + it.amount; }
     const top5 = Object.entries(byName).sort((a, b) => b[1] - a[1]);
     const detail = '<div class="flowdet"><div class="fd-h"><b>' + md(d.from) + '〜' + md(d.to) + '</b><span class="sub">（' + md(d.to) + '締め）</span></div>' +
       '<div class="fd-grid"><div><span class="k"><i class="sw in"></i>収入</span><span class="v num">' + nf.format(d.income) + '<small>円</small></span>' + (d.incomeMissing ? '<span class="flag">金額未入力 ' + d.incomeMissing + '件</span>' : '') + '</div>' +
@@ -662,6 +664,25 @@
       (top5.length ? '<div class="fd-list">' + top5.map(([n, v]) => '<div class="fd-row"><span>' + esc(n) + '</span><span class="num">' + nf.format(v) + '円</span></div>').join('') + '</div>' : '') + '</div>';
     return '<section class="flowcard"><div class="fg-legend"><span><i class="sw in"></i>収入</span><span><i class="sw out"></i>支出</span><span class="sub">棒を押すと内訳</span></div>' + svg + detail +
       '<p class="note" style="margin:0">過ぎた日の支出は「記録」、今日からあとは登録している金額で計算しています。収入は「設定 → 収入」の金額です。</p></section>';
+  }
+  /* ---------- 締め期間ごとの引落予定 ---------- */
+  let schedOff = 0;
+  function schedHTML() {
+    const d = flowData(schedOff);
+    const label = schedOff === 0 ? '今回' : schedOff === -1 ? '前回' : schedOff === 1 ? '次回' : schedOff > 0 ? schedOff + '回あと' : -schedOff + '回前';
+    const tIso = isoOf(today());
+    const list = d.items.slice().sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
+    const rows = list.map(x => { const o = isoToObj(x.date); const done = x.date < tIso;
+      return '<div class="srow2' + (done ? ' done' : '') + '"><span class="ndate">' + mdw(o) + '</span><span class="nico">' + lineIcon(x.name) + '</span><span class="nname">' + esc(x.name) + '<small>' + esc(x.account) + (done ? '・引落済み' : '') + '</small></span><span class="namt num">' + (x.amount == null ? '<span class="flag">未入力</span>' : '¥' + nf.format(x.amount)) + '</span></div>'; }).join('');
+    return '<section class="schedcard"><div class="sc-nav"><button class="small" data-sched="-1" aria-label="前の締め期間">‹</button><div class="sc-t"><b>' + label + '（' + md(d.to) + '締め）</b><span class="sub">' + md(d.from) + '〜' + md(d.to) + '</span></div><button class="small" data-sched="1" aria-label="次の締め期間">›</button></div>' +
+      (rows ? '<div class="sc-list">' + rows + '</div>' : '<p class="sub" style="margin:0;padding:8px 2px">この期間の引き落としはありません。</p>') +
+      '<div class="sc-total"><span>合計 ' + list.length + '件</span><b class="num">¥' + nf.format(d.expense) + '</b></div>' +
+      (d.unentered ? '<p class="flag" style="margin:0">金額未入力が ' + d.unentered + '件あります（合計に入っていません）</p>' : '') +
+      (d.noRecord ? '<p class="sub" style="margin:0">この期間は記録がないため、引き落としを表示できません（記録は使い始めた日から残ります）。</p>' : '') +
+      '<p class="note" style="margin:0">過ぎた日は「記録」、今日からあとは登録している内容から表示しています。</p></section>';
+  }
+  function bindSched() {
+    main.querySelectorAll('[data-sched]').forEach(b => b.addEventListener('click', () => { schedOff += Number(b.dataset.sched); const sb = $('#schedBox'); if (sb) { sb.innerHTML = schedHTML(); bindSched(); } }));
   }
   function niceStep(v) { const p = Math.pow(10, Math.floor(Math.log10(v || 1))); const n = v / p; return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * p; }
   function bindFlow() {
@@ -1405,7 +1426,7 @@
     main.querySelectorAll('[data-act="go-acc"]').forEach(b => b.addEventListener('click', () => go('acc')));
     main.querySelectorAll('[data-act="go-out"]').forEach(b => b.addEventListener('click', () => go('out')));
     main.querySelectorAll('[data-act="go-in"]').forEach(b => b.addEventListener('click', () => go('in')));
-    bindTotal(); bindUpcoming(); bindPanels(); bindPrepTop(); bindFlow();
+    bindTotal(); bindUpcoming(); bindPanels(); bindPrepTop(); bindFlow(); bindSched();
     main.querySelectorAll('[data-act="go-close"]').forEach(b => b.addEventListener('click', () => { go('books'); const c = $('#closecard'); if (c) c.scrollIntoView({ block: 'start' }); }));
     main.querySelectorAll('[data-act="sample-clear"]').forEach(b => b.addEventListener('click', () => confirmSheet('サンプルを消しますか？', '<p class="sub" style="margin:0">サンプルの口座・支出・収入をすべて消して、空の状態からはじめます。</p>', '消してはじめる', () => {
       state = emptyState(); meta.page = 'prep'; saveMeta(); save(); renderAll(); window.scrollTo(0, 0); toast('空の状態になりました');
