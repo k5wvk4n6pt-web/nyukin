@@ -1053,15 +1053,18 @@
   function cachePro() { meta.proSeen = !!pro.owned; saveMeta(); }
   function proActive() {
     if (window.__NAVI_PREVIEW__ === true) return true; // 確認版だけはプレミアムの見た目を試せる
-    if (!N.isNative && meta.ownerUnlock === OWNER_HASH) return true; // Webアプリ版：持ち主のコードで使える（アプリ版はApp Storeの購入だけ）
+    if (!N.isNative && UNLOCK_HASHES.includes(meta.ownerUnlock)) return true; // Webアプリ版：持ち主のコードで使える（アプリ版はApp Storeの購入だけ）
     return pro.checked ? pro.owned : !!(N.isNative && meta.proSeen);
   }
+  const FRIEND_HASH = 'fd6d5b742c8b859655ff74d1255bb4da09c1c000a29eee9171390bc571b94428'; // 知り合い用（消すと、このコードで開放した人はブルーに戻る）
   const OWNER_HASH = '129f4958b98e9c1516e4ac62c01dc1e60b036c3a286dd02fb3b9230e919f671a';
+  const UNLOCK_HASHES = [OWNER_HASH, FRIEND_HASH];
   async function checkOwnerCode(code) {
     try {
       const norm = String(code || '').toUpperCase().replace(/[^A-Z0-9]/g, '').replace(/(.{4})(?=.)/g, '$1-');
       const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('hikiotoshi-navi:' + norm));
-      return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('') === OWNER_HASH;
+      const hx = [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+      return UNLOCK_HASHES.includes(hx) ? hx : false;
     } catch (e) { return false; }
   }
   function openOwnerCode() {
@@ -1073,7 +1076,8 @@
     const close = () => { m.hidden = true; m.innerHTML = ''; };
     $('#mCancel').onclick = close; m.onclick = e => { if (e.target === m) close(); };
     $('#mOk').onclick = async () => {
-      if (await checkOwnerCode($('#ocIn').value)) { meta.ownerUnlock = OWNER_HASH; saveMeta(); close(); applyTheme(); renderKeep(); toast('プレミアムが使えるようになりました'); }
+      const hx = await checkOwnerCode($('#ocIn').value);
+      if (hx) { meta.ownerUnlock = hx; saveMeta(); close(); applyTheme(); renderKeep(); toast('プレミアムが使えるようになりました'); }
       else toast('コードが違います');
     };
     setTimeout(() => { const i = $('#ocIn'); if (i) i.focus(); }, 50);
