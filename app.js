@@ -2603,25 +2603,40 @@
   document.addEventListener('visibilitychange', () => { if (!document.hidden) { tick(); syncTyping(); } });
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
   /* ---------- 新しい版のお知らせ（ホーム画面に追加したWeb版） ----------
-     開いたとき・裏から戻ったときに新しい版を確かめ、入れ替わったら「更新する」を出す。勝手には読み込み直さない。 */
+     開いたとき・戻ったとき・開いている間は5分ごとに、サーバーの sw.js の版名と、いま使っている保存分の版名を比べる。
+     違えば「更新する」を出す。勝手には読み込み直さない。 */
   if (!N.isNative && 'serviceWorker' in navigator && location.protocol !== 'file:') {
-    const hadCtl = !!navigator.serviceWorker.controller;
-    let lastCheck = 0, shown = false;
+    let shown = false, lastCheck = 0, regRef = null;
     const showUpdate = () => {
       if (shown) return; shown = true;
       const bar = document.createElement('div'); bar.className = 'updbar'; bar.setAttribute('role', 'status');
-      bar.innerHTML = '<span>新しい版があります</span><button type="button" class="primary small" id="updGo">更新する</button><button type="button" class="small updx" id="updLater" aria-label="あとで">あとで</button>';
+      bar.innerHTML = '<span>新しい版があります</span><button type="button" class="primary small" id="updGo">更新する</button><button type="button" class="small updx" id="updLater">あとで</button>';
       document.body.appendChild(bar);
-      $('#updGo').onclick = () => { try { saveMeta(); } catch (e) {} location.reload(); };
-      $('#updLater').onclick = () => { bar.remove(); };
+      $('#updGo').onclick = async () => {
+        $('#updGo').disabled = true; $('#updGo').textContent = '更新中…';
+        try { saveMeta(); } catch (e) {}
+        const done = () => location.reload();
+        navigator.serviceWorker.addEventListener('controllerchange', done, { once: true });
+        try { if (regRef) await regRef.update(); } catch (e) {}
+        setTimeout(done, 4000); // 入れ替わりの合図が来なくても読み込み直す
+      };
+      $('#updLater').onclick = () => { bar.remove(); shown = false; lastCheck = Date.now() + 30 * 60000; }; // 30分は聞かない
     };
-    navigator.serviceWorker.register('sw.js').then(reg => {
-      const check = () => { const now = Date.now(); if (now - lastCheck < 60000) return; lastCheck = now; reg.update().catch(() => {}); };
-      document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') check(); });
-      window.addEventListener('focus', check);
-      setTimeout(check, 3000);
-    }).catch(() => {});
-    navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadCtl) showUpdate(); });
+    const check = async () => {
+      const now = Date.now(); if (shown || now - lastCheck < 60000) return; lastCheck = now;
+      try {
+        const txt = await (await fetch('sw.js?t=' + now, { cache: 'no-store' })).text();
+        const m = txt.match(/const CACHE = '([^']+)'/); if (!m) return;
+        const keys = await caches.keys();
+        if (keys.length && !keys.includes(m[1])) { if (regRef) regRef.update().catch(() => {}); showUpdate(); }
+      } catch (e) { /* つながらないときは何もしない */ }
+    };
+    navigator.serviceWorker.register('sw.js').then(reg => { regRef = reg; }).catch(() => {});
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') check(); });
+    window.addEventListener('focus', check);
+    window.addEventListener('pageshow', check);
+    setTimeout(check, 2500);
+    setInterval(() => { if (document.visibilityState === 'visible') check(); }, 5 * 60000);
   }
   if (N.isNative) {
     refreshPro(); refreshIcon();
