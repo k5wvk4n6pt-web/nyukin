@@ -318,10 +318,10 @@
   function openFeedback() {
     const m = $('#modal'); const ready = feedbackReady();
     m.innerHTML = '<div class="sheet form fbsheet" role="dialog" aria-modal="true" aria-labelledby="mt"><h2 id="mt">ご意見・ご要望</h2>' +
-      '<p class="sub" style="margin:0">使ってみた感想、ほしい機能、不具合などをお聞かせください。いただいた内容は今後の改善に使います。</p>' +
+      '<p class="sub" style="margin:0">使ってみた感想、ほしい機能、不具合などをお聞かせください。いただいた内容は今後の改善に使います。なお、すべてのご意見に返信できるとは限りません。</p>' +
       '<div class="seg fbkind" role="radiogroup" aria-label="種類">' + ['ご要望', '不具合', 'その他'].map((k, i) => '<button type="button" role="radio" data-fbk="' + k + '" class="' + (i ? '' : 'on') + '" aria-checked="' + !i + '">' + k + '</button>').join('') + '</div>' +
       '<label>内容<textarea id="fb-body" rows="6" maxlength="2000" placeholder="例：こういう画面がほしい／ここで止まってしまう など"></textarea></label>' +
-      '<label>返信先のメールアドレス（任意）<input class="text" id="fb-reply" type="email" inputmode="email" autocomplete="email" maxlength="200" placeholder="返事が必要なときだけ"></label>' +
+      '<label>返信先のメールアドレス（任意）<small class="sub" style="display:block;font-weight:400">お返事できる場合に使います。必ず返信するものではありません</small><input class="text" id="fb-reply" type="email" inputmode="email" autocomplete="email" maxlength="200" placeholder="例：name@example.com"></label>' +
       '<p class="note" style="margin:0">送られるのは、ここに書いた内容と種類・返信先・アプリの版（' + APP_VERSION + '）だけです。口座や金額などの家計データは送られません。金額や口座番号などは書かないでください。</p>' +
       (ready ? '' : '<p class="flag" style="margin:0">送信の準備中です。もうしばらくお待ちください。</p>') +
       '<div class="btnrow"><button id="mCancel">やめる</button><button id="mOk" class="primary"' + (ready ? '' : ' disabled') + '>送る</button></div></div>';
