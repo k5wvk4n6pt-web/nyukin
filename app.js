@@ -1963,7 +1963,8 @@
     const def = h || { date: (histMonth && histMonth !== isoToday().slice(0, 7) ? histMonth + '-01' : isoToday()), name: '', account: '', amount: null, kind: '変動費' };
     const m = $('#modal');
     m.innerHTML = '<div class="sheet form xsheet" role="dialog" aria-modal="true" aria-labelledby="mt"><h2 id="mt">' + (h ? '記録を直す' : '記録を追加') + '</h2>' +
-      '<label>項目名<input class="text" id="hr-name" autocomplete="off" value="' + esc(def.name) + '" placeholder="例：クレジットカード"></label>' +
+      '<label>項目名<select id="hr-pick" aria-label="項目名を選ぶ">' + histPickOptions(def) + '</select></label>' +
+      '<label id="hr-name-wrap"' + (histPickKey(def) === '__other' ? '' : ' hidden') + '>項目名（臨時など）<input class="text" id="hr-name" autocomplete="off" value="' + esc(histPickKey(def) === '__other' ? def.name : '') + '" placeholder="例：車検・修理代"></label>' +
       '<label>引き落とされた金額<input class="amount wide" id="hr-amt" inputmode="numeric" enterkeyhint="done" autocomplete="off" value="' + yenTxt(def.amount) + '" placeholder="未入力"></label>' +
       '<div class="two"><label>日付<input class="text" type="date" id="hr-date" value="' + esc(def.date) + '"></label>' +
       '<label>種類<select id="hr-kind">' + kinds.map(k => '<option' + (k === def.kind ? ' selected' : '') + '>' + k + '</option>').join('') + '</select></label></div>' +
@@ -1972,10 +1973,26 @@
     m.hidden = false;
     const close = () => { m.hidden = true; m.innerHTML = ''; };
     $('#mCancel').onclick = close; m.onclick = e => { if (e.target === m) close(); };
+    const pick = $('#hr-pick'), wrap = $('#hr-name-wrap');
+    pick.addEventListener('change', () => {
+      const v = pick.value;
+      if (v === '__other') { wrap.hidden = false; $('#hr-name').focus(); $('#hr-kind').value = 'その他'; return; }
+      wrap.hidden = true;
+      const it = histItems().find(x => x.key === v); if (!it) return;
+      // 登録している項目を選んだら、口座・種類・金額を自動で入れる（あとで直せる）
+      if (it.account) $('#hr-acc').value = it.account;
+      // 日付：表示している月の、その項目の引落日（休日はずらした日）
+      const dIn = $('#hr-date'); const ym = /^\d{4}-\d{2}/.test(dIn.value) ? dIn.value.slice(0, 7) : isoToday().slice(0, 7);
+      if (it.src.date) dIn.value = it.src.date;
+      else if (it.src.day != null) { const [yy, mm] = ym.split('-').map(Number); const a = C.actual(it.src, yy, mm, false); dIn.value = isoOf(a); }
+      $('#hr-kind').value = it.kind;
+      const amt = $('#hr-amt'); if (!amt.value && it.amount != null) { amt.value = yenTxt(it.amount); amt.dispatchEvent(new Event('input')); }
+    });
     if (h) $('#hr-del').onclick = () => { state.history = state.history.filter(x => x.id !== h.id); save(); close(); renderKeep(); toast('記録を削除しました'); };
     $('#mOk').onclick = () => {
-      const name = $('#hr-name').value.trim(), v = parseAmount($('#hr-amt').value), date = $('#hr-date').value, acc = $('#hr-acc').value, kind = $('#hr-kind').value;
-      if (!name) { toast('項目名を入力してください'); return; }
+      const pv = pick.value; const pit = histItems().find(x => x.key === pv);
+      const name = (pv === '__other' ? $('#hr-name').value : pit ? pit.name : '').trim(), v = parseAmount($('#hr-amt').value), date = $('#hr-date').value, acc = $('#hr-acc').value, kind = $('#hr-kind').value;
+      if (!name) { toast(pv === '__other' ? '項目名を入力してください' : '項目を選んでください'); return; }
       if (Number.isNaN(v)) { toast('金額は数字で入力してください'); return; }
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { toast('日付を選んでください'); return; }
       if (!acc) { toast('口座を選んでください'); return; }
@@ -1984,7 +2001,26 @@
       state.history.sort((a, b) => a.date < b.date ? 1 : a.date > b.date ? -1 : 0);
       histMonth = ymOf(date); save(); close(); renderKeep(); toast(h ? '記録を直しました' : '記録を追加しました');
     };
-    $('#hr-name').focus();
+  }
+  /** 記録で選べる、登録している項目（変動費・固定費・1回のみ） */
+  function histItems() {
+    const out = [];
+    for (const [k, label] of [['variable', '変動費'], ['fixed', '固定費'], ['once', '1回のみ']]) for (const it of state[k] || []) out.push({ key: k + ':' + it.id, name: it.name, account: it.account, amount: it.amount, kind: label, group: label, hidden: !!it.hidden, src: it });
+    return out;
+  }
+  function histPickKey(def) {
+    if (!def.name) return '';
+    const hit = histItems().find(x => x.name === def.name && (!def.account || x.account === def.account)) || histItems().find(x => x.name === def.name);
+    return hit ? hit.key : '__other';
+  }
+  function histPickOptions(def) {
+    const sel = histPickKey(def); const items = histItems();
+    let h = '<option value=""' + (sel ? '' : ' selected') + '>選んでください</option>';
+    for (const g of ['変動費', '固定費', '1回のみ']) {
+      const l = items.filter(x => x.group === g); if (!l.length) continue;
+      h += '<optgroup label="' + g + '">' + l.map(x => '<option value="' + esc(x.key) + '"' + (x.key === sel ? ' selected' : '') + '>' + esc(x.name) + (x.account ? '（' + esc(x.account) + '）' : '') + (x.hidden ? '・非表示' : '') + '</option>').join('') + '</optgroup>';
+    }
+    return h + '<optgroup label="その他"><option value="__other"' + (sel === '__other' ? ' selected' : '') + '>臨時・その他（自分で入力）</option></optgroup>';
   }
   async function exportCSV(scope) {
     const rows = (state.history || []).filter(h => scope === 'all' || ymOf(h.date) === histMonth).slice().sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
