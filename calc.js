@@ -81,6 +81,7 @@
 
   /** 終了月（"2026-12" など）を過ぎた月の引落は数えない */
   function activeIn(item, y, m) {
+    if (Array.isArray(item.months) && item.months.length && !item.months.includes(m)) return false; // 年に数回（例：6月・12月）
     if (!item.end) return true;
     const [ey, em] = String(item.end).split('-').map(Number);
     if (!ey || !em) return true;
@@ -298,7 +299,7 @@
     };
   }
 
-  const api = { VERSION: '2026.11.07b', amountFor, cycle, onceDate, deadlineLabel, closeSettings, nextClosing, closingOf, holidays, holidayName, isBusinessDay, shiftDate, shiftMode, actual, addDays, WD, lastDay, serial, addMonth, weekday, fromDate, occurrence, activeIn, windows, occurrencesIn, nextDate, compute };
+  const api = { VERSION: '2026.11.08a', amountFor, cycle, onceDate, deadlineLabel, closeSettings, nextClosing, closingOf, holidays, holidayName, isBusinessDay, shiftDate, shiftMode, actual, addDays, WD, lastDay, serial, addMonth, weekday, fromDate, occurrence, activeIn, windows, occurrencesIn, nextDate, compute };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.KCalc = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
