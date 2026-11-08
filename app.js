@@ -1073,7 +1073,7 @@
     const groups = ['monthly', 'months', 'once'].map(k => { const l = state.income.filter(i => incKind(i) === k); return l.length ? '<div class="igroup"><div class="ig-h">' + INKIND[k] + '<span class="sub">' + l.length + '件</span></div>' + l.map(row).join('') + '</div>' : ''; }).join('');
     const nk = ['monthly', 'months', 'once'].includes(meta.incNewKind) ? meta.incNewKind : 'monthly';
     const T = today();
-    return '<div class="card"><div class="pad">' + headHTML('登録している収入', state.income.length + '件', 'income') + '</div>' + (groups || '<p class="sub" style="padding:0 16px">収入はまだありません。</p>') +
+    return '<div class="card"><div class="pad">' + headHTML('収入一覧', state.income.length + '件', 'income', 'income') + '</div>' + (groups || '<p class="sub" style="padding:0 16px">収入はまだありません。</p>') +
       '<div class="add"><button class="ghost" data-act="incadd-open">＋ 収入を追加</button></div></div>';
   }
 
@@ -1562,7 +1562,7 @@
       el.addEventListener('input', () => onAmountInput(el, () => inc.amount, v => { inc.amount = v; }));
       el.addEventListener('blur', () => { const v = parseAmount(el.value); if (!Number.isNaN(v)) el.value = yenTxt(v); });
     });
-    main.querySelectorAll('[data-act="add"]').forEach(btn => btn.addEventListener('click', () => openAddSheet(btn.dataset.kind)));
+    main.querySelectorAll('[data-act="add"]').forEach(btn => btn.addEventListener('click', () => btn.dataset.kind === 'income' ? openIncAddSheet(meta.incNewKind) : openAddSheet(btn.dataset.kind)));
     main.querySelectorAll('[data-act="backup"]').forEach(b => b.addEventListener('click', doBackup));
     bindCloud();
     bindXfer();
