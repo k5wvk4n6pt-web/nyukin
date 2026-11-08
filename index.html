@@ -957,6 +957,18 @@ body.pg-variable .fab.add, body.pg-fixed .fab.add, #sec-variable .section-head b
 .surrow .sv { grid-area: v; font-weight: 800; color: var(--ok); white-space: nowrap; }
 .surrow .sv small { font-size: 11px; margin-left: 1px; }
 .surrow.total .sv { color: var(--navy); }
+/* 過不足：不足・余りのボタンと内訳 */
+.tots .tot { display: grid; text-align: left; font: inherit; color: inherit; cursor: pointer; min-height: 0; position: relative; }
+.tots .tot .tot-more { margin-top: 4px; font-size: 12px; font-weight: 700; color: var(--accent); }
+.tots .tot.short .tot-more { color: var(--short); } .tots .tot.plus .tot-more { color: var(--ok); }
+.tots .tot.sel { box-shadow: inset 0 0 0 2px currentColor; }
+.tots .tot.short.sel { color: var(--short); } .tots .tot.plus.sel { color: var(--ok); }
+.tots .tot.sel .tl, .tots .tot.sel small { color: var(--ink); }
+.sbdetail { margin-top: 10px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); padding: 10px 12px; }
+.sbd-h { font-size: 14px; font-weight: 800; color: var(--navy); margin-bottom: 2px; }
+.sbdetail .surlist { padding: 0; }
+.surrow.neg .sv { color: var(--short); }
+.tots .tot.plus .big { color: var(--ok); } .tots .tot.short .big { color: var(--short); } .tots .tot.zero .big { color: var(--muted); }
 @media (max-width: 360px) { .brand-ico, .brand-img, :root[data-color] .brand-img { display: none; } .roundbtn { width: 44px; height: 44px; } }
 </style>
 </head>
