@@ -1947,6 +1947,7 @@
       '<div class="diff ' + (diff > 0 ? 'neg' : 'pos') + '"><span class="k">先月との差</span><span class="v num">' + (diff > 0 ? '＋' : diff < 0 ? '−' : '±') + nf.format(Math.abs(diff)) + '<span class="yen">円</span></span><span class="sub">先月 ' + nf.format(prevTotal) + '円</span></div></div>' +
       (accRows ? '<div class="haccs">' + accRows + '</div>' : '') + '</div>' +
       '<div class="list hlist">' + (rows || '<div class="emptyrow sub">この月の記録はありません</div>') + '</div>' +
+      '<button class="fixback" data-act="fix-back">固定費を記録に反映する</button>' +
       '<div class="btnrow" style="margin-top:12px"><button data-act="hist-csv" data-scope="month">この月をCSVで書き出す</button><button data-act="hist-csv" data-scope="all">全部をCSVで書き出す</button></div>' +
       '<p class="note">引落日が来た分を、そのときの金額で自動で記録します（' + since + 'から）。実際の金額と違うときは、記録を押して直せます。それより前の分は「＋ 追加」で入れられます。</p></section>';
   }
@@ -1955,6 +1956,7 @@
     main.querySelectorAll('[data-hid]').forEach(b => b.addEventListener('click', () => openHistEdit(b.dataset.hid)));
     main.querySelectorAll('[data-act="hist-add"]').forEach(b => b.addEventListener('click', () => openHistEdit(null)));
     main.querySelectorAll('[data-act="hist-csv"]').forEach(b => b.addEventListener('click', () => exportCSV(b.dataset.scope)));
+    main.querySelectorAll('[data-act="fix-back"]').forEach(b => b.addEventListener('click', openFixBack));
   }
   function openHistEdit(id) {
     const h = id ? (state.history || []).find(x => x.id === id) : null;
@@ -2000,6 +2002,49 @@
       else (state.history = state.history || []).push({ id: uid('h'), date, name, account: acc, amount: v, kind, src: null, auto: false, edited: false });
       state.history.sort((a, b) => a.date < b.date ? 1 : a.date > b.date ? -1 : 0);
       histMonth = ymOf(date); save(); close(); renderKeep(); toast(h ? '記録を直しました' : '記録を追加しました');
+    };
+  }
+  /** 固定費を、過去の月の記録にまとめて入れる（同じ日・同じ項目の記録があれば入れない。残高からは引かない） */
+  function fixBackPlan(ym, months) {
+    const tIso = isoToday(); const [y0, m0] = ym.split('-').map(Number);
+    const hiddenAcc = new Set(state.hiddenAccounts || []); const have = new Set((state.history || []).map(h => h.date + '|' + h.name + '|' + h.account));
+    const out = [];
+    for (let k = 0; k < months; k++) {
+      const p = C.addMonth(y0, m0, -k);
+      for (const it of state.fixed || []) {
+        if (it.hidden || hiddenAcc.has(it.account) || !state.accounts.includes(it.account) || it.amount == null || it.amount === 0) continue;
+        const nx = C.addMonth(p.y, p.m, 1);
+        for (const o of C.occurrencesIn(it, { y: p.y, m: p.m, d: 1 }, C.addDays({ y: nx.y, m: nx.m, d: 1 }, -1), false)) {
+          const iso = isoOf(o); if (iso >= tIso) continue;
+          const key = iso + '|' + it.name + '|' + it.account; if (have.has(key)) continue;
+          have.add(key); out.push({ date: iso, name: it.name, account: it.account, amount: it.amount, src: it.id });
+        }
+      }
+    }
+    return out.sort((a, b) => a.date < b.date ? -1 : 1);
+  }
+  function openFixBack() {
+    const ym = histMonth || isoToday().slice(0, 7); const [yy, mm] = ym.split('-').map(Number);
+    const m = $('#modal');
+    const opts = [[1, yy + '年' + mm + '月だけ'], [3, '3か月分（' + mm + '月からさかのぼる）'], [6, '6か月分'], [12, '12か月分']];
+    m.innerHTML = '<div class="sheet form" role="dialog" aria-modal="true" aria-labelledby="mt"><h2 id="mt">固定費を記録に反映</h2>' +
+      '<p class="sub" style="margin:0">登録している固定費を、今の金額で過去の記録にまとめて入れます。すでに同じ日・同じ項目の記録があるものは入れません。口座の残高からは引きません。</p>' +
+      '<label>どこまで入れるか<select id="fb-n">' + opts.map(o => '<option value="' + o[0] + '">' + o[1] + '</option>').join('') + '</select></label>' +
+      '<div id="fb-prev" class="fbprev"></div>' +
+      '<div class="btnrow"><button id="mCancel">やめる</button><button id="mOk" class="primary">記録に入れる</button></div></div>';
+    m.hidden = false;
+    const close = () => { m.hidden = true; m.innerHTML = ''; };
+    const show = () => { const plan = fixBackPlan(ym, Number($('#fb-n').value)); const sum = plan.reduce((a, x) => a + x.amount, 0);
+      $('#fb-prev').innerHTML = plan.length ? '<b>' + plan.length + '件・合計 ' + nf.format(sum) + '円</b><div class="fbl">' + plan.slice(0, 40).map(x => '<div><span>' + md(isoToObj(x.date)) + ' ' + esc(x.name) + '</span><span class="num">' + nf.format(x.amount) + '円</span></div>').join('') + (plan.length > 40 ? '<div class="sub">ほか ' + (plan.length - 40) + '件</div>' : '') + '</div>' : '<span class="sub">入れる記録はありません（すでに入っているか、固定費の引落がありません）</span>';
+      $('#mOk').disabled = !plan.length; };
+    $('#fb-n').addEventListener('change', show); show();
+    $('#mCancel').onclick = close; m.onclick = e => { if (e.target === m) close(); };
+    $('#mOk').onclick = () => {
+      const plan = fixBackPlan(ym, Number($('#fb-n').value)); if (!plan.length) return;
+      state.history = state.history || [];
+      for (const x of plan) state.history.push({ id: uid('h'), date: x.date, name: x.name, account: x.account, amount: x.amount, kind: '固定費', src: x.src, auto: false, edited: false, deductChecked: true });
+      state.history.sort((a, b) => a.date < b.date ? 1 : a.date > b.date ? -1 : 0);
+      save(); close(); renderKeep(); toast('固定費を' + plan.length + '件、記録に入れました');
     };
   }
   /** 記録で選べる、登録している項目（変動費・固定費・1回のみ） */
