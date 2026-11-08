@@ -343,7 +343,8 @@
     if (!r.banks.some(b => b.balance != null)) {
       return '<div id="shortbox"><div class="shortbox none"><span>残高を入力すると、不足と余りの合計が出ます<small>' + md(r.closing) + '締め</small></span></div></div>';
     }
-    const sel = meta.sbSel === 'short' || meta.sbSel === 'plus' ? meta.sbSel : null;
+    // 開いたときは、不足があれば不足の内訳、なければ余りの内訳を最初から表示（閉じたら 'none'）
+    const sel = meta.sbSel === 'short' || meta.sbSel === 'plus' ? meta.sbSel : meta.sbSel === 'none' ? null : (r.shortfallTotal > 0 ? 'short' : 'plus');
     const box = (cls, title, count, amount, sub, key) => '<button class="tot ' + cls + (sel === key ? ' sel' : '') + '" data-sb="' + key + '" aria-expanded="' + (sel === key) + '"><span class="tl">' + title + '</span>' +
       '<span class="big num">' + nf.format(amount) + '<span class="yen">円</span></span><small>' + sub + '</small><span class="tot-more">' + (sel === key ? '閉じる ▴' : '内訳 ▾') + '</span></button>';
     const cl = md(r.closing);
@@ -378,7 +379,8 @@
   function bindSurBrk() {
     const box = main.querySelector('#shortbox'); if (!box) return;
     box.querySelectorAll('[data-sb]').forEach(b => b.addEventListener('click', () => {
-      meta.sbSel = meta.sbSel === b.dataset.sb ? null : b.dataset.sb; saveMeta();
+      const cur = box.querySelector('.tot.sel'); const curKey = cur ? cur.dataset.sb : null;
+      meta.sbSel = curKey === b.dataset.sb ? 'none' : b.dataset.sb; saveMeta();
       box.outerHTML = shortboxHTML(C.compute(state, today())); bindSurBrk();
     }));
   }
@@ -510,13 +512,13 @@
     const next = list[0];
     const days = next ? Math.round((new Date(next.date.y, next.date.m - 1, next.date.d) - new Date(T.y, T.m - 1, T.d)) / 864e5) : null;
     const missing = r.banks.filter(b => b.dueActive && b.balance == null).length;
-    const st = r.shortfallTotal > 0 ? '<span class="pst bad">不足</span>' : missing ? '<span class="pst warn">未入力</span>' : r.dueCount ? '<span class="pst ok">✓ 足りる</span>' : '';
+    const st = r.shortfallTotal > 0 ? '<span class="pst bad">不足あり</span>' : missing ? '<span class="pst warn">未入力</span>' : r.dueCount ? '<span class="pst ok">準備OK</span>' : '';
     const hero = '<button class="herocard" data-panel-btn="need" aria-expanded="' + (meta.prepPanel === 'need') + '">' +
       '<span class="hc-l"><span class="hc-lab">次の引落まで</span><span class="hc-days num">' + (days == null ? '—' : days === 0 ? '今日' : days + '<small>日</small>') + '</span></span>' +
       '<span class="hc-r"><span class="hc-lab">' + (w0 ? esc(w0.label) + 'に必要な金額' : '必要な金額') + st + '</span><span class="hc-amt num">¥' + nf.format(w0 ? (r.totals[w0.key] || 0) : 0) + '</span></span>' +
       '<span class="hc-chev" aria-hidden="true">›</span></button>';
     const q = (k, ico, lab) => '<button class="qbtn' + (meta.prepPanel === k ? ' on' : '') + '" ' + (k === 'manage' ? 'data-act="go-variable"' : 'data-panel-btn="' + k + '" aria-expanded="' + (meta.prepPanel === k) + '"') + '>' + ico + '<span>' + lab + '</span></button>';
-    const quick = '<div class="quick4">' + q('need', QI.scale, '過不足') + q('money', QI.bank, '口座残高') + q('flow', QI.chart, '収支記録') + q('sched', QI.sched, '引落予定') + '</div>';
+    const quick = '<div class="quick4">' + q('sched', QI.sched, '引落予定') + q('need', QI.scale, '過不足') + q('money', QI.bank, '口座残高') + q('flow', QI.chart, '収支記録') + '</div>';
     const rows = list.slice(0, 3).map(x => '<div class="nrow"><span class="ndate' + (x.short ? ' bad' : '') + '">' + md(x.date) + '</span><span class="nico">' + lineIcon(x.name) + '</span><span class="nname">' + esc(x.name) + '<small>' + esc(x.bank) + '</small></span><span class="namt num">' + (x.amount == null ? '<span class="flag">未入力</span>' : '¥' + nf.format(x.amount)) + '</span></div>').join('');
     const near = '<section class="nearlist" aria-label="直近の引落予定"><div class="nhead"><h2>直近の引落予定</h2><button class="more" data-act="go-banks">すべて見る ›</button></div>' +
       '<div class="ncard">' + (rows || '<p class="sub" style="margin:0;padding:14px">これからの引き落としはありません。</p>') + '</div></section>';
@@ -562,7 +564,9 @@
   function syncPanelPage() { const onPrep = meta.page === 'prep'; document.body.classList.toggle('pp-need', onPrep && meta.prepPanel === 'need'); document.body.classList.toggle('pp-money', onPrep && meta.prepPanel === 'money'); document.body.classList.toggle('pp-flow', onPrep && meta.prepPanel === 'flow'); document.body.classList.toggle('pp-sched', onPrep && meta.prepPanel === 'sched'); }
   function bindPanels() {
     main.querySelectorAll('[data-panel-btn]').forEach(b => { if (b._pb) return; b._pb = 1; b.addEventListener('click', () => {
-      const k = b.dataset.panelBtn; const was = meta.prepPanel; meta.prepPanel = meta.prepPanel === k ? null : k; saveMeta();
+      const k = b.dataset.panelBtn; const was = meta.prepPanel; meta.prepPanel = meta.prepPanel === k ? null : k;
+      if (meta.prepPanel === 'need' && was !== 'need') { delete meta.sbSel; const sbx = $('#shortbox'); if (sbx) { sbx.outerHTML = shortboxHTML(C.compute(state, today())); bindSurBrk(); } }
+      saveMeta();
       if (was === 'money' || meta.prepPanel === 'money') { renderKeep(); if (meta.prepPanel) window.scrollTo(0, 0); return; }
       main.querySelectorAll('.ppanel').forEach(p => { p.hidden = p.dataset.panel !== meta.prepPanel; });
       main.querySelectorAll('[data-panel-btn]').forEach(x => { const on = x.dataset.panelBtn === meta.prepPanel; x.classList.toggle('on', on); x.setAttribute('aria-expanded', on); });
