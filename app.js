@@ -481,7 +481,7 @@
       P('money', '<div class="pphead"><span>口座残高</span><button class="small xmove" data-act="xfer-any">残高移動</button><button class="pclose" data-panel-btn="money" aria-label="口座残高を閉じる">閉じる ✕</button></div>' + totalHTML(r) + '<div id="ballist">' + balListHTML(r) + '</div>') +
       P('need', '<section class="summary" id="sec-top" aria-label="過不足"><div class="acchead">' + QI.scale.replace('<svg ', '<svg class="pico" ') + '過不足<button class="pclose" data-panel-btn="need" aria-label="過不足を閉じる">閉じる ✕</button></div>' + shortboxHTML(r) + '</section>') +
       P('sched', '<div id="schedNotice">' + prepNoticeHTML(r) + '</div><div class="pphead"><span>引落予定</span></div><div id="schedBox">' + schedHTML() + '</div>') +
-      P('flow', '<div class="pphead"><span>収支記録<small class="sub">（締め期間ごと）</small></span><button class="pclose" data-panel-btn="flow" aria-label="収支記録を閉じる">閉じる ✕</button></div><div id="flowBox">' + flowHTML() + '</div>') +
+      P('flow', '<div class="pphead"><span>収支記録<small class="sub">（始期日ごと）</small></span><button class="pclose" data-panel-btn="flow" aria-label="収支記録を閉じる">閉じる ✕</button></div><div id="flowBox">' + flowHTML() + '</div>') +
       '';
   }
 
@@ -673,13 +673,13 @@
     const bar = (x, v, cls) => { if (!v) return ''; const h = Math.max(2, (v / top) * ch), yy = T0 + ch - h, r = Math.min(4, bw / 2, h); return '<path class="' + cls + '" d="M' + x + ',' + (T0 + ch) + 'V' + (yy + r) + 'Q' + x + ',' + yy + ' ' + (x + r) + ',' + yy + 'H' + (x + bw - r) + 'Q' + (x + bw) + ',' + yy + ' ' + (x + bw) + ',' + (yy + r) + 'V' + (T0 + ch) + 'Z"/>'; };
     data.forEach((d, i) => {
       const cx = L + gw * i + gw / 2, sel = d.off === flowSel;
-      g += '<g class="fg-col' + (sel ? ' sel' : '') + '" data-flow="' + d.off + '" tabindex="0" role="button" aria-label="' + md(d.to) + '締め 収入' + nf.format(d.income) + '円 支出' + nf.format(d.expense) + '円">' +
+      g += '<g class="fg-col' + (sel ? ' sel' : '') + '" data-flow="' + d.off + '" tabindex="0" role="button" aria-label="' + md(d.from) + 'から 収入' + nf.format(d.income) + '円 支出' + nf.format(d.expense) + '円">' +
         '<rect class="fg-hit" x="' + (L + gw * i + 1) + '" y="' + (T0 - 8) + '" width="' + (gw - 2) + '" height="' + (ch + 8 + B) + '" rx="8"/>' +
         bar(cx - bw - 1, d.income, 'fg-in' + (d.noIncRecord ? ' faint' : '')) + bar(cx + 1, d.expense, 'fg-out' + (d.noRecord ? ' faint' : '')) +
-        '<text x="' + cx + '" y="' + (H - B + 15) + '" class="fg-lab" text-anchor="middle">' + md(d.to) + '</text>' +
+        '<text x="' + cx + '" y="' + (H - B + 15) + '" class="fg-lab" text-anchor="middle">' + md(d.from) + '</text>' +
         '<text x="' + cx + '" y="' + (H - B + 28) + '" class="fg-sub" text-anchor="middle">' + (d.off === 0 ? '今回' : d.off === -1 ? '前回' : d.off === 1 ? '次回' : '') + '</text></g>';
     });
-    const svg = '<svg class="flowchart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="締め期間ごとの収入と支出">' + g + '</svg>';
+    const svg = '<svg class="flowchart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="始期日ごとの収入と支出">' + g + '</svg>';
     const d = data.find(x => x.off === flowSel) || data[-FLOW_FROM];
     const neg = d.diff < 0;
     const side = flowSide === 'in' ? 'in' : 'out';
@@ -689,7 +689,7 @@
       const sub = side === 'in' ? (x.past ? '入金済み' : '予定') : esc(x.account || '') + (x.past ? '・引落済み' : '');
       return '<' + (id ? 'button' : 'div') + ' class="fd-row' + (x.past ? ' past' : '') + '"' + id + '><span class="fd-d">' + md(isoToObj(x.date)) + '</span><span class="fd-n">' + esc(x.name) + '<small>' + sub + '</small></span><span class="num">' + (x.amount == null ? '<span class="flag">未入力</span>' : nf.format(x.amount) + '円') + '</span></' + (id ? 'button' : 'div') + '>'; }).join('');
     const sideTab = (k, label, v, miss) => '<button class="fd-tab' + (side === k ? ' on' : '') + '" data-fside="' + k + '" aria-pressed="' + (side === k) + '"><span class="k"><i class="sw ' + k + '"></i>' + label + '</span><span class="v num">' + nf.format(v) + '<small>円</small></span>' + (miss ? '<span class="flag">金額未入力 ' + miss + '件</span>' : '') + '</button>';
-    const detail = '<div class="flowdet"><div class="fd-h"><b>' + md(d.from) + '〜' + md(d.to) + '</b><span class="sub">（' + md(d.to) + '締め）</span></div>' +
+    const detail = '<div class="flowdet"><div class="fd-h"><b>' + md(d.from) + '〜' + md(d.to) + '</b><span class="sub">（' + md(d.from) + '始期）</span></div>' +
       '<div class="fd-grid">' + sideTab('in', '収入', d.income, d.incomeMissing) + sideTab('out', '支出', d.expense, d.unentered) +
       '<div class="' + (neg ? 'neg' : 'pos') + '"><span class="k">差し引き</span><span class="v num">' + (neg ? '−' : '＋') + nf.format(Math.abs(d.diff)) + '<small>円</small></span></div></div>' +
       (d.noRecord || d.noIncRecord ? '<p class="sub" style="margin:0">この期間は' + (d.noRecord && d.noIncRecord ? '引き落としと収入' : d.noRecord ? '引き落とし' : '収入') + 'の記録がないため、0円になっています。</p>' : '') +
