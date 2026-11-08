@@ -625,6 +625,7 @@
 
   let cycleOffset = 0; // 0=今のサイクル（画面を開き直すと今に戻る）
   /* ---------- 締め期間ごとの収支（グラフ） ---------- */
+  let flowSide = 'out'; // 下の明細：'in'=収入、'out'=支出
   let flowSel = 0; // 0=今回の締め期間、-1=前回…
   const FLOW_FROM = -5, FLOW_TO = 1;
   /** 1つの締め期間の収支。過ぎた日は「記録」、今日以降は登録内容から */
@@ -636,8 +637,8 @@
     for (const h of state.history || []) {
       if (h.date < fIso || h.date > toIso || h.date >= tIso) continue;
       recorded = true;
-      if (h.amount == null) { unentered++; items.push({ name: h.name, account: h.account, date: h.date, amount: null, past: true }); continue; }
-      expense += h.amount; items.push({ name: h.name, account: h.account, date: h.date, amount: h.amount, past: true });
+      if (h.amount == null) { unentered++; items.push({ name: h.name, account: h.account, date: h.date, amount: null, past: true, hid: h.id }); continue; }
+      expense += h.amount; items.push({ name: h.name, account: h.account, date: h.date, amount: h.amount, past: true, hid: h.id });
     }
     if (toIso >= tIso) {
       const from = fIso > tIso ? cy.from : T;
@@ -653,13 +654,13 @@
     }
     const pastOnly = toIso < tIso;
     // 収入：過ぎた日は「収入の記録」、今日からあとは登録している収入
-    let income = 0, incomeMissing = 0, incRecorded = false;
-    for (const h of state.incHistory || []) { if (h.date < fIso || h.date > toIso || h.date >= tIso) continue; incRecorded = true; if (h.amount == null) incomeMissing++; else income += h.amount; }
+    let income = 0, incomeMissing = 0, incRecorded = false; const incItems = [];
+    for (const h of state.incHistory || []) { if (h.date < fIso || h.date > toIso || h.date >= tIso) continue; incRecorded = true; incItems.push({ name: h.name, date: h.date, amount: h.amount, past: true, rid: h.id }); if (h.amount == null) incomeMissing++; else income += h.amount; }
     if (toIso >= tIso) {
       const from = fIso > tIso ? cy.from : T;
-      for (const i of state.income || []) { if (i.hidden) continue; for (const o of C.occurrencesIn(i, from, cy.to, true)) { if (i.amount == null) incomeMissing++; else income += Number(i.amount); } }
+      for (const i of state.income || []) { if (i.hidden) continue; for (const o of C.occurrencesIn(i, from, cy.to, true)) { incItems.push({ name: i.name, date: isoOf(o), amount: i.amount == null ? null : Number(i.amount), past: false }); if (i.amount == null) incomeMissing++; else income += Number(i.amount); } }
     }
-    return { off, from: cy.from, to: cy.to, income, incomeMissing, expense, unentered, items, diff: income - expense, noRecord: pastOnly && !recorded, noIncRecord: pastOnly && !incRecorded };
+    return { off, from: cy.from, to: cy.to, income, incomeMissing, expense, unentered, items, incItems, diff: income - expense, noRecord: pastOnly && !recorded, noIncRecord: pastOnly && !incRecorded };
   }
   function flowHTML() {
     const data = []; for (let o = FLOW_FROM; o <= FLOW_TO; o++) data.push(flowData(o));
@@ -681,16 +682,21 @@
     const svg = '<svg class="flowchart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="締め期間ごとの収入と支出">' + g + '</svg>';
     const d = data.find(x => x.off === flowSel) || data[-FLOW_FROM];
     const neg = d.diff < 0;
-    const byName = {}; for (const it of d.items) { if (it.amount == null) continue; const k = it.name; byName[k] = (byName[k] || 0) + it.amount; }
-    const top5 = Object.entries(byName).sort((a, b) => b[1] - a[1]);
+    const side = flowSide === 'in' ? 'in' : 'out';
+    const tIso = isoToday();
+    const lst = (side === 'in' ? d.incItems : d.items).slice().sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
+    const rowsH = lst.map(x => { const id = x.rid ? ' data-rid="' + esc(x.rid) + '"' : x.hid ? ' data-hid="' + esc(x.hid) + '"' : '';
+      const sub = side === 'in' ? (x.past ? '入金済み' : '予定') : esc(x.account || '') + (x.past ? '・引落済み' : '');
+      return '<' + (id ? 'button' : 'div') + ' class="fd-row' + (x.past ? ' past' : '') + '"' + id + '><span class="fd-d">' + md(isoToObj(x.date)) + '</span><span class="fd-n">' + esc(x.name) + '<small>' + sub + '</small></span><span class="num">' + (x.amount == null ? '<span class="flag">未入力</span>' : nf.format(x.amount) + '円') + '</span></' + (id ? 'button' : 'div') + '>'; }).join('');
+    const sideTab = (k, label, v, miss) => '<button class="fd-tab' + (side === k ? ' on' : '') + '" data-fside="' + k + '" aria-pressed="' + (side === k) + '"><span class="k"><i class="sw ' + k + '"></i>' + label + '</span><span class="v num">' + nf.format(v) + '<small>円</small></span>' + (miss ? '<span class="flag">金額未入力 ' + miss + '件</span>' : '') + '</button>';
     const detail = '<div class="flowdet"><div class="fd-h"><b>' + md(d.from) + '〜' + md(d.to) + '</b><span class="sub">（' + md(d.to) + '締め）</span></div>' +
-      '<div class="fd-grid"><div><span class="k"><i class="sw in"></i>収入</span><span class="v num">' + nf.format(d.income) + '<small>円</small></span>' + (d.incomeMissing ? '<span class="flag">金額未入力 ' + d.incomeMissing + '件</span>' : '') + '</div>' +
-      '<div><span class="k"><i class="sw out"></i>支出</span><span class="v num">' + nf.format(d.expense) + '<small>円</small></span>' + (d.unentered ? '<span class="flag">金額未入力 ' + d.unentered + '件</span>' : '') + '</div>' +
+      '<div class="fd-grid">' + sideTab('in', '収入', d.income, d.incomeMissing) + sideTab('out', '支出', d.expense, d.unentered) +
       '<div class="' + (neg ? 'neg' : 'pos') + '"><span class="k">差し引き</span><span class="v num">' + (neg ? '−' : '＋') + nf.format(Math.abs(d.diff)) + '<small>円</small></span></div></div>' +
-      (d.noRecord || d.noIncRecord ? '<p class="sub" style="margin:0">この期間は' + (d.noRecord && d.noIncRecord ? '引き落としと収入' : d.noRecord ? '引き落とし' : '収入') + 'の記録がないため、0円になっています。前の分は「記録を見る」から入れられます。</p>' : '') +
-      (top5.length ? '<div class="fd-list">' + top5.map(([n, v]) => '<div class="fd-row"><span>' + esc(n) + '</span><span class="num">' + nf.format(v) + '円</span></div>').join('') + '</div>' : '') + '</div>';
+      (d.noRecord || d.noIncRecord ? '<p class="sub" style="margin:0">この期間は' + (d.noRecord && d.noIncRecord ? '引き落としと収入' : d.noRecord ? '引き落とし' : '収入') + 'の記録がないため、0円になっています。</p>' : '') +
+      '<div class="fd-lh"><b>' + (side === 'in' ? '収入' : '支出') + 'の明細</b><span class="sub">' + lst.length + '件' + (lst.some(x => x.past) ? '・済みの行は押すと直せます' : '') + '</span></div>' +
+      (rowsH ? '<div class="fd-list">' + rowsH + '</div>' : '<p class="sub" style="margin:0">この期間の' + (side === 'in' ? '収入' : '支出') + 'はありません。</p>') + '</div>';
     return '<section class="flowcard"><div class="fg-legend"><span><i class="sw in"></i>収入</span><span><i class="sw out"></i>支出</span><span class="sub">棒を押すと内訳</span></div>' + svg + detail +
-      '<button class="small histlink" data-act="go-history">記録を見る（引き落とし・収入）›</button><p class="note" style="margin:0">過ぎた日は「記録」（引き落とし・収入）、今日からあとは登録している金額で計算しています。</p></section>';
+      '<p class="note" style="margin:0">過ぎた日は「記録」（引き落とし・収入）、今日からあとは登録している金額で計算しています。</p></section>';
   }
   /* ---------- 締め期間ごとの引落予定 ---------- */
   let schedOff = 0;
@@ -717,6 +723,10 @@
   }
   function bindFlow() {
     main.querySelectorAll('[data-act="go-history"]').forEach(b => { if (b._gh) return; b._gh = 1; b.addEventListener('click', () => { meta.page = 'history'; meta.prepPanel = 'sched'; saveMeta(); renderAll(); window.scrollTo(0, 0); }); });
+    const redraw = () => { const fb = $('#flowBox'); if (fb) { fb.innerHTML = flowHTML(); bindFlow(); } };
+    main.querySelectorAll('[data-fside]').forEach(b => b.addEventListener('click', () => { flowSide = b.dataset.fside; redraw(); }));
+    main.querySelectorAll('#flowBox [data-rid]').forEach(b => b.addEventListener('click', () => openIncEdit(b.dataset.rid)));
+    main.querySelectorAll('#flowBox [data-hid]').forEach(b => b.addEventListener('click', () => openHistEdit(b.dataset.hid)));
     main.querySelectorAll('[data-flow]').forEach(g => {
       const go = () => { flowSel = Number(g.dataset.flow); const fb = $('#flowBox'); if (fb) { fb.innerHTML = flowHTML(); bindFlow(); } };
       g.addEventListener('click', go); g.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });

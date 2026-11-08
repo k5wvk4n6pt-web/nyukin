@@ -1005,7 +1005,19 @@ body.pp-none-unused { display: none !important; }
 .fd-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
 .fd-grid > div:nth-child(3) { grid-column: 1 / -1; display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
 .fd-grid > div:nth-child(3) .v { font-size: clamp(18px, 5.6vw, 24px); }
-.fd-grid > div { display: grid; gap: 2px; padding: 10px; border-radius: 12px; background: var(--accent-soft); min-width: 0; }
+.fd-grid > button.fd-tab { font: inherit; text-align: left; border: 2px solid transparent; cursor: pointer; min-height: 0; color: inherit; box-shadow: none; }
+.fd-grid > button.fd-tab.on { border-color: var(--accent); background: var(--surface); box-shadow: 0 2px 8px color-mix(in srgb, var(--accent) 18%, transparent); }
+.fd-grid > button.fd-tab:not(.on) { opacity: .8; }
+.fd-lh { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-top: 4px; }
+.fd-lh b { color: var(--navy); font-size: 15px; }
+.fd-lh .sub { font-size: 12px; }
+.fd-list .fd-row { display: grid; grid-template-columns: 3.4em minmax(0, 1fr) auto; align-items: center; gap: 8px; width: 100%; font: inherit; text-align: left; background: transparent; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; box-shadow: none; min-height: 0; color: var(--ink); }
+.fd-list button.fd-row { cursor: pointer; }
+.fd-list button.fd-row .num::after { content: " ›"; color: var(--muted); }
+.fd-row .fd-d { color: var(--muted); font-size: 13px; }
+.fd-row .fd-n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fd-row .fd-n small { display: block; font-size: 11px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; }
+.fd-grid > button.fd-tab, .fd-grid > div { display: grid; gap: 2px; padding: 10px; border-radius: 12px; background: var(--accent-soft); min-width: 0; }
 .fd-grid .k { font-size: 12px; font-weight: 700; color: var(--navy); }
 .fd-grid .v { font-size: clamp(16px, 5vw, 20px); overflow: hidden; text-overflow: ellipsis; font-weight: 800; color: var(--ink); white-space: nowrap; }
 .fd-grid .v small { font-size: 11px; margin-left: 1px; }
