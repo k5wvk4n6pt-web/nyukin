@@ -313,7 +313,7 @@
   /* ---------- ご意見・ご要望 ----------
      送信先は Google フォーム（運営が作成）。action と各項目の entry 番号を入れると送れるようになる。
      送るのは、書いた文章・種類・返信先（任意）・アプリの版だけ。家計データは送らない。 */
-  const FEEDBACK = { action: '', kind: '', body: '', reply: '', ver: '' };
+  const FEEDBACK = { action: 'https://docs.google.com/forms/d/e/1FAIpQLSe89TaBiPdJn5_zRzRyOpU1dtaqAojETH9fv0vfT6PMcy1oeQ/formResponse', kind: '699326865', body: '368195380', reply: '1830457758', ver: '2008749737' };
   const feedbackReady = () => /^https:\/\/docs\.google\.com\/forms\/d\/e\/[\w-]+\/formResponse$/.test(FEEDBACK.action) && !!FEEDBACK.body;
   function openFeedback() {
     const m = $('#modal'); const ready = feedbackReady();
