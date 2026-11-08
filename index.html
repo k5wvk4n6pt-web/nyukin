@@ -946,6 +946,17 @@ body.pg-variable .fab.add, body.pg-fixed .fab.add, #sec-variable .section-head b
 :root[data-theme="dark"] .lg-o { background: #fff; }
 :root[data-theme="dark"] .lg-t { background: #12255A; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .lg-t { background: #12255A; } }
+.surbrk { margin-top: 10px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+.surbrk summary { cursor: pointer; list-style: none; padding: 10px 14px; font-size: 14px; font-weight: 700; color: var(--accent); }
+.surbrk summary::-webkit-details-marker { display: none; }
+.surbrk summary::after { content: " ▾"; } .surbrk[open] summary::after { content: " ▴"; }
+.surlist { display: grid; padding: 0 12px 8px; }
+.surrow { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "n v" "c v"; gap: 0 10px; align-items: center; padding: 8px 2px; border: 0; border-top: 1px solid var(--line); background: none; text-align: left; min-height: 0; border-radius: 0; color: var(--ink); }
+.surrow .sn { grid-area: n; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.surrow .sc { grid-area: c; font-size: 12px; color: var(--muted); }
+.surrow .sv { grid-area: v; font-weight: 800; color: var(--ok); white-space: nowrap; }
+.surrow .sv small { font-size: 11px; margin-left: 1px; }
+.surrow.total .sv { color: var(--navy); }
 @media (max-width: 360px) { .brand-ico, .brand-img, :root[data-color] .brand-img { display: none; } .roundbtn { width: 44px; height: 44px; } }
 </style>
 </head>

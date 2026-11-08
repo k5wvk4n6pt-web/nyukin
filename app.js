@@ -212,7 +212,7 @@
   function refreshNumbers() {
     const r = C.compute(state, today());
     main.querySelectorAll('[data-sum]').forEach(el => { el.innerHTML = yen(r.totals[el.dataset.sum]); });
-    const sb = $('#shortbox'); if (sb) { sb.outerHTML = shortboxHTML(r); const bb = main.querySelector('#shortbox [data-act="bulk"]'); if (bb) bb.addEventListener('click', openBulk); }
+    const sb = $('#shortbox'); if (sb) { sb.outerHTML = shortboxHTML(r); const bb = main.querySelector('#shortbox [data-act="bulk"]'); if (bb) bb.addEventListener('click', openBulk); bindSurBrk(); }
     const cyc = $('#cycleSec'); if (cyc) { cyc.outerHTML = cycleHTML(); bindCycle(); }
     const tt = main.querySelector('[data-total]'); if (tt) { tt.innerHTML = totalInner(r); bindTotal(); }
     const ptH = prepTopHTML(r);
@@ -345,10 +345,21 @@
     const allLine = showAll ? '<div class="allline"><span>' + md(r.endAll) + 'まで見ると</span><span class="num">不足 <b>' + nf.format(r.shortTotalAll) + '円</b></span><span class="num">余り <b>' + nf.format(r.surplusTotalAll) + '円</b></span></div>' : '';
     const miss = r.balanceMissing > 0 ? '<div class="flag">残高未入力：' + r.balanceMissing + '口座（どちらの合計にも含みません）</div>' : '';
     const bulk = r.shortfallTotal > 0 ? '<button class="primary bulkbtn" data-act="bulk">不足をまとめて解消する</button>' : '';
-    return '<div id="shortbox"><div class="tots">' + short + plus + '</div>' + bulk + allLine +
+    const sur = r.banks.filter(b => b.balance != null && !b.excluded && b.surplus > 0).sort((a, b) => b.surplus - a.surplus);
+    const exc = r.banks.filter(b => b.balance != null && b.excluded && b.surplus > 0);
+    const brk = sur.length ? '<details class="surbrk"' + (meta.surOpen ? ' open' : '') + '><summary>引落後の余りの内訳（' + sur.length + '口座）</summary>' +
+      '<div class="surlist">' + sur.map(b => '<button class="surrow" data-goto="' + esc(b.name) + '"><span class="sn">' + esc(b.name) + '</span><span class="sc num">残高 ' + nf.format(b.balance) + ' − 引落 ' + nf.format(b.due) + '</span><span class="sv num">' + nf.format(b.surplus) + '<small>円</small></span></button>').join('') +
+      '<div class="surrow total"><span class="sn">合計</span><span class="sc"></span><span class="sv num">' + nf.format(r.surplusTotal) + '<small>円</small></span></div></div>' +
+      (exc.length ? '<p class="sub" style="margin:6px 0 0">余りに含めない口座：' + exc.map(b => esc(b.name) + '（' + nf.format(b.surplus) + '円）').join('、') + '</p>' : '') + '</details>' : '';
+    return '<div id="shortbox"><div class="tots">' + short + plus + '</div>' + brk + bulk + allLine +
       '<p class="note" style="margin:6px 0 0">' + md(r.closing) + '締めまでの引落を差し引いた、口座ごとの過不足の合計です。余りには、締めまで引落のない口座の残高も入ります（設定で「余りに含めない」にした口座を除く）。口座間でお金を移すときの目安にしてください。</p>' + miss + '</div>';
   }
 
+  function bindSurBrk() {
+    const d = main.querySelector('#shortbox .surbrk'); if (!d) return;
+    d.addEventListener('toggle', () => { meta.surOpen = d.open; saveMeta(); });
+    d.querySelectorAll('[data-goto]').forEach(b => b.addEventListener('click', () => gotoBank(b.dataset.goto)));
+  }
   /* ---------- やさしいイラストのアイコン ---------- */
   const ICON = {
     cal: c => '<svg class="pico" viewBox="0 0 40 40" aria-hidden="true"><rect x="5" y="8" width="30" height="27" rx="6" fill="var(--surface)" stroke="var(' + c + ')" stroke-width="2.6"/><path d="M5 16h30" stroke="var(' + c + ')" stroke-width="2.6"/><path d="M13 5v6M27 5v6" stroke="var(--brown)" stroke-width="2.8" stroke-linecap="round"/><g fill="var(' + c + ')" opacity=".6"><rect x="10" y="20" width="5" height="4" rx="1"/><rect x="18" y="20" width="5" height="4" rx="1"/><rect x="26" y="20" width="5" height="4" rx="1"/><rect x="10" y="27" width="5" height="4" rx="1"/><rect x="18" y="27" width="5" height="4" rx="1"/></g></svg>',
@@ -384,7 +395,8 @@
       else if (q === 'income') { const el = $('#incomecard'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
       else { const el = $('#cycleSec'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
     }));
-    main.querySelectorAll('[data-goto]').forEach(b => b.addEventListener('click', () => gotoBank(b.dataset.goto)));
+    main.querySelectorAll('[data-goto]:not(.surrow)').forEach(b => b.addEventListener('click', () => gotoBank(b.dataset.goto)));
+    bindSurBrk();
     main.querySelectorAll('.period[data-tile]').forEach(b => b.addEventListener('click', e => { if (e.target.closest('button,a')) return; const el = $('#banksSec'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }));
   }
   function bindXfer() {
