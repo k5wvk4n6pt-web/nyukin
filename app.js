@@ -806,7 +806,8 @@
   /** プレミアム（買い切り）。購入の状態はiPhoneのApp Store（StoreKit）にだけ問い合わせる */
   const pro = { owned: false, checked: false, available: false, price: '', busy: false };
   function proHTML(what) {
-    if (!(N.isNative && N.proStatus)) return '<p class="note"><span class="probadge">プレミアム</span> ' + esc(what) + 'は、<b>iPhoneアプリ版（App Store）のプレミアム</b>で使えます。</p>';
+    if (!N.isNative && proActive()) return what === '引落前のお知らせ' ? '' : '<p class="proline ok">✓ プレミアムをご利用中です（Webアプリ版）。</p>';
+    if (!(N.isNative && N.proStatus)) return '<p class="note"><span class="probadge">プレミアム</span> ' + esc(what) + 'は、<b>iPhoneアプリ版（App Store）のプレミアム</b>で使えます。' + (what === '引落前のお知らせ' ? '' : '<button class="linkbtn" data-act="owner-code">コードをお持ちの方</button>') + '</p>';
     if (pro.owned) return '<p class="proline ok">✓ プレミアムをご利用中です。ありがとうございます。</p>';
     return '<div class="procard"><div class="protitle"><span class="probadge">プレミアム</span>' + esc(what) + 'はプレミアムの機能です</div>' +
       '<p class="sub">一度購入すれば、ずっと使えます（買い切り・月額料金なし）。プレミアムでは「引落前のお知らせ」と「アプリの色」が使えます。同じApple IDなら機種変更しても使えます。</p>' +
@@ -815,7 +816,33 @@
   }
   /** 起動直後に色がちらつかないよう、確認できた購入状態を覚えておく（確認のたびに上書き） */
   function cachePro() { meta.proSeen = !!pro.owned; saveMeta(); }
-  function proActive() { if (window.__NAVI_PREVIEW__ === true) return true; /* 確認版だけはプレミアムの見た目を試せる */ return pro.checked ? pro.owned : !!(N.isNative && meta.proSeen); }
+  function proActive() {
+    if (window.__NAVI_PREVIEW__ === true) return true; // 確認版だけはプレミアムの見た目を試せる
+    if (!N.isNative && meta.ownerUnlock === OWNER_HASH) return true; // Webアプリ版：持ち主のコードで使える（アプリ版はApp Storeの購入だけ）
+    return pro.checked ? pro.owned : !!(N.isNative && meta.proSeen);
+  }
+  const OWNER_HASH = '129f4958b98e9c1516e4ac62c01dc1e60b036c3a286dd02fb3b9230e919f671a';
+  async function checkOwnerCode(code) {
+    try {
+      const norm = String(code || '').toUpperCase().replace(/[^A-Z0-9]/g, '').replace(/(.{4})(?=.)/g, '$1-');
+      const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('hikiotoshi-navi:' + norm));
+      return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('') === OWNER_HASH;
+    } catch (e) { return false; }
+  }
+  function openOwnerCode() {
+    const m = $('#modal');
+    m.innerHTML = '<div class="sheet" role="dialog" aria-modal="true" aria-labelledby="mt"><h2 id="mt">プレミアムのコード</h2><p class="sub">お持ちのコードを入れると、このiPhoneのWebアプリ版でプレミアムの見た目（アプリの色）が使えます。</p>' +
+      '<input class="text" id="ocIn" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="XXXX-XXXX-XXXX-XXXX" aria-label="コード">' +
+      '<div class="btnrow"><button id="mCancel">やめる</button><button id="mOk" class="primary">使う</button></div></div>';
+    m.hidden = false;
+    const close = () => { m.hidden = true; m.innerHTML = ''; };
+    $('#mCancel').onclick = close; m.onclick = e => { if (e.target === m) close(); };
+    $('#mOk').onclick = async () => {
+      if (await checkOwnerCode($('#ocIn').value)) { meta.ownerUnlock = OWNER_HASH; saveMeta(); close(); applyTheme(); renderKeep(); toast('プレミアムが使えるようになりました'); }
+      else toast('コードが違います');
+    };
+    setTimeout(() => { const i = $('#ocIn'); if (i) i.focus(); }, 50);
+  }
   async function refreshPro() {
     if (!(N.isNative && N.proStatus)) return;
     const r = await N.proStatus();
@@ -926,6 +953,7 @@
 
   function bindSettings() {
     bindNotify();
+    const oc = main.querySelector('[data-act="owner-code"]'); if (oc) oc.addEventListener('click', openOwnerCode);
     const isw = $('#iconSync');
     if (isw) isw.addEventListener('change', () => { meta.iconSync = isw.checked; saveMeta(); if (isw.checked) syncIcon(); else if (icon.name !== 'blue') N.iconSet('blue').then(ok => { if (ok) icon.name = 'blue'; }); });
     main.querySelectorAll('[data-color]').forEach(b => b.addEventListener('click', () => {
