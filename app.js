@@ -671,12 +671,13 @@
     const a = C.addMonth(base.y, base.m, off), b = C.addMonth(base.y, base.m, off + 1);
     return { from: at(a.y, a.m), to: C.addDays(at(b.y, b.m), -1) };
   }
-  function flowStartSel() {
+  function flowStartSel(id, plain) {
+    id = id || 'flowStart';
     const v = state.flowStart;
     let o = '<option value=""' + (v ? '' : ' selected') + '>締め日の翌日（自動）</option>';
     for (let d = 1; d <= 28; d++) o += '<option value="' + d + '"' + (v === d ? ' selected' : '') + '>毎月' + d + '日</option>';
     o += '<option value="31"' + (v === 31 ? ' selected' : '') + '>毎月 月末</option>';
-    return '<label class="fstart"><span>この帳簿の始期日</span><select id="flowStart">' + o + '</select></label>';
+    return plain ? '<label>始期日<select id="' + id + '">' + o + '</select></label>' : '<label class="fstart"><span>この帳簿の始期日</span><select id="' + id + '">' + o + '</select></label>';
   }
   function flowHTML() {
     const data = []; for (let o = FLOW_FROM; o <= FLOW_TO; o++) data.push(flowData(o));
@@ -946,12 +947,13 @@
     const cs = C.closeSettings(state);
     const dayOpts = sel => { let o = ''; for (let i = 1; i <= 28; i++) o += '<option value="' + i + '"' + (i === sel ? ' selected' : '') + '>毎月' + i + '日</option>'; return o + '<option value="end"' + (sel === 'end' ? ' selected' : '') + '>毎月 月末</option>'; };
     const sh = (id, v) => shiftSelect(id, v, '休日のとき').replace(SHIFT_LABEL.after, '後ろ（翌営業日）').replace(SHIFT_LABEL.before, '前（前営業日）');
-    const closeCard = '<div class="card form closecard" id="closecard"><div class="shead">いつまでに必要か（期限）<span class="sub">帳簿「' + esc(curBook() ? curBook().name : '') + '」の設定です。締め日までの引落で、不足と余りを判定します</span></div>' +
+    const closeCard = '<div class="card form closecard" id="closecard"><div class="shead">締め日（引落の準備の期限）<span class="sub">帳簿「' + esc(curBook() ? curBook().name : '') + '」の設定です。締め日までの引落で、不足と余りを判定します</span></div>' +
       '<div class="dl"><b>締め日</b><div class="two"><label>日付<select id="close-day">' + dayOpts(cs.d1.day) + '</select></label><label>休日のとき' + sh('close-shift', cs.d1.shift) + '</label></div></div>' +
       (cs.d2
         ? '<div class="dl"><div class="dlhead"><b>もう一つの期限（参考）</b><button class="small danger" data-act="close2-off">外す</button></div><span class="sub">準備ページに、この期限までの必要額も参考として並びます</span><div class="two"><label>日付<select id="close2-day">' + dayOpts(cs.d2.day) + '</select></label><label>休日のとき' + sh('close2-shift', cs.d2.shift) + '</label></div></div>'
         : '<div class="dl"><button class="small" data-act="close2-on">＋ もう一つの期限を追加</button><span class="sub">例：締め日が10日で、月末までの分も見ておきたいとき</span></div>') + '</div>';
-    if (st === 'books') body = body + closeCard;
+    const startCard = '<div class="card form startcard"><div class="shead">収支記録の始期日<span class="sub">帳簿「' + esc(curBook() ? curBook().name : '') + '」の設定です。収支記録のグラフを、この日から次の始期日の前日までで区切ります（例：給料日）</span></div>' + flowStartSel('set-flowStart', true) + '</div>';
+    if (st === 'books') body = body + closeCard + startCard;
     return '<section id="sec-settings" aria-label="設定"><div class="section-head"><h2>設定</h2></div>' + seg + '<div class="stab-body">' + body + '</div></section>';
   }
 
@@ -1275,6 +1277,7 @@
     });
     const ba = main.querySelector('[data-act="book-add-do"]');
     if (ba) ba.addEventListener('click', () => { const n = $('#booknew').value.trim(); if (!n) { toast('帳簿の名前を入力してください'); return; } addBook(n); });
+    const sfs = $('#set-flowStart'); if (sfs) sfs.addEventListener('change', () => { state.flowStart = sfs.value ? Number(sfs.value) : null; flowSel = 0; save(); toast('始期日を' + (sfs.value ? (sfs.value === '31' ? '月末' : sfs.value + '日') : '締め日の翌日') + 'にしました'); });
     const cd = $('#close-day');
     if (cd) {
       const dv = v => v === 'end' ? 'end' : Number(v);
