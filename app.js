@@ -218,6 +218,7 @@
     const sb = $('#shortbox'); if (sb) { sb.outerHTML = shortboxHTML(r); const bb = main.querySelector('#shortbox [data-act="bulk"]'); if (bb) bb.addEventListener('click', openBulk); bindSurBrk(); }
     const cyc = $('#cycleSec'); if (cyc) { cyc.outerHTML = cycleHTML(); bindCycle(); }
     const tt = main.querySelector('[data-total]'); if (tt) { tt.innerHTML = totalInner(r); bindTotal(); }
+    const bl = $('#ballist'); if (bl) { bl.innerHTML = balListHTML(r); bindBalList(); }
     const ptH = prepTopHTML(r);
     const pt = $('#prepTop'); if (pt) pt.innerHTML = ptH.top;
     const pbm = $('#prepBottom'); if (pbm) pbm.innerHTML = ptH.near + prepNoticeHTML(r);
@@ -434,6 +435,23 @@
       btn.setAttribute('aria-expanded', open ? 'true' : 'false'); btn.textContent = '内訳' + (open ? '▴' : '▾');
     }));
   }
+  /** 口座の残高ページ：口座ごとの残高だけ */
+  function balListHTML(r) {
+    const list = r.banks; if (!list.length) return '';
+    const hide = !!meta.hideTotal;
+    return '<section class="ballist" aria-label="口座ごとの残高">' + list.map((b, i) => '<button class="balrow" data-balgo="' + esc(b.name) + '">' + ICON.bank(BANK_COLORS[i % BANK_COLORS.length]) +
+      '<span class="bn">' + esc(b.name) + (b.excluded ? '<small>余りに含めない</small>' : '') + '</span><span class="bv num' + (b.balance == null ? ' none' : '') + '">' + (b.balance == null ? '未入力' : hide ? '¥ •••••' : '¥' + nf.format(b.balance)) + '</span><span class="chev" aria-hidden="true">›</span></button>').join('') +
+      '</section><p class="sub" style="margin:0">口座を押すと、銀行別の入金準備で残高を入れ直せます。</p>';
+  }
+  function bindBalList() {
+    main.querySelectorAll('[data-balgo]').forEach(b => b.addEventListener('click', () => {
+      meta.prepPanel = null; saveMeta();
+      main.querySelectorAll('.ppanel').forEach(p => { p.hidden = true; });
+      main.querySelectorAll('[data-panel-btn]').forEach(x => { x.classList.remove('on'); x.setAttribute('aria-expanded', 'false'); });
+      syncPanelPage();
+      setTimeout(() => gotoBank(b.dataset.balgo), 60);
+    }));
+  }
   function gotoBank(name) {
     const card = main.querySelector('.bank[data-bank="' + CSS.escape(name) + '"]');
     if (!card) return;
@@ -448,7 +466,7 @@
     const P = (k, html) => '<div class="ppanel" data-panel="' + k + '"' + (meta.prepPanel === k ? '' : ' hidden') + '>' + html + '</div>';
     const pt = prepTopHTML(r);
     return '<div id="prepTop">' + pt.top + '</div>' +
-      P('money', totalHTML(r) + '<section class="summary" aria-label="口座一覧">' + acctableHTML(r) + '</section>') +
+      P('money', '<div class="pphead"><span>口座の残高</span><button class="pclose" data-panel-btn="money" aria-label="口座の残高を閉じる">閉じる ✕</button></div>' + totalHTML(r) + '<div id="ballist">' + balListHTML(r) + '</div>') +
       P('need', '<section class="summary" id="sec-top" aria-label="過不足"><div class="acchead">' + QI.scale.replace('<svg ', '<svg class="pico" ') + '過不足<button class="pclose" data-panel-btn="need" aria-label="過不足を閉じる">閉じる ✕</button></div>' + shortboxHTML(r) + '</section>') +
       P('flow', '<section class="incomecard" id="incomecard" aria-label="収入予定"><div class="acchead">' + ICON.coins + '収入予定<span class="sub">（未入金の収入は残高に足しません）</span></div>' +
       (inc ? '<div class="income">' + inc + '</div>' : '<p class="sub" style="margin:0">収入はまだありません。「設定 → 収入」から追加できます。</p>') + '</section>' + cycleHTML()) +
@@ -538,7 +556,7 @@
       '</nav>';
   }
   /** 過不足を開いている間は、過不足だけのページにする（銀行別の入金準備などは隠す） */
-  function syncPanelPage() { document.body.classList.toggle('pp-need', meta.page === 'prep' && meta.prepPanel === 'need'); }
+  function syncPanelPage() { const onPrep = meta.page === 'prep'; document.body.classList.toggle('pp-need', onPrep && meta.prepPanel === 'need'); document.body.classList.toggle('pp-money', onPrep && meta.prepPanel === 'money'); }
   function bindPanels() {
     main.querySelectorAll('[data-panel-btn]').forEach(b => { if (b._pb) return; b._pb = 1; b.addEventListener('click', () => {
       const k = b.dataset.panelBtn; meta.prepPanel = meta.prepPanel === k ? null : k; saveMeta();
@@ -569,7 +587,7 @@
   }
   function bindTotal() {
     const b = main.querySelector('[data-act="eye"]'); if (!b) return;
-    b.addEventListener('click', () => { meta.hideTotal = !meta.hideTotal; saveMeta(); const t = main.querySelector('[data-total]'); const rr = C.compute(state, today()); t.innerHTML = totalInner(rr); bindTotal(); });
+    b.addEventListener('click', () => { meta.hideTotal = !meta.hideTotal; saveMeta(); const t = main.querySelector('[data-total]'); const rr = C.compute(state, today()); t.innerHTML = totalInner(rr); bindTotal(); const bl = $('#ballist'); if (bl) { bl.innerHTML = balListHTML(rr); bindBalList(); } });
   }
   /* ---------- これからの入出金（直近の予定） ---------- */
   const ARROW = d => '<svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">' + (d === 'in' ? '<path d="M8 13V3M3.5 7.5 8 3l4.5 4.5"/>' : '<path d="M8 3v10M3.5 8.5 8 13l4.5-4.5"/>') + '</svg>';
@@ -1320,7 +1338,7 @@
     main.querySelectorAll('[data-act="go-acc"]').forEach(b => b.addEventListener('click', () => go('acc')));
     main.querySelectorAll('[data-act="go-out"]').forEach(b => b.addEventListener('click', () => go('out')));
     main.querySelectorAll('[data-act="go-in"]').forEach(b => b.addEventListener('click', () => go('in')));
-    bindTotal(); bindUpcoming(); bindPanels(); bindPrepTop();
+    bindTotal(); bindUpcoming(); bindPanels(); bindPrepTop(); bindBalList();
     main.querySelectorAll('[data-act="go-close"]').forEach(b => b.addEventListener('click', () => { go('books'); const c = $('#closecard'); if (c) c.scrollIntoView({ block: 'start' }); }));
     main.querySelectorAll('[data-act="sample-clear"]').forEach(b => b.addEventListener('click', () => confirmSheet('サンプルを消しますか？', '<p class="sub" style="margin:0">サンプルの口座・支出・収入をすべて消して、空の状態からはじめます。</p>', '消してはじめる', () => {
       state = emptyState(); meta.page = 'prep'; saveMeta(); save(); renderAll(); window.scrollTo(0, 0); toast('空の状態になりました');
