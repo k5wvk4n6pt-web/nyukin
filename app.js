@@ -162,8 +162,10 @@
       income: Array.isArray(d.income) && d.income.length ? d.income.map(i => ({ id: i.id || uid('i'), name: String(i.name), day: i.day, amount: i.amount == null ? null : Number(i.amount), hidden: !!i.hidden, shift: validShift(i.shift, 'before') }))
         : [],
       transfers: Array.isArray(d.transfers) ? d.transfers.filter(t => t && t.from && t.to && Number(t.amount) > 0).map(t => ({ id: t.id || uid('t'), at: t.at || null, fromBook: t.fromBook || null, from: String(t.from), toBook: t.toBook || null, to: String(t.to), amount: Number(t.amount), fee: Number(t.fee) || 0, feeFrom: t.feeFrom === 'amount' ? 'amount' : 'source', undone: !!t.undone })).slice(0, 30) : [],
-      history: Array.isArray(d.history) ? d.history.filter(h => h && /^\d{4}-\d{2}-\d{2}$/.test(String(h.date))).map(h => ({ id: h.id || uid('h'), date: String(h.date), name: String(h.name || ''), account: String(h.account || ''), amount: h.amount == null ? null : Number(h.amount), kind: String(h.kind || 'その他'), src: h.src || null, auto: !!h.auto, edited: !!h.edited })) : [],
+      history: Array.isArray(d.history) ? d.history.filter(h => h && /^\d{4}-\d{2}-\d{2}$/.test(String(h.date))).map(h => ({ id: h.id || uid('h'), date: String(h.date), name: String(h.name || ''), account: String(h.account || ''), amount: h.amount == null ? null : Number(h.amount), kind: String(h.kind || 'その他'), src: h.src || null, auto: !!h.auto, edited: !!h.edited, deductChecked: !!h.deductChecked, deducted: !!h.deducted })) : [],
       historySince: /^\d{4}-\d{2}-\d{2}$/.test(String(d.historySince || '')) ? d.historySince : null,
+      deductSince: /^\d{4}-\d{2}-\d{2}$/.test(String(d.deductSince || '')) ? d.deductSince : null,
+      autoDeduct: d.autoDeduct !== false,
       historyUntil: /^\d{4}-\d{2}-\d{2}$/.test(String(d.historyUntil || '')) ? d.historyUntil : null
     };
     for (const a of out.accounts) {
@@ -811,7 +813,8 @@
         '<label class="check"><input type="checkbox" data-act="accsurplus"' + (exclSurplus().includes(a) ? '' : ' checked') + '>余りの合計に含める</label>' +
         hideBtn(hiddenAcc().includes(a), 'acchide') +
         '<button class="danger small" data-act="accdel">削除</button></div>').join('');
-    return '<div class="card">' + '<div class="pad">' + headHTML('口座', state.accounts.length + '口座', 'accounts') +
+    const autoSw = '<div class="card form autodeduct"><label class="switchrow"><span><b>引落日が過ぎたら残高から引く</b><small>引落日の翌日にアプリを開くと、その日の引き落とし額を口座の残高から自動で引きます（引落日以降に残高を入れ直した口座は引きません）</small></span><input type="checkbox" id="autoDeduct" role="switch"' + (state.autoDeduct !== false ? ' checked' : '') + '></label></div>';
+    return autoSw + '<div class="card">' + '<div class="pad">' + headHTML('口座', state.accounts.length + '口座', 'accounts') +
       '<p class="sub" style="margin:0">準備ページは引落の近い口座から並びます。同じ日の口座は、ここでの並び順になります。名前を変えると、その口座の引落もまとめて変わります。</p></div>' +
       list + (on ? '' : '<div class="srow add-row"><input class="text" id="accnew" placeholder="新しい口座名" aria-label="新しい口座名"><button class="small" data-act="accadd">追加</button></div>') + '</div>';
   }
@@ -1024,6 +1027,7 @@
 
   function bindSettings() {
     bindNotify();
+    const ad = $('#autoDeduct'); if (ad) ad.addEventListener('change', () => { state.autoDeduct = ad.checked; if (ad.checked) { /* 入れ直したときは、その日以降の引落から */ const t = isoOf(today()); for (const h of state.history || []) if (h.date < t) h.deductChecked = true; } save(); toast(ad.checked ? '引落日が過ぎたら残高から引きます' : '残高から自動で引くのをやめました'); });
     const oc = main.querySelector('[data-act="owner-code"]'); if (oc) oc.addEventListener('click', openOwnerCode);
     const isw = $('#iconSync');
     if (isw) isw.addEventListener('change', () => { meta.iconSync = isw.checked; saveMeta(); if (isw.checked) syncIcon(); else if (icon.name !== 'blue') N.iconSet('blue').then(ok => { if (ok) icon.name = 'blue'; }); });
@@ -1694,7 +1698,27 @@
     }
     state.historyUntil = iso;
     if (added) state.history.sort((a, b) => a.date < b.date ? 1 : a.date > b.date ? -1 : 0);
+    deductPast(iso);
     save();
+  }
+  /** 引落日が過ぎた引き落としを、口座の残高から一度だけ引く（この機能を入れた日以降の引落が対象） */
+  function localIso(ts) { const d = new Date(ts); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+  function deductPast(todayIso) {
+    if (!state.deductSince) state.deductSince = todayIso;
+    if (state.autoDeduct === false) return;
+    const done = {};
+    for (const h of state.history || []) {
+      if (!h.auto || h.deductChecked || h.date < state.deductSince || h.date >= todayIso) continue;
+      h.deductChecked = true;
+      if (h.amount == null || h.amount === 0) continue;
+      const b = state.balances[h.account];
+      if (!b || b.amount == null) continue;
+      if (b.updatedAt && localIso(b.updatedAt) >= h.date) continue; // 引落日以降に残高を入れ直している
+      b.amount -= h.amount; h.deducted = true;
+      done[h.account] = (done[h.account] || 0) + h.amount;
+    }
+    const keys = Object.keys(done);
+    if (keys.length) setTimeout(() => toast('引落が済んだ分を残高から引きました：' + keys.map(k => k + ' −' + nf.format(done[k]) + '円').join('、')), 600);
   }
   /**
    * 変動費は「○月分」で管理する。
@@ -1727,7 +1751,7 @@
     const diff = total - prevTotal;
     const byAcc = {}; list.forEach(h => { byAcc[h.account] = (byAcc[h.account] || 0) + (h.amount || 0); });
     const accRows = Object.keys(byAcc).sort((a, b) => byAcc[b] - byAcc[a]).map((a, i) => '<div class="hacc">' + ICON.bank(BANK_COLORS[i % BANK_COLORS.length]) + '<span class="grow">' + esc(a) + '</span><b class="num">' + nf.format(byAcc[a]) + '円</b></div>').join('');
-    const rows = list.map(h => '<button class="hrec" data-hid="' + esc(h.id) + '"><span class="hd">' + dateLabel(h.date) + '</span><span class="hn"><b>' + esc(h.name) + '</b><span class="kchip k-' + ({ '変動費': 'v', '固定費': 'f', '1回のみ': 'o' }[h.kind] || 'o') + '">' + esc(h.kind) + '</span><small>' + esc(h.account) + (h.edited ? '・修正済み' : h.auto ? '' : '・手入力') + '</small></span><span class="ha num">' + (h.amount == null ? '<span class="flag">未入力</span>' : nf.format(h.amount) + '円') + '</span></button>').join('');
+    const rows = list.map(h => '<button class="hrec" data-hid="' + esc(h.id) + '"><span class="hd">' + dateLabel(h.date) + '</span><span class="hn"><b>' + esc(h.name) + '</b><span class="kchip k-' + ({ '変動費': 'v', '固定費': 'f', '1回のみ': 'o' }[h.kind] || 'o') + '">' + esc(h.kind) + '</span><small>' + esc(h.account) + (h.edited ? '・修正済み' : h.auto ? '' : '・手入力') + (h.deducted ? '・残高から引き済み' : '') + '</small></span><span class="ha num">' + (h.amount == null ? '<span class="flag">未入力</span>' : nf.format(h.amount) + '円') + '</span></button>').join('');
     const since = state.historySince ? dateLabel(state.historySince) : '';
     return '<section id="sec-history" aria-label="引き落としの記録"><div class="section-head"><h2>引き落としの記録</h2><span class="head-right"><button class="small primary" data-act="hist-add">＋ 追加</button></span></div>' +
       '<div class="cycle hsum"><div class="cyc-head"><button class="small" data-hm="-1" aria-label="前の月">‹</button><div class="cyc-title"><b>' + ymLabel(histMonth) + '</b><span class="sub">' + list.length + '件の引き落とし</span></div><button class="small" data-hm="1" aria-label="次の月"' + (histMonth >= cur ? ' disabled' : '') + '>›</button></div>' +
