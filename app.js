@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   const C = window.KCalc;
-  const APP_VERSION = '2026.11.08b';
+  const APP_VERSION = '2026.11.09a';
   /** ファイルの一部だけが新しい（アップロード漏れ・古いキャッシュ）と計算が合わなくなるので知らせる */
   /** 古いままのファイル名（なければ空）。native.js は中身が変わったときだけ気にする */
   function staleFiles() {
@@ -157,7 +157,10 @@
       fixed: d.fixed.map(x => item(x, true)),
       once: Array.isArray(d.once) ? d.once.map(x => item(x, 'once')) : [],
       balances: {},
-      settings: (() => { const cs = C.closeSettings(d); return { closeDay: cs.d1.day, closeShift: cs.d1.shift, close2On: !!cs.d2, close2Day: cs.d2saved.day, close2Shift: cs.d2saved.shift }; })(),
+      settings: (() => { const cs = C.closeSettings(d);
+        // 始期日がまだなければ、締め日の翌日を始期日にする（休日の扱いもそのまま引き継ぐ）
+        const sd = cs.d1.start || (cs.d1.day === 'end' ? 1 : cs.d1.day + 1);
+        return { startDay: sd, startShift: cs.d1.shift, closeDay: sd === 1 ? 'end' : sd - 1, closeShift: cs.d1.shift, close2On: !!cs.d2, close2Day: cs.d2saved.day, close2Shift: cs.d2saved.shift }; })(),
       excludeSurplus: Array.isArray(d.excludeSurplus) ? d.excludeSurplus.map(String).filter(a => d.accounts.map(String).includes(a)) : [],
       hiddenAccounts: Array.isArray(d.hiddenAccounts) ? d.hiddenAccounts.map(String).filter(a => d.accounts.map(String).includes(a)) : [],
       income: Array.isArray(d.income) && d.income.length ? d.income.map(i => Object.assign({ id: i.id || uid('i'), name: String(i.name), day: i.day, amount: i.amount == null ? null : Number(i.amount), hidden: !!i.hidden, shift: validShift(i.shift, 'before') },
@@ -271,7 +274,7 @@
 
   function cloudWhen() { return cloud.data && cloud.data.exportedAt ? stampText(cloud.data.exportedAt).replace('更新：', '') : ''; }
 
-  function emptyState() { return { app: 'kakeibo', version: 1, source: '', settings: { closeDay: 10, closeShift: 'after', close2On: false, close2Day: 'end', close2Shift: 'none' }, once: [], accounts: [], variable: [], fixed: [], balances: {}, hiddenAccounts: [], income: [] }; }
+  function emptyState() { return { app: 'kakeibo', version: 1, source: '', settings: { startDay: 11, startShift: 'after', closeDay: 10, closeShift: 'after', close2On: false, close2Day: 'end', close2Shift: 'none' }, once: [], accounts: [], variable: [], fixed: [], balances: {}, hiddenAccounts: [], income: [] }; }
 
   /** 架空のサンプル（人名・実在の口座名は使わない） */
   function sampleState() {
@@ -929,8 +932,11 @@
     const cs = C.closeSettings(state);
     const dayOpts = sel => { let o = ''; for (let i = 1; i <= 28; i++) o += '<option value="' + i + '"' + (i === sel ? ' selected' : '') + '>毎月' + i + '日</option>'; return o + '<option value="end"' + (sel === 'end' ? ' selected' : '') + '>毎月 月末</option>'; };
     const sh = (id, v) => shiftSelect(id, v, '休日のとき').replace(SHIFT_LABEL.after, '後ろ（翌営業日）').replace(SHIFT_LABEL.before, '前（前営業日）');
-    const closeCard = '<div class="card form closecard" id="closecard"><div class="shead">締め日（引落の準備の期限）<span class="sub">帳簿「' + esc(curBook() ? curBook().name : '') + '」の設定です。締め日までの引落で、不足と余りを判定します。収支記録は締め日の翌日（始期日）から次の締め日までで区切ります</span></div>' +
-      '<div class="dl"><b>締め日</b><div class="two"><label>日付<select id="close-day">' + dayOpts(cs.d1.day) + '</select></label><label>休日のとき' + sh('close-shift', cs.d1.shift) + '</label></div></div>' +
+    const sOpts = sel => { let o = ''; for (let i = 1; i <= 31; i++) o += '<option value="' + i + '"' + (i === sel ? ' selected' : '') + '>毎月' + i + '日</option>'; return o; };
+    const T0 = today(), nc = C.nextClosing(T0, cs.d1), ns = C.addDays({ y: nc.y, m: nc.m, d: nc.d }, 1);
+    const closeCard = '<div class="card form closecard" id="closecard"><div class="shead">始期日（期間の始まり）<span class="sub">帳簿「' + esc(curBook() ? curBook().name : '') + '」の設定です。始期日の前日が締め日になり、締め日までの引落で不足と余りを判定します。収支記録も始期日から区切ります</span></div>' +
+      '<div class="dl"><b>始期日</b><div class="two"><label>日付<select id="close-day">' + sOpts(cs.d1.start || 11) + '</select></label><label>休日のとき' + sh('close-shift', cs.d1.shift) + '</label></div>' +
+      '<span class="sub">次の締め日：' + md(nc) + '（' + C.WD[C.weekday(nc)] + '）／次の始期日：' + md(ns) + '（' + C.WD[C.weekday(ns)] + '）</span></div>' +
       (cs.d2
         ? '<div class="dl"><div class="dlhead"><b>もう一つの期限（参考）</b><button class="small danger" data-act="close2-off">外す</button></div><span class="sub">準備ページに、この期限までの必要額も参考として並びます</span><div class="two"><label>日付<select id="close2-day">' + dayOpts(cs.d2.day) + '</select></label><label>休日のとき' + sh('close2-shift', cs.d2.shift) + '</label></div></div>'
         : '<div class="dl"><button class="small" data-act="close2-on">＋ もう一つの期限を追加</button><span class="sub">例：締め日が10日で、月末までの分も見ておきたいとき</span></div>') + '</div>';
@@ -1263,12 +1269,13 @@
       const dv = v => v === 'end' ? 'end' : Number(v);
       const lab = d => d === 'end' ? '月末' : d + '日';
       const cur = () => C.closeSettings(state);
-      const setS = (patch) => { const c0 = cur(); state.settings = Object.assign({ closeDay: c0.d1.day, closeShift: c0.d1.shift, close2On: !!c0.d2, close2Day: c0.d2saved.day, close2Shift: c0.d2saved.shift }, patch); save(); renderKeep(); };
+      const setS = (patch) => { const c0 = cur(); state.settings = Object.assign({ startDay: c0.d1.start, startShift: c0.d1.shift, closeDay: c0.d1.day, closeShift: c0.d1.shift, close2On: !!c0.d2, close2Day: c0.d2saved.day, close2Shift: c0.d2saved.shift }, patch); save(); renderKeep(); };
       const upd = () => {
-        const p = { closeDay: dv(cd.value), closeShift: validShift($('#close-shift').value, 'after') };
+        const sd = Number(cd.value), sh0 = validShift($('#close-shift').value, 'after');
+        const p = { startDay: sd, startShift: sh0, closeDay: sd === 1 ? 'end' : sd - 1, closeShift: sh0 };
         if ($('#close2-day')) { p.close2Day = dv($('#close2-day').value); p.close2Shift = validShift($('#close2-shift').value, 'none'); }
         setS(p);
-        toast('締め日：' + lab(state.settings.closeDay) + (state.settings.close2On ? '／もう一つの期限：' + lab(state.settings.close2Day) : ''));
+        toast('始期日：' + state.settings.startDay + '日（締め日はその前日）' + (state.settings.close2On ? '／もう一つの期限：' + lab(state.settings.close2Day) : ''));
       };
       ['#close-day', '#close-shift', '#close2-day', '#close2-shift'].forEach(id => { const el = $(id); if (el) el.addEventListener('change', upd); });
       const on = main.querySelector('[data-act="close2-on"]'); if (on) on.addEventListener('click', () => { setS({ close2On: true }); toast('もう一つの期限を追加しました（' + lab(state.settings.close2Day) + '）'); });

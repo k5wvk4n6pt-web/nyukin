@@ -102,14 +102,25 @@
   function validDayVal(v, def) { return v === 'end' || (Number.isInteger(v) && v >= 1 && v <= 28) ? v : def; }
   function closeSettings(data) {
     const s = (data && data.settings) || {};
-    const d1 = { day: validDayVal(s.closeDay, 10), shift: SHIFTS.includes(s.closeShift) ? s.closeShift : 'after' };
+    const sd = Number(s.startDay);
+    // 始期日基準：締め日＝（休日でずらした）始期日の前日
+    const d1 = Number.isInteger(sd) && sd >= 1 && sd <= 31
+      ? { day: sd === 1 ? 'end' : sd - 1, shift: SHIFTS.includes(s.startShift) ? s.startShift : 'none', start: sd }
+      : { day: validDayVal(s.closeDay, 10), shift: SHIFTS.includes(s.closeShift) ? s.closeShift : 'after' };
     // 期限2は「追加」したときだけ使う（初期は締め日1つ）
     const d2 = s.close2On ? { day: validDayVal(s.close2Day, 'end'), shift: SHIFTS.includes(s.close2Shift) ? s.close2Shift : 'none' } : null;
     const d2saved = { day: validDayVal(s.close2Day, 'end'), shift: SHIFTS.includes(s.close2Shift) ? s.close2Shift : 'none' };
     return { d1, d2, d2saved, day: d1.day, shift: d1.shift };
   }
   function nominalClosing(y, m, cs) { return { y, m, d: cs.day === 'end' ? lastDay(y, m) : cs.day }; }
-  function closingOf(y, m, cs) { cs = cs || { day: 10, shift: 'after' }; const n = nominalClosing(y, m, cs); const a = shiftDate(n, cs.shift); return serial(a) === serial(n) ? n : Object.assign({ nominal: n }, a); }
+  function startOf(y, m, S, shift) { const n = { y, m, d: Math.min(S, lastDay(y, m)) }; return { n, a: shiftDate(n, shift) }; }
+  function closingOf(y, m, cs) { cs = cs || { day: 10, shift: 'after' };
+    if (cs.start) {
+      const ym = cs.start === 1 ? addMonth(y, m, 1) : { y, m };
+      const st = startOf(ym.y, ym.m, cs.start, cs.shift);
+      const n = addDays(st.n, -1), a = addDays(st.a, -1);
+      return serial(a) === serial(n) ? n : Object.assign({ nominal: n }, a);
+    } const n = nominalClosing(y, m, cs); const a = shiftDate(n, cs.shift); return serial(a) === serial(n) ? n : Object.assign({ nominal: n }, a); }
   function nextClosing(T, cs) {
     let best = null;
     for (let i = -1; i <= 2; i++) {
@@ -120,6 +131,7 @@
   }
   function deadlineLabel(dl, c, T) {
     const n = c.nominal || c; const next = n.y * 12 + n.m > T.y * 12 + T.m;
+    if (dl.start) return (next ? '翌' : '') + (n.d === lastDay(n.y, n.m) ? '月末まで' : n.d + '日まで');
     return (next ? '翌' : '') + (dl.day === 'end' ? '月末まで' : dl.day + '日まで');
   }
   /**
@@ -280,7 +292,7 @@
     const entered = banks.filter(b => b.dueActive && b.balance != null);
     const closeWin = W.filter(w => w.inClose).pop();
     return {
-      T, windows: W, banks, totals, closing: closeWin.to, closeDay: cs.day, closeShift: cs.shift,
+      T, windows: W, banks, totals, closing: closeWin.to, closeDay: cs.day, closeShift: cs.shift, startDay: cs.start || null,
       dueTotal: banks.reduce((s, b) => s + b.due, 0),
       dueCount: banks.filter(b => b.dueActive).length,
       grandTotal: banks.reduce((s, b) => s + b.total, 0),
@@ -300,7 +312,7 @@
     };
   }
 
-  const api = { VERSION: '2026.11.08b', amountFor, cycle, onceDate, deadlineLabel, closeSettings, nextClosing, closingOf, holidays, holidayName, isBusinessDay, shiftDate, shiftMode, actual, addDays, WD, lastDay, serial, addMonth, weekday, fromDate, occurrence, activeIn, windows, occurrencesIn, nextDate, compute };
+  const api = { startOf, VERSION: '2026.11.09a', amountFor, cycle, onceDate, deadlineLabel, closeSettings, nextClosing, closingOf, holidays, holidayName, isBusinessDay, shiftDate, shiftMode, actual, addDays, WD, lastDay, serial, addMonth, weekday, fromDate, occurrence, activeIn, windows, occurrencesIn, nextDate, compute };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.KCalc = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
