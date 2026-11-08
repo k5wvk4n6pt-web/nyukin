@@ -318,7 +318,7 @@
         '<h3>引落前のお知らせ（プレミアム）</h3><p>iPhoneアプリ版のプレミアムでは、「設定 → 通知」で、引落日の当日・前日・2日前などに通知でお知らせできます（時刻も選べます）。通知の予約はiPhoneの中だけで行い、外部には送りません。ロック画面に金額を出したくないときは「金額も表示する」をオフにしてください。Webアプリ版では通知は届きません。</p>' +
         '<h3>電卓</h3><p>変動費・1回のみの引落の金額欄の右にある電卓のボタンで、明細の合計などをその場で計算できます。入っている金額から計算が始まり、「この金額にする」でそのまま金額欄に入ります（小数は四捨五入します）。</p>' +
         '<h3>何月分の引落か</h3><p>変動費は金額が毎月変わるので、各行で「○月分」を選んで入力します。金額はその月の引落にだけ使い、ほかの月は「未入力」として扱います。選んだ月の引落が済むと、自動で次の月に進んで金額が空になり、次の請求額を入れられる状態になります（済んだ分は「記録」に残ります。0円の項目はそのまま引き継ぎます）。</p>' +
-      '<h3>1回のみの引落</h3><p>年払いの保険や税金など、決まった日に1回だけ引き落とされるものは、「設定 → 支出 → 1回のみ」で日付を指定して追加します。変動費ページの下に並び、日付が過ぎると「済み」にまとまります。</p>' +
+      '<h3>1回のみの引落</h3><p>年払いの保険や税金など、決まった日に1回だけ引き落とされるものは、「変動費」ページの下にある「1回のみの引落」の「＋追加」から、日付を指定して追加します。変動費ページの下に並び、日付が過ぎると「済み」にまとまります。</p>' +
       '<h3>非表示</h3><p>使わなくなった項目・口座・収入は非表示にできます。非表示にしたものは計算に含みません。</p>' +
       '<h3>データの保存</h3><p>入力した内容は変更するたびに自動で、この端末の中だけに保存され、外部には送信しません（アプリ版でiCloudがオンの場合は、あなたのiCloudにも自動でバックアップします）。入力を間違えたときは「設定 → 保存」の自動の履歴から、前の日の状態に戻せます。機種変更やブラウザのデータ削除に備えて、ときどき「ファイル」アプリ（iCloud Driveなど）にバックアップを保存してください。お知らせの間隔は変えられます。</p>' +
       '<h3>ご注意</h3><p>計算結果は目安です。実際の引落日・金額は、金融機関やカード会社の案内で確認してください。</p>' +
@@ -868,9 +868,9 @@
     if (row) { row.scrollIntoView({ block: 'nearest' }); const btn = row.querySelector('[data-mv="' + dir + '"]'); if (btn && !btn.disabled) btn.focus({ preventScroll: true }); }
   }
 
-  const STABS = [['out', '支出'], ['acc', '口座'], ['books', '帳簿'], ['backup', '保存'], ['notify', '通知'], ['view', '表示']];
+  const STABS = [['acc', '口座'], ['books', '帳簿'], ['backup', '保存'], ['notify', '通知'], ['view', '表示']];
   function settingsHTML() {
-    const st = STABS.some(t => t[0] === meta.stab) ? meta.stab : 'out';
+    const st = STABS.some(t => t[0] === meta.stab) ? meta.stab : 'acc';
     const seg = '<div class="seg" role="tablist">' + STABS.map(t => '<button role="tab" aria-selected="' + (t[0] === st) + '" class="' + (t[0] === st ? 'on' : '') + '" data-stab="' + t[0] + '">' + t[1] + '</button>').join('') + '</div>';
     let body = '';
     if (st === 'out') body = outHTML();
@@ -1455,8 +1455,9 @@
     }));
     const go = (stab, kind) => { meta.page = 'settings'; meta.stab = stab; if (kind) meta.qkind = kind; meta.reorder = null; saveMeta(); renderAll(); window.scrollTo(0, 0); };
     main.querySelectorAll('[data-act="go-acc"]').forEach(b => b.addEventListener('click', () => go('acc')));
-    main.querySelectorAll('[data-act="go-out"]').forEach(b => b.addEventListener('click', () => go('out')));
-    main.querySelectorAll('[data-act="go-in"]').forEach(b => b.addEventListener('click', () => go('in')));
+    // 支出・収入は下のタブのページで登録・編集する
+    main.querySelectorAll('[data-act="go-out"]').forEach(b => b.addEventListener('click', () => { meta.page = 'variable'; meta.reorder = null; saveMeta(); renderAll(); window.scrollTo(0, 0); }));
+    main.querySelectorAll('[data-act="go-in"]').forEach(b => b.addEventListener('click', () => { meta.page = 'income'; meta.reorder = null; saveMeta(); renderAll(); window.scrollTo(0, 0); }));
     bindTotal(); bindUpcoming(); bindPanels(); bindPrepTop(); bindFlow(); bindSched();
     main.querySelectorAll('[data-act="go-close"]').forEach(b => b.addEventListener('click', () => { go('books'); const c = $('#closecard'); if (c) c.scrollIntoView({ block: 'start' }); }));
     main.querySelectorAll('[data-act="sample-clear"]').forEach(b => b.addEventListener('click', () => confirmSheet('サンプルを消しますか？', '<p class="sub" style="margin:0">サンプルの口座・支出・収入をすべて消して、空の状態からはじめます。</p>', '消してはじめる', () => {
