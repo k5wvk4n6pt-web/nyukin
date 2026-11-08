@@ -969,6 +969,9 @@ body.pg-variable .fab.add, body.pg-fixed .fab.add, #sec-variable .section-head b
 .sbdetail .surlist { padding: 0; }
 .surrow.neg .sv { color: var(--short); }
 .tots .tot.plus .big { color: var(--ok); } .tots .tot.short .big { color: var(--short); } .tots .tot.zero .big { color: var(--muted); }
+/* 過不足だけのページ */
+body.pp-need #banksSec, body.pp-need #prepBottom, body.pp-need main > .note, body.pp-need .closecard { display: none !important; }
+.pclose { margin-left: auto; min-height: 32px; padding: 4px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); font-size: 12px; font-weight: 700; }
 @media (max-width: 360px) { .brand-ico, .brand-img, :root[data-color] .brand-img { display: none; } .roundbtn { width: 44px; height: 44px; } }
 </style>
 </head>

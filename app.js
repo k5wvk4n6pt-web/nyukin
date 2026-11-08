@@ -206,6 +206,7 @@
     if (typeof syncFab === 'function') setTimeout(syncFab, 0);
     document.body.className = document.body.className.replace(/\bpg-\S+/g, '').trim() + ' pg-' + page;
     $('#nav').querySelectorAll('[data-page]').forEach(b => { const on = b.dataset.page === page; b.classList.toggle('on', on); b.setAttribute('aria-current', on ? 'page' : 'false'); });
+    syncPanelPage();
     bindAll();
     if (typeof syncTyping === 'function') syncTyping();
   }
@@ -448,7 +449,7 @@
     const pt = prepTopHTML(r);
     return '<div id="prepTop">' + pt.top + '</div>' +
       P('money', totalHTML(r) + '<section class="summary" aria-label="口座一覧">' + acctableHTML(r) + '</section>') +
-      P('need', '<section class="summary" id="sec-top" aria-label="過不足"><div class="acchead">' + QI.scale.replace('<svg ', '<svg class="pico" ') + '過不足</div>' + shortboxHTML(r) + '</section>') +
+      P('need', '<section class="summary" id="sec-top" aria-label="過不足"><div class="acchead">' + QI.scale.replace('<svg ', '<svg class="pico" ') + '過不足<button class="pclose" data-panel-btn="need" aria-label="過不足を閉じる">閉じる ✕</button></div>' + shortboxHTML(r) + '</section>') +
       P('flow', '<section class="incomecard" id="incomecard" aria-label="収入予定"><div class="acchead">' + ICON.coins + '収入予定<span class="sub">（未入金の収入は残高に足しません）</span></div>' +
       (inc ? '<div class="income">' + inc + '</div>' : '<p class="sub" style="margin:0">収入はまだありません。「設定 → 収入」から追加できます。</p>') + '</section>' + cycleHTML()) +
       '<div id="prepBottom">' + pt.near + prepNoticeHTML(r) + '</div>';
@@ -536,11 +537,14 @@
       btn('cycle', ICON.chart, '締め期間の収支', '収入・支出') +
       '</nav>';
   }
+  /** 過不足を開いている間は、過不足だけのページにする（銀行別の入金準備などは隠す） */
+  function syncPanelPage() { document.body.classList.toggle('pp-need', meta.page === 'prep' && meta.prepPanel === 'need'); }
   function bindPanels() {
     main.querySelectorAll('[data-panel-btn]').forEach(b => { if (b._pb) return; b._pb = 1; b.addEventListener('click', () => {
       const k = b.dataset.panelBtn; meta.prepPanel = meta.prepPanel === k ? null : k; saveMeta();
       main.querySelectorAll('.ppanel').forEach(p => { p.hidden = p.dataset.panel !== meta.prepPanel; });
       main.querySelectorAll('[data-panel-btn]').forEach(x => { const on = x.dataset.panelBtn === meta.prepPanel; x.classList.toggle('on', on); x.setAttribute('aria-expanded', on); });
+      syncPanelPage();
       const op = main.querySelector('.ppanel:not([hidden])'); if (op) op.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }); });
   }
