@@ -279,7 +279,7 @@
     const d = { app: 'kakeibo', version: 1, source: 'サンプル', sample: true, accounts: [A, B, L, M], hiddenAccounts: [],
       variable: [v('クレジットカードA', 27, B, 48000), v('クレジットカードB', 10, B, 23500), v('電気代', 26, A, 9800), v('ガス代', 26, A, 5200), v('水道代', 'end', A, 0)],
       fixed: [f('家族のこづかい', 25, M, 30000), f('住宅ローン', 27, L, 85000, '2045-03'), f('携帯電話', 26, A, 6800), f('生命保険', 27, A, 12000), f('習い事', 5, A, 8000), f('家電の分割払い', 1, B, 4500, '2027-06')],
-      balances: {}, income: [{ id: uid('i'), name: '給料', day: 25, amount: 280000, hidden: false, shift: 'before' }, { id: uid('i'), name: '児童手当', day: 10, amount: null, hidden: false, shift: 'before' }] };
+      balances: {}, income: [{ id: uid('i'), name: '給料', day: 25, amount: 280000, hidden: false, shift: 'before' }, { id: uid('i'), name: '児童手当', day: 15, amount: 20000, months: [2, 4, 6, 8, 10, 12], hidden: false, shift: 'before' }, { id: uid('i'), name: '臨時収入（例）', day: 20, date: isoOf(C.addDays(today(), 12)), amount: 30000, hidden: false, shift: 'before' }] };
     d.balances[A] = { amount: 40000, updatedAt: now }; d.balances[B] = { amount: 60000, updatedAt: now }; d.balances[L] = { amount: 90000, updatedAt: now }; d.balances[M] = { amount: null, updatedAt: null };
     return d;
   }
