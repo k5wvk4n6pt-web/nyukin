@@ -351,20 +351,20 @@
     const allLine = showAll ? '<div class="allline"><span>' + md(r.endAll) + 'まで見ると</span><span class="num">不足 <b>' + nf.format(r.shortTotalAll) + '円</b></span><span class="num">余り <b>' + nf.format(r.surplusTotalAll) + '円</b></span></div>' : '';
     const miss = r.balanceMissing > 0 ? '<div class="flag">残高未入力：' + r.balanceMissing + '口座（どちらの合計にも含みません）</div>' : '';
     const bulk = ''; // 「不足をまとめて解消する」ボタンは使わない
-    const row = (b, mid, val, cls) => '<button class="surrow ' + cls + '" data-goto="' + esc(b.name) + '"><span class="sn">' + esc(b.name) + '</span><span class="sc num">' + mid + '</span><span class="sv num">' + val + '<small>円</small></span></button>';
+    const row = (b, mid, val, cls) => '<div class="surrow ' + cls + '"><span class="sn">' + esc(b.name) + '</span><span class="sc num">' + mid + '</span><span class="sv num">' + val + '<small>円</small></span></div>';
     let detail = '';
     if (sel === 'short') {
       const list = r.banks.filter(b => b.balance != null && b.shortfall > 0).sort((a, b) => b.shortfall - a.shortfall);
       detail = '<div class="sbdetail short"><div class="sbd-h">' + cl + 'までに入金が必要な口座</div>' +
         (list.length ? '<div class="surlist">' + list.map(b => row(b, '残高 ' + nf.format(b.balance) + ' − 引落 ' + nf.format(b.due), nf.format(b.shortfall), 'neg')).join('') +
-          '<div class="surrow total"><span class="sn">合計</span><span class="sc"></span><span class="sv num">' + nf.format(r.shortfallTotal) + '<small>円</small></span></div></div><p class="sub" style="margin:6px 0 0">口座を押すと、ほかの口座からその口座へ残高を移せます。</p>'
+          '<div class="surrow total"><span class="sn">合計</span><span class="sc"></span><span class="sv num">' + nf.format(r.shortfallTotal) + '<small>円</small></span></div></div>'
           : '<p class="sub" style="margin:0">不足している口座はありません。</p>') + '</div>';
     } else if (sel === 'plus') {
       const list = r.banks.filter(b => b.balance != null && !b.excluded && b.surplus > 0).sort((a, b) => b.surplus - a.surplus);
       const exc = r.banks.filter(b => b.balance != null && b.excluded && b.surplus > 0);
       detail = '<div class="sbdetail plus"><div class="sbd-h">' + cl + 'までの引落後に余る口座</div>' +
         (list.length ? '<div class="surlist">' + list.map(b => row(b, '残高 ' + nf.format(b.balance) + ' − 引落 ' + nf.format(b.due), nf.format(b.surplus), 'pos')).join('') +
-          '<div class="surrow total"><span class="sn">合計</span><span class="sc"></span><span class="sv num">' + nf.format(r.surplusTotal) + '<small>円</small></span></div></div><p class="sub" style="margin:6px 0 0">口座を押すと、その口座からほかの口座へ残高を移せます。</p>'
+          '<div class="surrow total"><span class="sn">合計</span><span class="sc"></span><span class="sv num">' + nf.format(r.surplusTotal) + '<small>円</small></span></div></div>'
           : '<p class="sub" style="margin:0">余りのある口座はありません。</p>') +
         (exc.length ? '<p class="sub" style="margin:6px 0 0">余りに含めない口座：' + exc.map(b => esc(b.name) + '（' + nf.format(b.surplus) + '円）').join('、') + '</p>' : '') + '</div>';
     }
@@ -376,11 +376,6 @@
     box.querySelectorAll('[data-sb]').forEach(b => b.addEventListener('click', () => {
       meta.sbSel = meta.sbSel === b.dataset.sb ? null : b.dataset.sb; saveMeta();
       box.outerHTML = shortboxHTML(C.compute(state, today())); bindSurBrk();
-    }));
-    box.querySelectorAll('.surrow[data-goto]').forEach(b => b.addEventListener('click', () => {
-      if (accountCatalog().length < 2) { toast('口座が2つ以上必要です'); return; }
-      // 不足の口座は「ほかの口座からこの口座へ」、余りの口座は「この口座からほかの口座へ」
-      if (b.classList.contains('neg')) openTransfer(b.dataset.goto); else openTransfer('', b.dataset.goto);
     }));
   }
   /* ---------- やさしいイラストのアイコン ---------- */
