@@ -995,10 +995,12 @@ body.pp-flow #banksSec, body.pp-flow #prepBottom, body.pp-flow main > .note { di
 .fg-col.sel .fg-lab { fill: var(--accent); }
 .flowdet { display: grid; gap: 10px; }
 .fd-h { display: flex; align-items: baseline; gap: 6px; color: var(--navy); }
-.fd-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.fd-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.fd-grid > div:nth-child(3) { grid-column: 1 / -1; display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.fd-grid > div:nth-child(3) .v { font-size: clamp(18px, 5.6vw, 24px); }
 .fd-grid > div { display: grid; gap: 2px; padding: 10px; border-radius: 12px; background: var(--accent-soft); min-width: 0; }
 .fd-grid .k { font-size: 12px; font-weight: 700; color: var(--navy); }
-.fd-grid .v { font-size: clamp(15px, 4.4vw, 19px); font-weight: 800; color: var(--ink); white-space: nowrap; }
+.fd-grid .v { font-size: clamp(16px, 5vw, 20px); overflow: hidden; text-overflow: ellipsis; font-weight: 800; color: var(--ink); white-space: nowrap; }
 .fd-grid .v small { font-size: 11px; margin-left: 1px; }
 .fd-grid .neg { background: var(--short-bg); } .fd-grid .neg .v { color: var(--short); }
 .fd-grid .pos { background: var(--ok-bg); } .fd-grid .pos .v { color: var(--ok); }
