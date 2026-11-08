@@ -1,6 +1,6 @@
 {
-  "name": "引き落とし管理",
-  "short_name": "引き落とし管理",
+  "name": "引落ナビ",
+  "short_name": "引落ナビ",
   "lang": "ja",
   "start_url": "./",
   "scope": "./",

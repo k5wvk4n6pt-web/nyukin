@@ -1,4 +1,4 @@
-/* 引き落とし管理 — iPhoneアプリ版だけで動く部分（ウェブ版では何もしない）
+/* 引落ナビ — iPhoneアプリ版だけで動く部分（ウェブ版では何もしない）
  *  1. 入力データを端末の設定領域（UserDefaults）にも二重に保存する
  *  2. iCloud（キー値ストア）に全帳簿を自動バックアップする
  *  3. バックアップファイルを共有シートで保存する
@@ -62,9 +62,9 @@
       if (list.length) await LN.schedule({ notifications: list.map((n, i) => ({ id: i + 1, title: n.title, body: n.body, schedule: { at: new Date(n.at), allowWhileIdle: true } })) });
       return true;
     },
-    /** 有料版（買い切り）の状態 { owned, available, price } */
+    /** プレミアム（買い切り）の状態 { owned, available, price } */
     async proStatus() { if (!plugin) return { owned: false, available: false, price: '' }; try { return await plugin.proStatus(); } catch (e) { return { owned: false, available: false, price: '' }; } },
-    /** 有料版を購入 { owned, reason } */
+    /** プレミアムを購入 { owned, reason } */
     async proPurchase() { if (!plugin) return { owned: false, reason: 'unavailable' }; try { return await plugin.proPurchase(); } catch (e) { return { owned: false, reason: String(e && e.message || e) }; } },
     /** 購入の復元 { owned } */
     async proRestore() { if (!plugin) return { owned: false }; try { return await plugin.proRestore(); } catch (e) { return { owned: false }; } },

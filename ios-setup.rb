@@ -1,4 +1,4 @@
-# 引き落とし管理：Xcodeプロジェクトに独自のSwiftファイルとiCloudの設定を登録する
+# 引落ナビ：Xcodeプロジェクトに独自のSwiftファイルとiCloudの設定を登録する
 require 'xcodeproj'
 
 path = 'ios/App/App.xcodeproj'
@@ -26,7 +26,7 @@ target.build_configurations.each do |config|
   s['TARGETED_DEVICE_FAMILY'] = '1'           # iPhoneのみ
   s['MARKETING_VERSION'] = '1.0.0'
   s['ASSETCATALOG_COMPILER_APPICON_NAME'] = 'AppIcon'
-  s['INFOPLIST_KEY_CFBundleDisplayName'] = '引き落とし管理'
+  s['INFOPLIST_KEY_CFBundleDisplayName'] = '引落ナビ'
 end
 
 project.save

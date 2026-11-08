@@ -3,11 +3,11 @@ import UIKit
 import Capacitor
 import StoreKit
 
-/// 引き落とし管理のアプリ版だけの機能
+/// 引落ナビのアプリ版だけの機能
 /// - 端末の設定領域（UserDefaults）への二重保存
 /// - iCloud キー値ストアへの自動バックアップ（全帳簿で数十KB程度。上限1MB）
 /// - バックアップファイルの共有シート
-/// - 有料版（買い切りのアプリ内課金・StoreKit 2）の購入・復元・確認
+/// - プレミアム（買い切りのアプリ内課金・StoreKit 2）の購入・復元・確認
 @objc(NyukinNativePlugin)
 public class NyukinNativePlugin: CAPPlugin, CAPBridgedPlugin {
     public let identifier = "NyukinNativePlugin"
@@ -44,7 +44,7 @@ public class NyukinNativePlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    // MARK: 有料版（アプリ内課金）
+    // MARK: プレミアム（アプリ内課金）
 
     @available(iOS 15.0, *)
     private func ownsPro() async -> Bool {

@@ -2,7 +2,7 @@
   "name": "nyukin-navi",
   "version": "1.0.0",
   "private": true,
-  "description": "引き落とし管理（iPhoneアプリ版）。組み立てはCodemagicで行う",
+  "description": "引落ナビ（iPhoneアプリ版）。組み立てはCodemagicで行う",
   "dependencies": {
     "@capacitor/core": "^7.0.0",
     "@capacitor/ios": "^7.0.0",

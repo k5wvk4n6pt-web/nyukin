@@ -1,4 +1,4 @@
-/* 引き落とし管理 — 画面・保存・バックアップ（データはこの端末の中だけに保存し、外部へは送信しません） */
+/* 引落ナビ — 画面・保存・バックアップ（データはこの端末の中だけに保存し、外部へは送信しません） */
 (function () {
   'use strict';
   const C = window.KCalc;
@@ -302,7 +302,8 @@
       '<h3>帳簿</h3><p>家族のお金なども、人ごとに別の帳簿で管理できます。画面上の名前をタップすると切り替わり、「＋ 帳簿」で追加できます。バックアップは全部の帳簿をまとめて保存します。</p>' +
       '<h3>口座間の移動</h3><p>不足している口座の「ほかの口座から移す」は、その口座へ入れる移動です。それ以外の口座の「ほかの口座へ移す」は、その口座から出す移動です。ほかの帳簿の口座（自分 → 母など）や、非表示の口座とも移動できます。「不足をまとめて解消する」を押すと、余りのある口座から不足している口座へ移す案をまとめて作ります。準備ページの「ほかの口座から移す」「口座間で移す」で、実際に移したお金を記録すると、両方の残高が書きかわります。不足している口座から開くと、不足額が最初から入ります。手数料は「移動元から別に引く」か「移す金額から引く」を選べ、口座の組み合わせごとに前回の手数料を覚えます。間違えたときは「最近の移動」から取り消せます。</p>' +
       '<h3>引き落としの記録</h3><p>下のタブの「記録」に、引落日が来た分がそのときの金額で自動で残ります。月ごとの合計・先月との差・口座ごとの合計が見られ、実際の金額と違うときは押して直せます。CSVで書き出すとExcelで開けます。</p>' +
-      '<h3>引落前のお知らせ（有料版）</h3><p>iPhoneアプリ版の有料版（買い切り）では、「設定 → 通知」で、引落日の当日・前日・2日前などに通知でお知らせできます（時刻も選べます）。通知の予約はiPhoneの中だけで行い、外部には送りません。ロック画面に金額を出したくないときは「金額も表示する」をオフにしてください。Webアプリ版では通知は届きません。</p>' +
+      '<h3>プレミアム（iPhoneアプリ版・買い切り）</h3><p>「設定 → 表示」でアプリの色を選べます（ブルー・ピンク・グリーン・パープル・オレンジ）。</p>' +
+        '<h3>引落前のお知らせ（プレミアム）</h3><p>iPhoneアプリ版のプレミアムでは、「設定 → 通知」で、引落日の当日・前日・2日前などに通知でお知らせできます（時刻も選べます）。通知の予約はiPhoneの中だけで行い、外部には送りません。ロック画面に金額を出したくないときは「金額も表示する」をオフにしてください。Webアプリ版では通知は届きません。</p>' +
         '<h3>電卓</h3><p>変動費・1回のみの引落の金額欄の右にある電卓のボタンで、明細の合計などをその場で計算できます。入っている金額から計算が始まり、「この金額にする」でそのまま金額欄に入ります（小数は四捨五入します）。</p>' +
         '<h3>何月分の引落か</h3><p>変動費は金額が毎月変わるので、各行で「○月分」を選んで入力します。金額はその月の引落にだけ使い、ほかの月は「未入力」として扱います。選んだ月の引落が済むと、自動で次の月に進んで金額が空になり、次の請求額を入れられる状態になります（済んだ分は「記録」に残ります。0円の項目はそのまま引き継ぎます）。</p>' +
       '<h3>1回のみの引落</h3><p>年払いの保険や税金など、決まった日に1回だけ引き落とされるものは、「設定 → 支出 → 1回のみ」で日付を指定して追加します。変動費ページの下に並び、日付が過ぎると「済み」にまとまります。</p>' +
@@ -765,11 +766,19 @@
   }
 
   /** 表示モード（ライト・ダーク・自動） */
+  const COLORS = [['blue', 'ブルー'], ['pink', 'ピンク'], ['green', 'グリーン'], ['purple', 'パープル'], ['orange', 'オレンジ']];
+  function colorOf() { return COLORS.some(c => c[0] === meta.color) ? meta.color : 'blue'; }
+  function colorHTML() {
+    const can = proActive(); const cur = can ? colorOf() : 'blue';
+    return '<div class="card form colorcard"><div class="shead">アプリの色<span class="sub">全部の帳簿で共通の設定です</span></div>' +
+      proHTML('アプリの色の変更') +
+      '<div class="colorpick" role="radiogroup" aria-label="アプリの色">' + COLORS.map(c => '<button role="radio" aria-checked="' + (c[0] === cur) + '" class="cpick c-' + c[0] + (c[0] === cur ? ' on' : '') + '" data-color="' + c[0] + '"' + (can || c[0] === 'blue' ? '' : ' disabled') + '><span class="csw"></span><b>' + c[1] + '</b></button>').join('') + '</div></div>';
+  }
   function viewHTML() {
     const t = themeOf();
     const desc = { light: '明るい表示（標準）', dark: '暗い表示。夜や暗い場所で見やすい', auto: 'iPhoneの設定（ライト／ダーク）に合わせて切り替え' };
     return '<div class="card form"><div class="shead">表示モード<span class="sub">全部の帳簿で共通の設定です</span></div>' +
-      '<div class="modepick" role="radiogroup" aria-label="表示モード">' + THEMES.map(x => '<button role="radio" aria-checked="' + (x[0] === t) + '" class="mode m-' + x[0] + (x[0] === t ? ' on' : '') + '" data-mode="' + x[0] + '"><span class="sw"></span><b>' + { light: 'ライトモード', dark: 'ダークモード', auto: '自動' }[x[0]] + '</b><small>' + desc[x[0]] + '</small></button>').join('') + '</div></div>';
+      '<div class="modepick" role="radiogroup" aria-label="表示モード">' + THEMES.map(x => '<button role="radio" aria-checked="' + (x[0] === t) + '" class="mode m-' + x[0] + (x[0] === t ? ' on' : '') + '" data-mode="' + x[0] + '"><span class="sw"></span><b>' + { light: 'ライトモード', dark: 'ダークモード', auto: '自動' }[x[0]] + '</b><small>' + desc[x[0]] + '</small></button>').join('') + '</div></div>' + colorHTML();
   }
 
   /* ---------- 引落前のお知らせ（iPhoneアプリ版の通知。端末の中だけで予約し、外部には送らない） ---------- */
@@ -778,28 +787,32 @@
     const n = meta.notify || {};
     return { on: !!n.on, days: Array.isArray(n.days) && n.days.length ? n.days : [1], hour: Number.isInteger(n.hour) ? n.hour : 8, amount: !!n.amount };
   }
-  /** 有料版（買い切り）。購入の状態はiPhoneのApp Store（StoreKit）にだけ問い合わせる */
+  /** プレミアム（買い切り）。購入の状態はiPhoneのApp Store（StoreKit）にだけ問い合わせる */
   const pro = { owned: false, checked: false, available: false, price: '', busy: false };
-  function proHTML() {
-    if (!(N.isNative && N.proStatus)) return '';
-    if (pro.owned) return '<p class="proline ok">✓ 有料版をご利用中です。ありがとうございます。</p>';
-    return '<div class="procard"><div class="protitle"><span class="probadge">有料版</span>引落前のお知らせは有料版の機能です</div>' +
-      '<p class="sub">一度購入すれば、ずっと使えます（買い切り・月額料金なし）。同じApple IDなら機種変更しても使えます。</p>' +
+  function proHTML(what) {
+    if (!(N.isNative && N.proStatus)) return '<p class="note"><span class="probadge">プレミアム</span> ' + esc(what) + 'は、<b>iPhoneアプリ版（App Store）のプレミアム</b>で使えます。</p>';
+    if (pro.owned) return '<p class="proline ok">✓ プレミアムをご利用中です。ありがとうございます。</p>';
+    return '<div class="procard"><div class="protitle"><span class="probadge">プレミアム</span>' + esc(what) + 'はプレミアムの機能です</div>' +
+      '<p class="sub">一度購入すれば、ずっと使えます（買い切り・月額料金なし）。プレミアムでは「引落前のお知らせ」と「アプリの色」が使えます。同じApple IDなら機種変更しても使えます。</p>' +
       '<div class="btnrow"><button class="primary" data-act="pro-buy"' + (pro.busy || (pro.checked && !pro.available) ? ' disabled' : '') + '>' + (pro.busy ? '処理中…' : pro.price ? pro.price + 'で購入する' : pro.checked ? '現在購入できません' : '確認中…') + '</button>' +
       '<button data-act="pro-restore"' + (pro.busy ? ' disabled' : '') + '>購入を復元</button></div></div>';
   }
+  /** 起動直後に色がちらつかないよう、確認できた購入状態を覚えておく（確認のたびに上書き） */
+  function cachePro() { meta.proSeen = !!pro.owned; saveMeta(); }
+  function proActive() { return pro.checked ? pro.owned : !!(N.isNative && meta.proSeen); }
   async function refreshPro() {
     if (!(N.isNative && N.proStatus)) return;
     const r = await N.proStatus();
     pro.owned = !!r.owned; pro.available = !!r.available; pro.price = r.price || ''; pro.checked = true;
-    if (meta.page === 'settings' && meta.stab === 'notify') renderKeep();
+    cachePro(); applyTheme();
+    if (meta.page === 'settings' && (meta.stab === 'notify' || meta.stab === 'view')) renderKeep();
     applyNotify();
   }
   function notifyHTML() {
     const c = notifyCfg(); const can = !!(N.isNative && N.notifySchedule) && pro.owned;
     const hours = []; for (let h = 5; h <= 22; h++) hours.push(h);
     return '<div class="card form notifycard"><div class="shead">引落前のお知らせ<span class="sub">全部の帳簿の引き落としが対象です</span></div>' +
-      (N.isNative ? proHTML() : '<p class="note">この機能は<b>iPhoneアプリ版（App Store）の有料版</b>で使えます。Webアプリ版では、外部のサーバーを使わずに通知を出すことができないため、通知は届きません。</p>') +
+      proHTML('引落前のお知らせ') + (N.isNative ? '' : '<p class="sub" style="margin:0">Webアプリ版では、外部のサーバーを使わずに通知を出すことができないため、通知は届きません。</p>') +
       '<label class="switchrow"><span><b>お知らせする</b><small>引落日が近づくと、iPhoneの通知でお知らせします</small></span><input type="checkbox" id="nfOn" role="switch"' + (c.on && can ? ' checked' : '') + (can ? '' : ' disabled') + '></label>' +
       '<div class="nfopts"' + (c.on && can ? '' : ' aria-disabled="true"') + '>' +
       '<div class="flabel">いつお知らせするか（複数選べます）</div><div class="chips" role="group" aria-label="お知らせする日">' +
@@ -855,7 +868,7 @@
       if (!c.on || !pro.owned) { await N.notifySchedule([]); notifyStatus = ''; return; }
       const perm = await N.notifyPermission(!!ask);
       if (perm !== 'granted') {
-        notifyStatus = '通知が許可されていません。iPhoneの「設定」→「通知」→「引き落とし管理」で許可してください。';
+        notifyStatus = '通知が許可されていません。iPhoneの「設定」→「通知」→「引落ナビ」で許可してください。';
       } else {
         const list = notifyList(c, 60);
         await N.notifySchedule(list);
@@ -869,18 +882,18 @@
     if (buy) buy.addEventListener('click', async () => {
       pro.busy = true; renderKeep();
       const r = await N.proPurchase(); pro.busy = false;
-      if (r.owned) { pro.owned = true; toast('有料版を購入しました。お知らせが使えます'); }
+      if (r.owned) { pro.owned = true; toast('プレミアムを購入しました。ありがとうございます'); }
       else if (r.reason === 'pending') toast('購入の承認待ちです（ファミリー共有の承認など）');
       else if (r.reason === 'notfound') toast('現在購入できません。時間をおいてお試しください');
       else if (r.reason && r.reason !== 'cancelled') toast('購入できませんでした');
-      renderKeep(); applyNotify(true);
+      cachePro(); applyTheme(); renderKeep(); applyNotify(true);
     });
     const rs = main.querySelector('[data-act="pro-restore"]');
     if (rs) rs.addEventListener('click', async () => {
       pro.busy = true; renderKeep();
       const r = await N.proRestore(); pro.busy = false; pro.owned = !!r.owned;
       toast(r.owned ? '購入を復元しました' : 'このApple IDでの購入は見つかりませんでした');
-      renderKeep(); applyNotify();
+      cachePro(); applyTheme(); renderKeep(); applyNotify();
     });
     const on = $('#nfOn'); if (!on) return;
     const set = (patch, ask) => { meta.notify = Object.assign(notifyCfg(), patch); saveMeta(); renderKeep(); applyNotify(ask); };
@@ -897,6 +910,11 @@
 
   function bindSettings() {
     bindNotify();
+    main.querySelectorAll('[data-color]').forEach(b => b.addEventListener('click', () => {
+      if (!proActive()) return;
+      meta.color = b.dataset.color; saveMeta(); applyTheme(); renderKeep();
+      toast('アプリの色を「' + COLORS.find(c => c[0] === meta.color)[1] + '」にしました');
+    }));
     main.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => {
       meta.theme = b.dataset.mode; saveMeta(); applyTheme(); renderKeep();
       toast({ light: 'ライトモードにしました', dark: 'ダークモードにしました', auto: 'iPhoneの設定に合わせます' }[meta.theme]);
@@ -1842,6 +1860,8 @@
   function applyTheme() {
     const t = themeOf(); const root = document.documentElement;
     if (t === 'auto') root.removeAttribute('data-theme'); else root.setAttribute('data-theme', t);
+    const col = proActive() ? colorOf() : 'blue';
+    if (col === 'blue') root.removeAttribute('data-color'); else root.setAttribute('data-color', col);
     const dark = t === 'dark' || (t === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
     document.querySelectorAll('meta[name="theme-color"]').forEach(m => { m.setAttribute('content', dark ? '#17191E' : '#FBF8F4'); m.removeAttribute('media'); });
 

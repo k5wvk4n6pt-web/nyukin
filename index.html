@@ -9,13 +9,13 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="引き落とし管理">
+<meta name="apple-mobile-web-app-title" content="引落ナビ">
 <meta name="theme-color" content="#FFE3EA" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#17191E" media="(prefers-color-scheme: dark)">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon-v2.png">
 <link rel="icon" href="icon-192-v2.png">
-<title>引き落とし管理</title>
+<title>引落ナビ</title>
 <style>
 /* Layout: 1カラムの通帳風。上から 要約 → 銀行別 → 変動費 → 固定費 → バックアップ */
 :root {
@@ -843,6 +843,35 @@ body.pg-variable .fab.add, body.pg-fixed .fab.add, #sec-variable .section-head b
 .bookpill.b1 { --bp: var(--c-pink); } .bookpill.b2 { --bp: var(--c-teal); } .bookpill.b3 { --bp: var(--c-peach); } .bookpill.b4 { --bp: var(--c-lav); }
 .bookpill .dot, .bookpill.b0 .dot, .bookpill.b1 .dot, .bookpill.b2 .dot, .bookpill.b3 .dot, .bookpill.b4 .dot { background: var(--surface); }
 .bookpill .lbl, .bookpill .chev { color: var(--surface); opacity: .85; }
+/* プレミアム：アプリの色 */
+:root[data-color="pink"] { --accent: #C2416F; --accent-soft: #FCE9F0; --c-blue: #C2416F; --c-blue-bg: #FCE9F0; --navy: #5A1F38; --brown: #5A1F38; --hero-top: #FBE3EC; --hero-mid: #FDF1F5; --nav-on: #FAD6E3; --nav-on-ink: #C2416F; --bg: #F8EEF2; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"])[data-color="pink"] { --accent: #F08DB2; --accent-soft: #3A2030; --c-blue: #F08DB2; --c-blue-bg: #3A2030; --navy: #F7DCE7; --brown: #F7DCE7; --hero-top: #2A1622; --hero-mid: #1B1219; --nav-on: #4A2539; --nav-on-ink: #F08DB2; --bg: #150F13; } }
+:root[data-theme="dark"][data-color="pink"] { --accent: #F08DB2; --accent-soft: #3A2030; --c-blue: #F08DB2; --c-blue-bg: #3A2030; --navy: #F7DCE7; --brown: #F7DCE7; --hero-top: #2A1622; --hero-mid: #1B1219; --nav-on: #4A2539; --nav-on-ink: #F08DB2; --bg: #150F13; }
+:root[data-color="green"] { --accent: #1F8A5B; --accent-soft: #E3F4EC; --c-blue: #1F8A5B; --c-blue-bg: #E3F4EC; --navy: #174A35; --brown: #174A35; --hero-top: #DDF1E7; --hero-mid: #EEF8F3; --nav-on: #CDEBDC; --nav-on-ink: #1F8A5B; --bg: #F1F7F4; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"])[data-color="green"] { --accent: #6FD3A5; --accent-soft: #183A2B; --c-blue: #6FD3A5; --c-blue-bg: #183A2B; --navy: #D8F2E6; --brown: #D8F2E6; --hero-top: #14281F; --hero-mid: #101B16; --nav-on: #21473A; --nav-on-ink: #6FD3A5; --bg: #0D1612; } }
+:root[data-theme="dark"][data-color="green"] { --accent: #6FD3A5; --accent-soft: #183A2B; --c-blue: #6FD3A5; --c-blue-bg: #183A2B; --navy: #D8F2E6; --brown: #D8F2E6; --hero-top: #14281F; --hero-mid: #101B16; --nav-on: #21473A; --nav-on-ink: #6FD3A5; --bg: #0D1612; }
+:root[data-color="purple"] { --accent: #6D4BC4; --accent-soft: #EEE9FB; --c-blue: #6D4BC4; --c-blue-bg: #EEE9FB; --navy: #2F2160; --brown: #2F2160; --hero-top: #E8E1FA; --hero-mid: #F4F0FD; --nav-on: #DCD2F7; --nav-on-ink: #6D4BC4; --bg: #F5F3FB; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"])[data-color="purple"] { --accent: #B39CF3; --accent-soft: #2A2347; --c-blue: #B39CF3; --c-blue-bg: #2A2347; --navy: #E5DDFB; --brown: #E5DDFB; --hero-top: #1E1932; --hero-mid: #141222; --nav-on: #3A3062; --nav-on-ink: #B39CF3; --bg: #100E1B; } }
+:root[data-theme="dark"][data-color="purple"] { --accent: #B39CF3; --accent-soft: #2A2347; --c-blue: #B39CF3; --c-blue-bg: #2A2347; --navy: #E5DDFB; --brown: #E5DDFB; --hero-top: #1E1932; --hero-mid: #141222; --nav-on: #3A3062; --nav-on-ink: #B39CF3; --bg: #100E1B; }
+:root[data-color="orange"] { --accent: #C2581C; --accent-soft: #FDEDE2; --c-blue: #C2581C; --c-blue-bg: #FDEDE2; --navy: #5A2A0E; --brown: #5A2A0E; --hero-top: #FCE6D6; --hero-mid: #FEF4EC; --nav-on: #F9D9C2; --nav-on-ink: #C2581C; --bg: #FBF5F0; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"])[data-color="orange"] { --accent: #F3A673; --accent-soft: #3D2618; --c-blue: #F3A673; --c-blue-bg: #3D2618; --navy: #FBE2D1; --brown: #FBE2D1; --hero-top: #2B1B11; --hero-mid: #1C130D; --nav-on: #4E301D; --nav-on-ink: #F3A673; --bg: #16100B; } }
+:root[data-theme="dark"][data-color="orange"] { --accent: #F3A673; --accent-soft: #3D2618; --c-blue: #F3A673; --c-blue-bg: #3D2618; --navy: #FBE2D1; --brown: #FBE2D1; --hero-top: #2B1B11; --hero-mid: #1C130D; --nav-on: #4E301D; --nav-on-ink: #F3A673; --bg: #16100B; }
+.colorpick { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.cpick { display: grid; justify-items: center; gap: 6px; padding: 10px 2px 8px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); font-size: 12px; min-height: 0; }
+.cpick .csw { width: 34px; height: 34px; border-radius: 50%; box-shadow: inset 0 0 0 3px color-mix(in srgb, #fff 55%, transparent); }
+.cpick.c-blue .csw { background: linear-gradient(135deg, #3F86E8, #1F5FC8); }
+.cpick.c-pink .csw { background: linear-gradient(135deg, #EE7FA6, #C2416F); }
+.cpick.c-green .csw { background: linear-gradient(135deg, #4CC28C, #1F8A5B); }
+.cpick.c-purple .csw { background: linear-gradient(135deg, #9C7FE6, #6D4BC4); }
+.cpick.c-orange .csw { background: linear-gradient(135deg, #F29A5E, #C2581C); }
+.cpick.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); background: var(--accent-soft); }
+.cpick.on b { color: var(--accent); }
+.cpick:disabled { opacity: .45; }
+.mode.on { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
+.mode.on b::after { color: var(--accent); }
+.colorcard { display: grid; gap: 12px; }
+.note .probadge { vertical-align: 1px; }
+.brand h1 { font-size: clamp(24px, 8vw, 34px); }
 @media (max-width: 360px) { .brand-ico { display: none; } .roundbtn { width: 44px; height: 44px; } }
 </style>
 </head>
@@ -851,7 +880,7 @@ body.pg-variable .fab.add, body.pg-fixed .fab.add, #sec-variable .section-head b
   <header class="hero">
     <div class="hero-top">
       <button id="helpBtn" class="roundbtn" aria-label="使い方"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" fill="none"/></svg></button>
-      <div class="brand"><svg class="brand-ico" viewBox="0 0 48 44" aria-hidden="true"><defs><linearGradient id="bkg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3F86E8"/><stop offset="1" stop-color="#1D56B8"/></linearGradient></defs><path d="M24 2 L45 13 V16 H3 V13 Z" fill="url(#bkg)"/><circle cx="24" cy="10" r="2.6" fill="#fff" opacity=".9"/><rect x="5" y="18" width="38" height="3" rx="1" fill="url(#bkg)"/><g fill="url(#bkg)"><rect x="8" y="22" width="5" height="13" rx="1"/><rect x="17" y="22" width="5" height="13" rx="1"/><rect x="26" y="22" width="5" height="13" rx="1"/><rect x="35" y="22" width="5" height="13" rx="1"/></g><rect x="3" y="36" width="42" height="6" rx="2" fill="url(#bkg)"/></svg><h1>引き落とし管理</h1></div>
+      <div class="brand"><svg class="brand-ico" viewBox="0 0 48 44" aria-hidden="true"><defs><linearGradient id="bkg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color: color-mix(in srgb, var(--accent) 75%, #fff)"/><stop offset="1" style="stop-color: var(--accent)"/></linearGradient></defs><path d="M24 2 L45 13 V16 H3 V13 Z" fill="url(#bkg)"/><circle cx="24" cy="10" r="2.6" fill="#fff" opacity=".9"/><rect x="5" y="18" width="38" height="3" rx="1" fill="url(#bkg)"/><g fill="url(#bkg)"><rect x="8" y="22" width="5" height="13" rx="1"/><rect x="17" y="22" width="5" height="13" rx="1"/><rect x="26" y="22" width="5" height="13" rx="1"/><rect x="35" y="22" width="5" height="13" rx="1"/></g><rect x="3" y="36" width="42" height="6" rx="2" fill="url(#bkg)"/></svg><h1>引落ナビ</h1></div>
       <button id="setBtn" class="roundbtn" aria-label="設定を開く"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.1-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1.55-1.1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V9a1.7 1.7 0 0 0 1.55 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1z"/></svg></button>
     </div>
     <div class="todaycard"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/><g fill="currentColor" stroke="none"><circle cx="8" cy="14" r="1.1"/><circle cx="12" cy="14" r="1.1"/><circle cx="16" cy="14" r="1.1"/><circle cx="8" cy="17.3" r="1.1"/><circle cx="12" cy="17.3" r="1.1"/></g></svg><span class="tc-lab">今日</span><b id="today">—</b></div>
