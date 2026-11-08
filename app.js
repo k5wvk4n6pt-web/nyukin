@@ -788,7 +788,7 @@
       proHTML('アプリの色の変更') +
       '<div class="colorpick" role="radiogroup" aria-label="アプリの色">' + COLORS.map(c => '<button role="radio" aria-checked="' + (c[0] === cur) + '" class="cpick c-' + c[0] + (c[0] === cur ? ' on' : '') + '" data-color="' + c[0] + '"' + (can || c[0] === 'blue' ? '' : ' disabled') + '><img src="icon-' + c[0] + '-180.png" alt="" width="48" height="48"><b>' + c[1] + '</b></button>').join('') + '</div>' +
       (N.isNative && icon.supported ? '<label class="switchrow"><span><b>ホーム画面のアイコンも同じ色にする</b><small>色を変えると、iPhoneが「アイコンを変更しました」と表示します</small></span><input type="checkbox" id="iconSync" role="switch"' + (meta.iconSync !== false ? ' checked' : '') + (can ? '' : ' disabled') + '></label>'
-        : N.isNative ? '' : '<p class="sub" style="margin:0">アプリ版では、ホーム画面のアイコンも同じ色に変わります（Webアプリ版はアイコンを変えられません）。</p>') + '</div>';
+        : N.isNative ? '' : (can ? '<div class="iconhow"><b>ホーム画面のアイコンも同じ色にするには</b><ol><li>念のため「設定 → 保存」でバックアップを保存する</li><li>この画面を<b>Safari</b>で開いて、同じ色を選ぶ</li><li>共有ボタン →「ホーム画面に追加」</li><li>前のアイコンはホーム画面から削除（「アプリを削除」は選ばない）</li></ol><small>Webアプリ版は、ホーム画面に追加したときのアイコンのまま変わらないため、追加し直す必要があります。</small></div>' : '<p class="sub" style="margin:0">アプリ版では、ホーム画面のアイコンも同じ色に変わります。</p>')) + '</div>';
   }
   function viewHTML() {
     const t = themeOf();
@@ -1909,6 +1909,8 @@
     const col = proActive() ? colorOf() : 'blue';
     if (col === 'blue') root.removeAttribute('data-color'); else root.setAttribute('data-color', col);
     const bi = document.querySelector('.brand-img'); if (bi && col !== 'blue') bi.setAttribute('src', 'icon-' + col + '-180.png');
+    // Webアプリ版：ホーム画面に追加するときのアイコンも、選んだ色にする（追加し直すと反映）
+    const ti = document.querySelector('link[rel="apple-touch-icon"]'); if (ti) ti.setAttribute('href', col === 'blue' ? 'apple-touch-icon-v3.png' : 'icon-' + col + '-180.png');
     const dark = t === 'dark' || (t === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
     const TC = { blue: ['#E3EEFB', '#13213A'], pink: ['#F7CFDD', '#3A1D2E'], green: ['#C9EBD9', '#173327'], purple: ['#D9CEF7', '#241E3D'], orange: ['#F8D3B8', '#382315'] }[col];
     document.querySelectorAll('meta[name="theme-color"]').forEach(m => { m.setAttribute('content', TC[dark ? 1 : 0]); m.removeAttribute('media'); });
