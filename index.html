@@ -933,7 +933,19 @@ body.pg-variable .fab.add, body.pg-fixed .fab.add, #sec-variable .section-head b
 .pnotice.info .pn-i, .pnotice.info .pn-chev { color: var(--accent); }
 .pnotice.ok { grid-template-columns: 28px minmax(0, 1fr); background: var(--ok-bg); }
 .pnotice.ok .pn-i { color: var(--ok); }
-@media (max-width: 370px) { .qbtn { font-size: 11px; } .qbtn svg { width: 34px; height: 34px; } .hc-days { font-size: 38px; } }
+@media (max-width: 370px) { .qbtn { font-size: 11px; } .qbtn svg { width: 34px; height: 34px; } .hc-days { font-size: 38px; } .herocard { gap: 10px 10px; padding: 14px 10px 14px 14px; } .hc-lab { white-space: normal; flex-wrap: wrap; justify-content: center; text-align: center; font-size: 12px; } .hc-amt { font-size: 20px; padding: 7px 8px; } }
+/* ロゴ画像（文字・波線・白ふちを色ごとに塗る） */
+.brand h1.logo { position: relative; width: clamp(120px, 42vw, 210px); aspect-ratio: 640 / 215; flex: 0 1 auto; min-width: 0; padding: 0; margin: 0; font-size: 0; }
+.brand h1.logo::after, :root[data-color] .brand h1.logo::after { display: none; }
+.brand h1.logo .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.brand h1.logo .lg { position: absolute; inset: 0; -webkit-mask-size: 100% 100%; mask-size: 100% 100%; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; }
+.lg-o { background: #fff; -webkit-mask-image: url("logo-outline.png"); mask-image: url("logo-outline.png"); filter: drop-shadow(0 2px 4px color-mix(in srgb, var(--navy) 18%, transparent)); }
+.lg-w { background: color-mix(in srgb, var(--accent) 70%, #4FB4FF); -webkit-mask-image: url("logo-wave.png"); mask-image: url("logo-wave.png"); }
+:root[data-color] .lg-w { background: color-mix(in srgb, var(--accent) 85%, #fff); }
+.lg-t { background: var(--navy); -webkit-mask-image: url("logo-text.png"); mask-image: url("logo-text.png"); }
+:root[data-theme="dark"] .lg-o { background: #fff; }
+:root[data-theme="dark"] .lg-t { background: #12255A; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .lg-t { background: #12255A; } }
 @media (max-width: 360px) { .brand-ico, .brand-img, :root[data-color] .brand-img { display: none; } .roundbtn { width: 44px; height: 44px; } }
 </style>
 </head>
@@ -942,7 +954,7 @@ body.pg-variable .fab.add, body.pg-fixed .fab.add, #sec-variable .section-head b
   <header class="hero">
     <div class="hero-top">
       <button id="helpBtn" class="roundbtn" aria-label="使い方"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" fill="none"/></svg></button>
-      <div class="brand"><img class="brand-img" src="icon-pink-180.png" alt="" width="44" height="44"><svg class="brand-ico" viewBox="0 0 48 44" aria-hidden="true"><defs><linearGradient id="bkg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color: color-mix(in srgb, var(--accent) 75%, #fff)"/><stop offset="1" style="stop-color: var(--accent)"/></linearGradient></defs><path d="M24 2 L45 13 V16 H3 V13 Z" fill="url(#bkg)"/><circle cx="24" cy="10" r="2.6" fill="#fff" opacity=".9"/><rect x="5" y="18" width="38" height="3" rx="1" fill="url(#bkg)"/><g fill="url(#bkg)"><rect x="8" y="22" width="5" height="13" rx="1"/><rect x="17" y="22" width="5" height="13" rx="1"/><rect x="26" y="22" width="5" height="13" rx="1"/><rect x="35" y="22" width="5" height="13" rx="1"/></g><rect x="3" y="36" width="42" height="6" rx="2" fill="url(#bkg)"/></svg><h1>引落ナビ</h1></div>
+      <div class="brand"><img class="brand-img" src="icon-pink-180.png" alt="" width="44" height="44"><svg class="brand-ico" viewBox="0 0 48 44" aria-hidden="true"><defs><linearGradient id="bkg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color: color-mix(in srgb, var(--accent) 75%, #fff)"/><stop offset="1" style="stop-color: var(--accent)"/></linearGradient></defs><path d="M24 2 L45 13 V16 H3 V13 Z" fill="url(#bkg)"/><circle cx="24" cy="10" r="2.6" fill="#fff" opacity=".9"/><rect x="5" y="18" width="38" height="3" rx="1" fill="url(#bkg)"/><g fill="url(#bkg)"><rect x="8" y="22" width="5" height="13" rx="1"/><rect x="17" y="22" width="5" height="13" rx="1"/><rect x="26" y="22" width="5" height="13" rx="1"/><rect x="35" y="22" width="5" height="13" rx="1"/></g><rect x="3" y="36" width="42" height="6" rx="2" fill="url(#bkg)"/></svg><h1 class="logo"><span class="vh">引落ナビ</span><span class="lg lg-o" aria-hidden="true"></span><span class="lg lg-w" aria-hidden="true"></span><span class="lg lg-t" aria-hidden="true"></span></h1></div>
       <button id="setBtn" class="roundbtn" aria-label="設定を開く"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1.1-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 1.55-1.1 1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V9a1.7 1.7 0 0 0 1.55 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.55 1z"/></svg></button>
     </div>
     <div class="todaycard"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/><g fill="currentColor" stroke="none"><circle cx="8" cy="14" r="1.1"/><circle cx="12" cy="14" r="1.1"/><circle cx="16" cy="14" r="1.1"/><circle cx="8" cy="17.3" r="1.1"/><circle cx="12" cy="17.3" r="1.1"/></g></svg><span class="tc-lab">今日</span><b id="today">—</b></div>
