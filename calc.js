@@ -74,7 +74,8 @@
   /** 「○月分」を指定した項目は、その月の引落にだけ金額を使う（ほかの月は未入力） */
   function amountFor(it, o) {
     if (!it.month) return it.amount;
-    const n = o.orig || o;
+    let n = o.orig || o;
+    if (it.nm) { const p = addMonth(n.y, n.m, -it.nm); n = { y: p.y, m: p.m }; } // 翌月引落：引落月の前の月の分
     const ym = n.y + '-' + String(n.m).padStart(2, '0');
     return ym === it.month ? it.amount : null;
   }
@@ -299,7 +300,7 @@
     };
   }
 
-  const api = { VERSION: '2026.11.08a', amountFor, cycle, onceDate, deadlineLabel, closeSettings, nextClosing, closingOf, holidays, holidayName, isBusinessDay, shiftDate, shiftMode, actual, addDays, WD, lastDay, serial, addMonth, weekday, fromDate, occurrence, activeIn, windows, occurrencesIn, nextDate, compute };
+  const api = { VERSION: '2026.11.08b', amountFor, cycle, onceDate, deadlineLabel, closeSettings, nextClosing, closingOf, holidays, holidayName, isBusinessDay, shiftDate, shiftMode, actual, addDays, WD, lastDay, serial, addMonth, weekday, fromDate, occurrence, activeIn, windows, occurrencesIn, nextDate, compute };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.KCalc = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

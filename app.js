@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   const C = window.KCalc;
-  const APP_VERSION = '2026.11.08a';
+  const APP_VERSION = '2026.11.08b';
   /** ファイルの一部だけが新しい（アップロード漏れ・古いキャッシュ）と計算が合わなくなるので知らせる */
   /** 古いままのファイル名（なければ空）。native.js は中身が変わったときだけ気にする */
   function staleFiles() {
@@ -145,6 +145,7 @@
         return o;
       }
       if (fixed) o.end = x.end || null;
+      if (Number(x.nm) === 1) o.nm = 1; // 翌月の引落日（例：翌10日）
       if (!validDay(o.day)) throw new Error('引落日が読み取れない項目があります：' + o.name);
       if (!validAmt(o.amount)) throw new Error('金額が読み取れない項目があります：' + o.name);
       return o;
@@ -785,16 +786,25 @@
     for (const v of ms) {
       const [y, m] = v.split('-').map(Number);
       let when = '';
-      if (it.day != null) { const a = C.actual(it, y, m, false); when = '（' + a.m + '/' + a.d + '）'; }
+      if (it.day != null) { const dm = C.addMonth(y, m, it.nm || 0); const a = C.actual(it, dm.y, dm.m, false); when = '（' + a.m + '/' + a.d + '）'; }
       h += '<option value="' + v + '"' + (it.month === v ? ' selected' : '') + '>' + (y !== T.y ? y + '年' : '') + m + '月分' + when + '</option>';
     }
     return h + '</select>';
   }
-  function daySelect(id, d) {
-    let h = '<select id="' + id + '" aria-label="引落日">';
-    for (let i = 1; i <= 31; i++) h += '<option value="' + i + '"' + (d === i ? ' selected' : '') + '>' + i + '日</option>';
-    return h + '<option value="end"' + (d === 'end' ? ' selected' : '') + '>月末</option></select>';
+  function daySelect(id, d, nm, allowNext) {
+    let h = '<select id="' + id + '" aria-label="引落日">' + (allowNext ? '<optgroup label="その月">' : '');
+    for (let i = 1; i <= 31; i++) h += '<option value="' + i + '"' + (!nm && d === i ? ' selected' : '') + '>' + i + '日</option>';
+    h += '<option value="end"' + (!nm && d === 'end' ? ' selected' : '') + '>月末</option>';
+    if (allowNext) {
+      h += '</optgroup><optgroup label="翌月（例：11月分を12月に引落）">';
+      for (let i = 1; i <= 31; i++) h += '<option value="n' + i + '"' + (nm && d === i ? ' selected' : '') + '>翌' + i + '日</option>';
+      h += '<option value="nend"' + (nm && d === 'end' ? ' selected' : '') + '>翌月末</option></optgroup>';
+    }
+    return h + '</select>';
   }
+  /** 引落日の選択値 → { day, nm }（"n10" = 翌10日） */
+  function parseDay(v) { const nm = String(v).charAt(0) === 'n' ? 1 : 0; const r = nm ? String(v).slice(1) : String(v); return { day: r === 'end' ? 'end' : Number(r), nm }; }
+  function setDay(it, v) { const p = parseDay(v); it.day = p.day; if (p.nm) it.nm = 1; else delete it.nm; }
   function acctSelect(id, a) {
     const opts = state.accounts.slice(); if (a && !opts.includes(a)) opts.push(a);
     return '<select id="' + id + '" aria-label="引落口座">' + (a ? '' : '<option value="" selected>口座を選ぶ</option>') + opts.map(o => '<option' + (o === a ? ' selected' : '') + '>' + esc(o) + '</option>').join('') + '</select>';
@@ -820,7 +830,7 @@
         '<div class="row-main"><span class="row-name">' + esc(it.name) + '</span>' +
         '<input class="amount' + (it.amount == null ? ' empty' : '') + '" inputmode="numeric" enterkeyhint="done" autocomplete="off" id="amt-' + esc(it.id) + '" data-f="amount" value="' + yenTxt(it.amount) + '" placeholder="未入力" aria-label="' + esc(it.name) + 'の金額">' +
         (kind !== 'fixed' ? '<button type="button" class="calcbtn" data-act="calc" aria-label="' + esc(it.name) + 'を電卓で計算">' + CALC_ICON + '</button>' : '') + '</div>' +
-        '<div class="row-sub">' + (kind === 'once' ? '<input class="text datein" type="date" id="date-' + esc(it.id) + '" data-f="date" value="' + esc(it.date) + '" aria-label="引落日">' : daySelect('day-' + esc(it.id), it.day)) + (kind === 'variable' ? monthSelect('mon-' + esc(it.id), it) : '') + acctSelect('acc-' + esc(it.id), it.account) +
+        '<div class="row-sub">' + (kind === 'once' ? '<input class="text datein" type="date" id="date-' + esc(it.id) + '" data-f="date" value="' + esc(it.date) + '" aria-label="引落日">' : daySelect('day-' + esc(it.id), it.day, it.nm, true)) + (kind === 'variable' ? monthSelect('mon-' + esc(it.id), it) : '') + acctSelect('acc-' + esc(it.id), it.account) +
         '<span class="stamp" data-stamp>' + stampText(it.updatedAt) + '</span></div>' +
         ((it.memo || it.end) ? '<div class="memo">' + (it.end ? (ended ? '終了しました（' : '終了予定 ') + it.end.replace('-', '/') + (ended ? '）' : '') + (it.memo ? '　' : '') : '') + esc(it.memo) + '</div>' : '') +
         '<div class="row-acts"><button class="ghost small" data-act="edit">詳細（名前・休日・削除）</button><button class="ghost small" data-act="hide">非表示にする</button></div>' +
@@ -1408,7 +1418,7 @@
       const ms = row.querySelector('[data-f="month"]');
       if (ms) ms.addEventListener('change', e => { if (!e.target.value) return; it.month = e.target.value; touch(it, row); save(); renderKeep(); toast('「' + it.name + '」：' + Number(it.month.split('-')[1]) + '月分の金額にしました'); });
       const ds = row.querySelector('select[id^="day-"]');
-      if (ds) ds.addEventListener('change', e => { it.day = e.target.value === 'end' ? 'end' : Number(e.target.value); touch(it, row); save(); renderKeep(); });
+      if (ds) ds.addEventListener('change', e => { setDay(it, e.target.value); touch(it, row); save(); renderKeep(); });
       const di = row.querySelector('[data-f="date"]');
       if (di) di.addEventListener('change', e => { if (!/^\d{4}-\d{2}-\d{2}$/.test(e.target.value)) { e.target.value = it.date; return; } it.date = e.target.value; touch(it, row); save(); renderKeep(); });
       row.querySelector('select[id^="acc-"]').addEventListener('change', e => { it.account = e.target.value; touch(it, row); save(); renderKeep(); });
@@ -1904,7 +1914,7 @@
     const T = today(); let changed = 0;
     for (const it of state.variable || []) {
       const nd = C.nextDate(it, T); if (!nd) continue;
-      const n = nd.orig || nd; const ym = n.y + '-' + String(n.m).padStart(2, '0');
+      const n0 = nd.orig || nd; const n = it.nm ? C.addMonth(n0.y, n0.m, -it.nm) : n0; const ym = n.y + '-' + String(n.m).padStart(2, '0');
       if (!it.month) { it.month = ym; changed++; }
       else if (it.month < ym) { it.month = ym; if (it.amount !== 0) { it.amount = null; it.updatedAt = null; } changed++; }
     }
@@ -1997,7 +2007,7 @@
     m.innerHTML = '<div class="sheet form xsheet" role="dialog" aria-modal="true" aria-labelledby="mt"><h2 id="mt">' + kname + 'を追加</h2>' +
       '<label>項目名<input class="text" id="as-name" autocomplete="off" placeholder="例：クレジットカード"></label>' +
       '<label>金額（わからなければ空欄）<input class="amount wide" id="as-amt" inputmode="numeric" enterkeyhint="done" autocomplete="off" placeholder="未入力"></label>' +
-      '<div class="two"><label>引落日' + (kind === 'once' ? '<input class="text" type="date" id="as-date" value="' + (meta.qdate || isoOf(today())) + '">' : daySelect('as-day', day)) + '</label>' +
+      '<div class="two"><label>引落日' + (kind === 'once' ? '<input class="text" type="date" id="as-date" value="' + (meta.qdate || isoOf(today())) + '">' : daySelect('as-day', day, meta.qnm, true)) + '</label>' +
       '<label>引落口座<select id="as-acc">' + (acc ? '' : '<option value="" selected>選ぶ</option>') + accs.map(a => '<option' + (a === acc ? ' selected' : '') + '>' + esc(a) + '</option>').join('') + '</select></label></div>' +
       (kind === 'variable' ? '<label>何月分の引落か' + monthSelect('as-month', { month: (() => { const T = today(); const n = C.addMonth(T.y, T.m, T.d > 10 ? 1 : 0); return n.y + '-' + String(n.m).padStart(2, '0'); })(), day: null }) + '</label>' : '') +
       '<label>引落日が休日のとき' + shiftSelect('as-shift', validShift(meta.qshift, 'after')) + '</label>' +
@@ -2023,7 +2033,7 @@
         const dv = $('#as-date').value; if (!/^\d{4}-\d{2}-\d{2}$/.test(dv)) { toast('引落日を選んでください'); return false; }
         it.date = dv; meta.qdate = dv;
       } else {
-        const dv = $('#as-day').value; it.day = dv === 'end' ? 'end' : Number(dv); meta.qday = it.day;
+        const dv = $('#as-day').value; setDay(it, dv); meta.qday = it.day; meta.qnm = it.nm ? 1 : 0;
       }
       if (kind === 'fixed') { const e = $('#as-end'); it.end = e && e.value ? e.value : null; }
       state.once = state.once || [];
