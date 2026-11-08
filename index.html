@@ -858,8 +858,10 @@ body.pg-variable .fab.add, body.pg-fixed .fab.add, #sec-variable .section-head b
 :root[data-theme="dark"][data-color="orange"] { --accent: #F3A673; --accent-soft: #472C1B; --c-blue: #F3A673; --c-blue-bg: #472C1B; --navy: #FBE2D1; --brown: #FBE2D1; --hero-top: #382315; --hero-mid: #22160E; --bg: #18100A; --line: #3F2C1F; --field: #20160F; --nav-on: #4E301D; --nav-on-ink: #F3A673; --surface: #261B13; }
 :root[data-color] body { background: linear-gradient(180deg, var(--hero-top) 0, var(--hero-mid) 300px, var(--bg) 640px) no-repeat, var(--bg); }
 .brand-img { display: none; width: 44px; height: 44px; border-radius: 11px; box-shadow: 0 2px 8px color-mix(in srgb, var(--accent) 30%, transparent); flex: 0 0 auto; }
-:root[data-color] .brand-img { display: block; }
-:root[data-color] .brand-ico { display: none; }
+:root[data-color] .brand-img { display: none; }
+:root[data-color] .brand-ico { display: block; }
+/* タイトルの下の線：ブルーは金色、ほかは選んだ色 */
+:root[data-color] .brand h1::after { background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent) 70%, #fff) 12%, color-mix(in srgb, var(--accent) 70%, #fff) 88%, transparent); }
 :root[data-color] .nav { background: color-mix(in srgb, var(--surface) 92%, var(--accent-soft)); border-color: var(--line); }
 :root[data-color] .seg { background: var(--accent-soft); }
 :root[data-color] .todaycard, :root[data-color] .roundbtn { border-color: var(--line); }
