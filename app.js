@@ -987,7 +987,7 @@
     const kind = ['fixed', 'once'].includes(meta.qkind) ? meta.qkind : 'variable';
     const kname = { variable: '変動費', fixed: '固定費', once: '1回のみ' }[kind];
     const accs = visibleAccounts();
-    const acc = accs.includes(meta.qacc) ? meta.qacc : '';
+    const acc = accs.includes(keep.acc) ? keep.acc : accs.includes(meta.qacc) ? meta.qacc : '';
     const day = meta.qday === 'end' || (Number(meta.qday) >= 1 && Number(meta.qday) <= 31) ? (meta.qday === 'end' ? 'end' : Number(meta.qday)) : 27;
     return '<div class="card form">' +
       '<div class="shead">支出を追加<span class="sub">追加した項目は「' + (kind === 'fixed' ? '固定費' : '変動費') + '」ページに表示され、すぐ計算に入ります' + (kind === 'once' ? '（1回のみは変動費ページの下）' : '') + '</span></div>' +
@@ -2262,17 +2262,20 @@
   }
 
   /* ---------- その場で追加するシート ---------- */
-  function openAddSheet(kind) {
+  function openAddSheet(kind, keep) {
     kind = ['fixed', 'once'].includes(kind) ? kind : 'variable';
+    keep = keep || {};
     const kname = { variable: '変動費', fixed: '固定費', once: '1回のみの引落' }[kind];
     const accs = visibleAccounts();
     if (!accs.length) { toast('先に「設定 → 口座」で口座を登録してください'); return; }
     const acc = accs.includes(meta.qacc) ? meta.qacc : '';
     const day = meta.qday === 'end' || (Number(meta.qday) >= 1 && Number(meta.qday) <= 31) ? (meta.qday === 'end' ? 'end' : Number(meta.qday)) : 27;
     const m = $('#modal');
-    m.innerHTML = '<div class="sheet form xsheet" role="dialog" aria-modal="true" aria-labelledby="mt"><h2 id="mt">' + kname + 'を追加</h2>' +
-      '<label>項目名<input class="text" id="as-name" autocomplete="off" placeholder="例：クレジットカード"></label>' +
-      '<label>金額（わからなければ空欄）<input class="amount wide" id="as-amt" inputmode="numeric" enterkeyhint="done" autocomplete="off" placeholder="未入力"></label>' +
+    m.innerHTML = '<div class="sheet form xsheet" role="dialog" aria-modal="true" aria-labelledby="mt"><h2 id="mt">支出を追加</h2>' +
+      '<div class="seg askind" role="tablist" aria-label="支出の種類">' + [['variable', '変動費'], ['fixed', '固定費'], ['once', '1回のみ']].map(k => '<button type="button" role="tab" data-askind="' + k[0] + '" class="' + (k[0] === kind ? 'on' : '') + '" aria-selected="' + (k[0] === kind) + '">' + k[1] + '</button>').join('') + '</div>' +
+      '<p class="sub askhint" style="margin:0">' + { variable: '毎月金額が変わるもの（カードの引落など）', fixed: '毎月同じ金額のもの（家賃・保険など）', once: '1回だけ引き落とされるもの（年払い・臨時の支払いなど）' }[kind] + '</p>' +
+      '<label>項目名<input class="text" id="as-name" autocomplete="off" placeholder="' + (kind === 'once' ? '例：自動車税' : '例：クレジットカード') + '" value="' + esc(keep.name || '') + '"></label>' +
+      '<label>金額（わからなければ空欄）<input class="amount wide" id="as-amt" inputmode="numeric" enterkeyhint="done" autocomplete="off" placeholder="未入力" value="' + esc(keep.amt || '') + '"></label>' +
       '<div class="two"><label>引落日' + (kind === 'once' ? '<input class="text" type="date" id="as-date" value="' + (meta.qdate || isoOf(today())) + '">' : daySelect('as-day', day, meta.qnm, true)) + '</label>' +
       '<label>引落口座<select id="as-acc">' + (acc ? '' : '<option value="" selected>選ぶ</option>') + accs.map(a => '<option' + (a === acc ? ' selected' : '') + '>' + esc(a) + '</option>').join('') + '</select></label></div>' +
       (kind === 'variable' ? '<label>何月分の引落か' + monthSelect('as-month', { month: (() => { const T = today(); const n = C.addMonth(T.y, T.m, T.d > 10 ? 1 : 0); return n.y + '-' + String(n.m).padStart(2, '0'); })(), day: null }) + '</label>' : '') +
@@ -2284,6 +2287,10 @@
     const close = () => { m.hidden = true; m.innerHTML = ''; };
     $('#mCancel').onclick = close;
     m.onclick = e => { if (e.target === m) close(); };
+    m.querySelectorAll('[data-askind]').forEach(b => b.addEventListener('click', () => {
+      if (b.dataset.askind === kind) return;
+      openAddSheet(b.dataset.askind, { name: $('#as-name').value, amt: $('#as-amt').value, acc: $('#as-acc').value });
+    }));
     const amt = $('#as-amt');
     amt.addEventListener('blur', () => { const v = parseAmount(amt.value); if (!Number.isNaN(v)) amt.value = yenTxt(v); });
     let added = null;
@@ -2305,12 +2312,14 @@
       state.once = state.once || [];
       state[kind].push(it); meta.qacc = a; meta.qshift = shift; saveMeta(); save();
       added = it.id;
-      toast('「' + name + '」を追加しました');
+      toast('「' + name + '」を' + { variable: '変動費', fixed: '固定費', once: '1回のみの引落' }[kind] + 'に追加しました');
       return true;
     };
     $('#mOk').onclick = () => {
       if (!add()) return;
-      close(); renderKeep();
+      close();
+      const want = kind === 'fixed' ? 'fixed' : 'variable';
+      if (meta.page === 'variable' || meta.page === 'fixed') { if (meta.page !== want) { meta.page = want; saveMeta(); } renderAll(); } else renderKeep();
       const row = main.querySelector('.row[data-id="' + added + '"]');
       if (row) { row.scrollIntoView({ block: 'center' }); row.classList.add('flash'); setTimeout(() => row.classList.remove('flash'), 1600); }
     };
