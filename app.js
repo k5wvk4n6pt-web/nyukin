@@ -204,7 +204,7 @@
       : page === 'settings' ? settingsHTML()
       : page === 'history' ? historyHTML()
       : page === 'income' ? '<div class="card"><div class="pad"><div class="section-head"><h2>収入</h2></div><p class="sub" style="margin:0">毎月の収入のほか、ボーナスのように年に何回かの収入や、1回だけの臨時収入も登録できます。未入金の収入は口座残高に足しません。</p></div></div>' + inHTML()
-      : sampleBannerHTML() + (needsSetup() ? setupGuideHTML() : backupNoticeHTML()) + summaryHTML(r) + banksHTML(r) +
+      : sampleBannerHTML() + (needsSetup() ? setupGuideHTML() : backupNoticeHTML()) + summaryHTML(r) +
         '<p class="note">表示される金額と日付は、登録した内容から計算した目安です。実際の引落日・金額は金融機関やカード会社の案内で確認してください。</p>';
     if (typeof syncFab === 'function') setTimeout(syncFab, 0);
     document.body.className = document.body.className.replace(/\bpg-\S+/g, '').trim() + ' pg-' + page;
@@ -452,6 +452,7 @@
       '</section><p class="sub" style="margin:0">' + (hide ? '残高を入れ直すときは「残高を表示」を押してください。' : '金額を押すと、その場で残高を入れ直せます。') + '</p>';
   }
   function bindBalList() {
+
     main.querySelectorAll('#ballist [data-bal]').forEach(el => {
       const name = el.dataset.bal; const b = state.balances[name] || (state.balances[name] = { amount: null, updatedAt: null });
       el.addEventListener('input', () => onAmountInput(el, () => b.amount, v => { b.amount = v; b.updatedAt = new Date().toISOString(); }));
@@ -473,7 +474,7 @@
     const P = (k, html) => '<div class="ppanel" data-panel="' + k + '"' + (meta.prepPanel === k ? '' : ' hidden') + '>' + html + '</div>';
     const pt = prepTopHTML(r);
     return '<div id="prepTop">' + pt.top + '</div>' +
-      P('money', '<div class="pphead"><span>口座残高</span><button class="pclose" data-panel-btn="money" aria-label="口座残高を閉じる">閉じる ✕</button></div>' + totalHTML(r) + '<div id="ballist">' + balListHTML(r) + '</div>') +
+      P('money', '<div class="pphead"><span>口座残高</span><button class="small xmove" data-act="xfer-any">残高移動</button><button class="pclose" data-panel-btn="money" aria-label="口座残高を閉じる">閉じる ✕</button></div>' + totalHTML(r) + '<div id="ballist">' + balListHTML(r) + '</div>') +
       P('need', '<section class="summary" id="sec-top" aria-label="過不足"><div class="acchead">' + QI.scale.replace('<svg ', '<svg class="pico" ') + '過不足<button class="pclose" data-panel-btn="need" aria-label="過不足を閉じる">閉じる ✕</button></div>' + shortboxHTML(r) + '</section>') +
       P('sched', '<div id="schedNotice">' + prepNoticeHTML(r) + '</div><div class="pphead"><span>引落予定</span></div><div id="schedBox">' + schedHTML() + '</div>') +
       P('flow', '<div class="pphead"><span>収支記録<small class="sub">（締め期間ごと）</small></span><button class="pclose" data-panel-btn="flow" aria-label="収支記録を閉じる">閉じる ✕</button></div><div id="flowBox">' + flowHTML() + '</div>') +
@@ -533,14 +534,15 @@
     if (r.shortfallTotal > 0) {
       const sl = r.banks.filter(b => b.balance != null && b.shortfall > 0).sort((a, b) => b.shortfall - a.shortfall);
       return '<div class="pnotice warn"><span class="pn-i" aria-hidden="true">i</span><div class="pn-body"><span>' + by + 'までに、口座へ <b class="num">¥' + nf.format(r.shortfallTotal) + '</b> の入金が必要です</span>' +
-        '<div class="pn-list">' + sl.map(b => '<button class="pn-row" data-goto="' + esc(b.name) + '"><span>' + esc(b.name) + '</span><b class="num">¥' + nf.format(b.shortfall) + ' 不足</b><span class="pn-chev" aria-hidden="true">›</span></button>').join('') + '</div></div></div>';
+        '<div class="pn-list">' + sl.map(b => '<button class="pn-row" data-panel-btn="money"><span>' + esc(b.name) + '</span><b class="num">¥' + nf.format(b.shortfall) + ' 不足</b><span class="pn-chev" aria-hidden="true">›</span></button>').join('') + '</div></div></div>';
     }
     if (missing) return '<button class="pnotice info" data-act="go-banks"><span class="pn-i" aria-hidden="true">i</span><span>残高を入れると、入金が必要か分かります（未入力 ' + missing + '口座）</span><span class="pn-chev" aria-hidden="true">›</span></button>';
     if (r.dueCount) return '<div class="pnotice ok"><span class="pn-i" aria-hidden="true">✓</span><span>' + by + 'までの引き落としに、残高は足りています</span></div>';
     return '';
   }
   function bindPrepTop() {
-    main.querySelectorAll('#schedNotice [data-goto]').forEach(b => { if (b._g) return; b._g = 1; b.addEventListener('click', () => gotoBank(b.dataset.goto)); });
+    main.querySelectorAll('[data-act="xfer-any"]').forEach(b => { if (b._x) return; b._x = 1; b.addEventListener('click', () => { if (accountCatalog().length < 2) { toast('口座が2つ以上必要です'); return; } openTransfer('', ''); }); });
+
     main.querySelectorAll('[data-act="go-variable"]').forEach(b => b.addEventListener('click', () => { meta.page = 'variable'; meta.reorder = null; saveMeta(); renderAll(); window.scrollTo(0, 0); }));
     main.querySelectorAll('[data-act="go-short"]').forEach(b => b.addEventListener('click', () => { const el = main.querySelector('.bank.is-short') || $('#banksSec'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }));
   }
