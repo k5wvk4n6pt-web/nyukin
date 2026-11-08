@@ -702,6 +702,9 @@
     main.querySelectorAll('[data-sched]').forEach(b => b.addEventListener('click', () => { schedOff += Number(b.dataset.sched); const sb = $('#schedBox'); if (sb) { sb.innerHTML = schedHTML(); bindSched(); } }));
   }
   function niceStep(v) { const p = Math.pow(10, Math.floor(Math.log10(v || 1))); const n = v / p; return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * p; }
+  function bindBack() {
+    main.querySelectorAll('[data-act="back-flow"]').forEach(b => b.addEventListener('click', () => { meta.page = 'prep'; meta.prepPanel = 'flow'; saveMeta(); renderAll(); window.scrollTo(0, 0); }));
+  }
   function bindFlow() {
     main.querySelectorAll('[data-act="go-history"]').forEach(b => { if (b._gh) return; b._gh = 1; b.addEventListener('click', () => { meta.page = 'history'; meta.prepPanel = 'sched'; saveMeta(); renderAll(); window.scrollTo(0, 0); }); });
     main.querySelectorAll('[data-flow]').forEach(g => {
@@ -1485,7 +1488,7 @@
     // 支出・収入は下のタブのページで登録・編集する
     main.querySelectorAll('[data-act="go-out"]').forEach(b => b.addEventListener('click', () => { meta.page = 'variable'; meta.reorder = null; saveMeta(); renderAll(); window.scrollTo(0, 0); }));
     main.querySelectorAll('[data-act="go-in"]').forEach(b => b.addEventListener('click', () => { meta.page = 'income'; meta.reorder = null; saveMeta(); renderAll(); window.scrollTo(0, 0); }));
-    bindTotal(); bindUpcoming(); bindPanels(); bindPrepTop(); bindFlow(); bindSched();
+    bindTotal(); bindUpcoming(); bindPanels(); bindPrepTop(); bindFlow(); bindSched(); bindBack();
     main.querySelectorAll('[data-act="go-close"]').forEach(b => b.addEventListener('click', () => { go('books'); const c = $('#closecard'); if (c) c.scrollIntoView({ block: 'start' }); }));
     main.querySelectorAll('[data-act="sample-clear"]').forEach(b => b.addEventListener('click', () => confirmSheet('サンプルを消しますか？', '<p class="sub" style="margin:0">サンプルの口座・支出・収入をすべて消して、空の状態からはじめます。</p>', '消してはじめる', () => {
       state = emptyState(); meta.page = 'prep'; saveMeta(); save(); renderAll(); window.scrollTo(0, 0); toast('空の状態になりました');
@@ -1937,7 +1940,7 @@
     const accRows = Object.keys(byAcc).sort((a, b) => byAcc[b] - byAcc[a]).map((a, i) => '<div class="hacc">' + ICON.bank(BANK_COLORS[i % BANK_COLORS.length]) + '<span class="grow">' + esc(a) + '</span><b class="num">' + nf.format(byAcc[a]) + '円</b></div>').join('');
     const rows = list.map(h => '<button class="hrec" data-hid="' + esc(h.id) + '"><span class="hd">' + dateLabel(h.date) + '</span><span class="hn"><b>' + esc(h.name) + '</b><span class="kchip k-' + ({ '変動費': 'v', '固定費': 'f', '1回のみ': 'o' }[h.kind] || 'o') + '">' + esc(h.kind) + '</span><small>' + esc(h.account) + (h.edited ? '・修正済み' : h.auto ? '' : '・手入力') + (h.deducted ? '・残高から引き済み' : '') + '</small></span><span class="ha num">' + (h.amount == null ? '<span class="flag">未入力</span>' : nf.format(h.amount) + '円') + '</span></button>').join('');
     const since = state.historySince ? dateLabel(state.historySince) : '';
-    return '<section id="sec-history" aria-label="引き落としの記録"><div class="section-head"><h2>引き落としの記録</h2><span class="head-right"><button class="small primary" data-act="hist-add">＋ 追加</button></span></div>' +
+    return '<section id="sec-history" aria-label="引き落としの記録"><button class="backlink" data-act="back-flow">‹ 収支記録に戻る</button><div class="section-head"><h2>引き落としの記録</h2><span class="head-right"><button class="small primary" data-act="hist-add">＋ 追加</button></span></div>' +
       '<div class="cycle hsum"><div class="cyc-head"><button class="small" data-hm="-1" aria-label="前の月">‹</button><div class="cyc-title"><b>' + ymLabel(histMonth) + '</b><span class="sub">' + list.length + '件の引き落とし</span></div><button class="small" data-hm="1" aria-label="次の月"' + (histMonth >= cur ? ' disabled' : '') + '>›</button></div>' +
       '<div class="cyc-grid two-col"><div><span class="k">引き落としの合計</span><span class="v num">' + nf.format(total) + '<span class="yen">円</span></span>' + (missing ? '<span class="flag">金額未入力 ' + missing + '件</span>' : '') + '</div>' +
       '<div class="diff ' + (diff > 0 ? 'neg' : 'pos') + '"><span class="k">先月との差</span><span class="v num">' + (diff > 0 ? '＋' : diff < 0 ? '−' : '±') + nf.format(Math.abs(diff)) + '<span class="yen">円</span></span><span class="sub">先月 ' + nf.format(prevTotal) + '円</span></div></div>' +
