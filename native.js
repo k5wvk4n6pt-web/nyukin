@@ -68,6 +68,10 @@
     async proPurchase() { if (!plugin) return { owned: false, reason: 'unavailable' }; try { return await plugin.proPurchase(); } catch (e) { return { owned: false, reason: String(e && e.message || e) }; } },
     /** 購入の復元 { owned } */
     async proRestore() { if (!plugin) return { owned: false }; try { return await plugin.proRestore(); } catch (e) { return { owned: false }; } },
+    /** ホーム画面のアイコン { supported, name } */
+    async iconGet() { if (!plugin) return { supported: false, name: 'blue' }; try { return await plugin.iconGet(); } catch (e) { return { supported: false, name: 'blue' }; } },
+    /** アイコンを変える（iPhoneが確認のメッセージを出す） */
+    async iconSet(name) { if (!plugin) return false; try { const r = await plugin.iconSet({ name }); return !!(r && r.ok); } catch (e) { return false; } },
     /** ファイルを共有シートで保存。true=保存した / false=やめた */
     async shareFile(filename, text) {
       const r = await plugin.shareText({ filename, text });

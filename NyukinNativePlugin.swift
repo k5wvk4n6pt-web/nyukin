@@ -22,8 +22,11 @@ public class NyukinNativePlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "shareText", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "proStatus", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "proPurchase", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "proRestore", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "proRestore", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "iconGet", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "iconSet", returnType: CAPPluginReturnPromise)
     ]
+    private let iconNames: [String: String] = ["pink": "AppIconPink", "green": "AppIconGreen", "purple": "AppIconPurple", "orange": "AppIconOrange"]
     /// App Store Connect で作る「非消耗型」のアプリ内課金の製品ID
     private let proID = "com.k5wvk4n6pt.nyukinnavi.pro"
     private var updatesTask: Task<Void, Never>?
@@ -40,6 +43,35 @@ public class NyukinNativePlugin: CAPPlugin, CAPBridgedPlugin {
                 for await result in Transaction.updates {
                     if case .verified(let transaction) = result { await transaction.finish() }
                 }
+            }
+        }
+    }
+
+    // MARK: ホーム画面のアイコン（プレミアム・アプリの色とそろえる）
+
+    @objc func iconGet(_ call: CAPPluginCall) {
+        DispatchQueue.main.async {
+            let app = UIApplication.shared
+            let current = self.iconNames.first(where: { $0.value == app.alternateIconName })?.key ?? "blue"
+            call.resolve(["supported": app.supportsAlternateIcons, "name": current])
+        }
+    }
+
+    @objc func iconSet(_ call: CAPPluginCall) {
+        let name = call.getString("name") ?? "blue"
+        DispatchQueue.main.async {
+            let app = UIApplication.shared
+            guard app.supportsAlternateIcons else {
+                call.resolve(["ok": false])
+                return
+            }
+            let target = self.iconNames[name]  // ブルーは nil（元のアイコン）
+            if app.alternateIconName == target {
+                call.resolve(["ok": true])
+                return
+            }
+            app.setAlternateIconName(target) { error in
+                call.resolve(["ok": error == nil])
             }
         }
     }

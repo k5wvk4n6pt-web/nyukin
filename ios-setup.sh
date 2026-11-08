@@ -5,7 +5,7 @@ set -euo pipefail
 
 echo "== 1. アプリの画面ファイルを www/ に集める"
 rm -rf www && mkdir www
-cp index.html app.js calc.js native.js hero.png brand-pink.png www/
+cp index.html app.js calc.js native.js hero.png icon-*-180.png www/
 
 echo "== 2. iOSプロジェクトを作る"
 rm -rf ios
@@ -37,6 +37,23 @@ cat > "$ICON/Contents.json" <<'JSON'
   "info" : { "author" : "xcode", "version" : 1 }
 }
 JSON
+
+# プレミアムで選べる色ちがいのアイコン（別アイコン）
+for C in pink green purple orange; do
+  [ -f "AppIcon-$C-1024.png" ] || continue
+  N="AppIcon$(echo "${C:0:1}" | tr a-z A-Z)${C:1}"
+  SET="$APP/Assets.xcassets/$N.appiconset"
+  mkdir -p "$SET"
+  cp "AppIcon-$C-1024.png" "$SET/$N-1024.png"
+  cat > "$SET/Contents.json" <<JSON
+{
+  "images" : [
+    { "filename" : "$N-1024.png", "idiom" : "universal", "platform" : "ios", "size" : "1024x1024" }
+  ],
+  "info" : { "author" : "xcode", "version" : 1 }
+}
+JSON
+done
 
 echo "== 5. Info.plist"
 PL="$APP/Info.plist"

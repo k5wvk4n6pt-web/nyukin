@@ -302,7 +302,7 @@
       '<h3>帳簿</h3><p>家族のお金なども、人ごとに別の帳簿で管理できます。画面上の名前をタップすると切り替わり、「＋ 帳簿」で追加できます。バックアップは全部の帳簿をまとめて保存します。</p>' +
       '<h3>口座間の移動</h3><p>不足している口座の「ほかの口座から移す」は、その口座へ入れる移動です。それ以外の口座の「ほかの口座へ移す」は、その口座から出す移動です。ほかの帳簿の口座（自分 → 母など）や、非表示の口座とも移動できます。「不足をまとめて解消する」を押すと、余りのある口座から不足している口座へ移す案をまとめて作ります。準備ページの「ほかの口座から移す」「口座間で移す」で、実際に移したお金を記録すると、両方の残高が書きかわります。不足している口座から開くと、不足額が最初から入ります。手数料は「移動元から別に引く」か「移す金額から引く」を選べ、口座の組み合わせごとに前回の手数料を覚えます。間違えたときは「最近の移動」から取り消せます。</p>' +
       '<h3>引き落としの記録</h3><p>下のタブの「記録」に、引落日が来た分がそのときの金額で自動で残ります。月ごとの合計・先月との差・口座ごとの合計が見られ、実際の金額と違うときは押して直せます。CSVで書き出すとExcelで開けます。</p>' +
-      '<h3>プレミアム（iPhoneアプリ版・買い切り）</h3><p>「設定 → 表示」でアプリの色を選べます（ブルー・ピンク・グリーン・パープル・オレンジ）。</p>' +
+      '<h3>プレミアム（iPhoneアプリ版・買い切り）</h3><p>「設定 → 表示」でアプリの色を選べます（ブルー・ピンク・グリーン・パープル・オレンジ）。アプリの色に合わせて、画面上のロゴとホーム画面のアイコンも同じ色になります（アイコンを変えたくないときは、スイッチでオフにできます）。</p>' +
         '<h3>引落前のお知らせ（プレミアム）</h3><p>iPhoneアプリ版のプレミアムでは、「設定 → 通知」で、引落日の当日・前日・2日前などに通知でお知らせできます（時刻も選べます）。通知の予約はiPhoneの中だけで行い、外部には送りません。ロック画面に金額を出したくないときは「金額も表示する」をオフにしてください。Webアプリ版では通知は届きません。</p>' +
         '<h3>電卓</h3><p>変動費・1回のみの引落の金額欄の右にある電卓のボタンで、明細の合計などをその場で計算できます。入っている金額から計算が始まり、「この金額にする」でそのまま金額欄に入ります（小数は四捨五入します）。</p>' +
         '<h3>何月分の引落か</h3><p>変動費は金額が毎月変わるので、各行で「○月分」を選んで入力します。金額はその月の引落にだけ使い、ほかの月は「未入力」として扱います。選んだ月の引落が済むと、自動で次の月に進んで金額が空になり、次の請求額を入れられる状態になります（済んだ分は「記録」に残ります。0円の項目はそのまま引き継ぎます）。</p>' +
@@ -767,12 +767,28 @@
 
   /** 表示モード（ライト・ダーク・自動） */
   const COLORS = [['blue', 'ブルー'], ['pink', 'ピンク'], ['green', 'グリーン'], ['purple', 'パープル'], ['orange', 'オレンジ']];
+  const icon = { supported: false, name: 'blue' };
+  async function refreshIcon() {
+    if (!(N.isNative && N.iconGet)) return;
+    const r = await N.iconGet(); icon.supported = !!r.supported; icon.name = r.name || 'blue';
+    syncIcon();
+    if (meta.page === 'settings' && meta.stab === 'view') renderKeep();
+  }
+  /** ホーム画面のアイコンをアプリの色にそろえる（アプリ版・プレミアム） */
+  async function syncIcon() {
+    if (!(N.isNative && N.iconSet && icon.supported) || meta.iconSync === false) return;
+    const want = proActive() ? colorOf() : 'blue';
+    if (want === icon.name) return;
+    if (await N.iconSet(want)) icon.name = want;
+  }
   function colorOf() { return COLORS.some(c => c[0] === meta.color) ? meta.color : 'blue'; }
   function colorHTML() {
     const can = proActive(); const cur = can ? colorOf() : 'blue';
     return '<div class="card form colorcard"><div class="shead">アプリの色<span class="sub">全部の帳簿で共通の設定です</span></div>' +
       proHTML('アプリの色の変更') +
-      '<div class="colorpick" role="radiogroup" aria-label="アプリの色">' + COLORS.map(c => '<button role="radio" aria-checked="' + (c[0] === cur) + '" class="cpick c-' + c[0] + (c[0] === cur ? ' on' : '') + '" data-color="' + c[0] + '"' + (can || c[0] === 'blue' ? '' : ' disabled') + '><span class="csw"></span><b>' + c[1] + '</b></button>').join('') + '</div></div>';
+      '<div class="colorpick" role="radiogroup" aria-label="アプリの色">' + COLORS.map(c => '<button role="radio" aria-checked="' + (c[0] === cur) + '" class="cpick c-' + c[0] + (c[0] === cur ? ' on' : '') + '" data-color="' + c[0] + '"' + (can || c[0] === 'blue' ? '' : ' disabled') + '><img src="icon-' + c[0] + '-180.png" alt="" width="48" height="48"><b>' + c[1] + '</b></button>').join('') + '</div>' +
+      (N.isNative && icon.supported ? '<label class="switchrow"><span><b>ホーム画面のアイコンも同じ色にする</b><small>色を変えると、iPhoneが「アイコンを変更しました」と表示します</small></span><input type="checkbox" id="iconSync" role="switch"' + (meta.iconSync !== false ? ' checked' : '') + (can ? '' : ' disabled') + '></label>'
+        : N.isNative ? '' : '<p class="sub" style="margin:0">アプリ版では、ホーム画面のアイコンも同じ色に変わります（Webアプリ版はアイコンを変えられません）。</p>') + '</div>';
   }
   function viewHTML() {
     const t = themeOf();
@@ -804,7 +820,7 @@
     if (!(N.isNative && N.proStatus)) return;
     const r = await N.proStatus();
     pro.owned = !!r.owned; pro.available = !!r.available; pro.price = r.price || ''; pro.checked = true;
-    cachePro(); applyTheme();
+    cachePro(); applyTheme(); syncIcon();
     if (meta.page === 'settings' && (meta.stab === 'notify' || meta.stab === 'view')) renderKeep();
     applyNotify();
   }
@@ -910,9 +926,11 @@
 
   function bindSettings() {
     bindNotify();
+    const isw = $('#iconSync');
+    if (isw) isw.addEventListener('change', () => { meta.iconSync = isw.checked; saveMeta(); if (isw.checked) syncIcon(); else if (icon.name !== 'blue') N.iconSet('blue').then(ok => { if (ok) icon.name = 'blue'; }); });
     main.querySelectorAll('[data-color]').forEach(b => b.addEventListener('click', () => {
       if (!proActive()) return;
-      meta.color = b.dataset.color; saveMeta(); applyTheme(); renderKeep();
+      meta.color = b.dataset.color; saveMeta(); applyTheme(); renderKeep(); syncIcon();
       toast('アプリの色を「' + COLORS.find(c => c[0] === meta.color)[1] + '」にしました');
     }));
     main.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => {
@@ -1862,6 +1880,7 @@
     if (t === 'auto') root.removeAttribute('data-theme'); else root.setAttribute('data-theme', t);
     const col = proActive() ? colorOf() : 'blue';
     if (col === 'blue') root.removeAttribute('data-color'); else root.setAttribute('data-color', col);
+    const bi = document.querySelector('.brand-img'); if (bi && col !== 'blue') bi.setAttribute('src', 'icon-' + col + '-180.png');
     const dark = t === 'dark' || (t === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
     const TC = { blue: ['#E3EEFB', '#13213A'], pink: ['#F7CFDD', '#3A1D2E'], green: ['#C9EBD9', '#173327'], purple: ['#D9CEF7', '#241E3D'], orange: ['#F8D3B8', '#382315'] }[col];
     document.querySelectorAll('meta[name="theme-color"]').forEach(m => { m.setAttribute('content', TC[dark ? 1 : 0]); m.removeAttribute('media'); });
@@ -1941,7 +1960,7 @@
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
   if (!N.isNative && 'serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(() => {});
   if (N.isNative) {
-    refreshPro();
+    refreshPro(); refreshIcon();
     // iCloudの状態を確認（ウェルカム画面で復元を出す・自動バックアップ）
     N.cloudAvailable().then(async ok => {
       cloud.available = ok;

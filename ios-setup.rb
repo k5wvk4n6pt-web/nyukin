@@ -26,6 +26,11 @@ target.build_configurations.each do |config|
   s['TARGETED_DEVICE_FAMILY'] = '1'           # iPhoneのみ
   s['MARKETING_VERSION'] = '1.0.0'
   s['ASSETCATALOG_COMPILER_APPICON_NAME'] = 'AppIcon'
+  alt = %w[Pink Green Purple Orange].select { |c| File.exist?("AppIcon-#{c.downcase}-1024.png") }.map { |c| "AppIcon#{c}" }
+  unless alt.empty?
+    s['ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES'] = alt.join(' ')  # プレミアムで選べる色ちがいのアイコン
+    s['ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS'] = 'YES'
+  end
   s['INFOPLIST_KEY_CFBundleDisplayName'] = '引落ナビ'
 end
 
