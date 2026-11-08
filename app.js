@@ -172,6 +172,7 @@
       incSince: /^\d{4}-\d{2}-\d{2}$/.test(String(d.incSince || '')) ? d.incSince : null,
       incUntil: /^\d{4}-\d{2}-\d{2}$/.test(String(d.incUntil || '')) ? d.incUntil : null,
       autoDeduct: d.autoDeduct !== false,
+      flowStart: Number.isInteger(Number(d.flowStart)) && Number(d.flowStart) >= 1 && Number(d.flowStart) <= 31 && d.flowStart !== null && d.flowStart !== '' ? Number(d.flowStart) : null,
       historyUntil: /^\d{4}-\d{2}-\d{2}$/.test(String(d.historyUntil || '')) ? d.historyUntil : null
     };
     for (const a of out.accounts) {
@@ -631,7 +632,7 @@
   /** 1つの締め期間の収支。過ぎた日は「記録」、今日以降は登録内容から */
   function flowData(off) {
     const T = today(), tIso = isoOf(T);
-    const cy = C.cycle(state, T, off);
+    const cy = state.flowStart ? startCycle(T, off, state.flowStart) : C.cycle(state, T, off);
     const fIso = isoOf(cy.from), toIso = isoOf(cy.to);
     const items = []; let expense = 0, unentered = 0, recorded = false;
     for (const h of state.history || []) {
@@ -661,6 +662,21 @@
       for (const i of state.income || []) { if (i.hidden) continue; for (const o of C.occurrencesIn(i, from, cy.to, true)) { incItems.push({ name: i.name, date: isoOf(o), amount: i.amount == null ? null : Number(i.amount), past: false }); if (i.amount == null) incomeMissing++; else income += Number(i.amount); } }
     }
     return { off, from: cy.from, to: cy.to, income, incomeMissing, expense, unentered, items, incItems, diff: income - expense, noRecord: pastOnly && !recorded, noIncRecord: pastOnly && !incRecorded };
+  }
+  /** 始期日（毎月S日）から次の始期日の前日までを1期間とする */
+  function startCycle(T, off, S) {
+    const at = (y, m) => ({ y, m, d: Math.min(S, C.lastDay(y, m)) });
+    let base = at(T.y, T.m);
+    if (C.serial(base) > C.serial(T)) { const p = C.addMonth(T.y, T.m, -1); base = at(p.y, p.m); }
+    const a = C.addMonth(base.y, base.m, off), b = C.addMonth(base.y, base.m, off + 1);
+    return { from: at(a.y, a.m), to: C.addDays(at(b.y, b.m), -1) };
+  }
+  function flowStartSel() {
+    const v = state.flowStart;
+    let o = '<option value=""' + (v ? '' : ' selected') + '>締め日の翌日（自動）</option>';
+    for (let d = 1; d <= 28; d++) o += '<option value="' + d + '"' + (v === d ? ' selected' : '') + '>毎月' + d + '日</option>';
+    o += '<option value="31"' + (v === 31 ? ' selected' : '') + '>毎月 月末</option>';
+    return '<label class="fstart"><span>この帳簿の始期日</span><select id="flowStart">' + o + '</select></label>';
   }
   function flowHTML() {
     const data = []; for (let o = FLOW_FROM; o <= FLOW_TO; o++) data.push(flowData(o));
@@ -695,7 +711,7 @@
       (d.noRecord || d.noIncRecord ? '<p class="sub" style="margin:0">この期間は' + (d.noRecord && d.noIncRecord ? '引き落としと収入' : d.noRecord ? '引き落とし' : '収入') + 'の記録がないため、0円になっています。</p>' : '') +
       '<div class="fd-lh"><b>' + (side === 'in' ? '収入' : '支出') + 'の明細</b><span class="sub">' + lst.length + '件' + (lst.some(x => x.past) ? '・済みの行は押すと直せます' : '') + '</span></div>' +
       (rowsH ? '<div class="fd-list">' + rowsH + '</div>' : '<p class="sub" style="margin:0">この期間の' + (side === 'in' ? '収入' : '支出') + 'はありません。</p>') + '</div>';
-    return '<section class="flowcard"><div class="fg-legend"><span><i class="sw in"></i>収入</span><span><i class="sw out"></i>支出</span><span class="sub">棒を押すと内訳</span></div>' + svg + detail +
+    return '<section class="flowcard">' + flowStartSel() + '<div class="fg-legend"><span><i class="sw in"></i>収入</span><span><i class="sw out"></i>支出</span><span class="sub">棒を押すと内訳</span></div>' + svg + detail +
       '<p class="note" style="margin:0">過ぎた日は「記録」（引き落とし・収入）、今日からあとは登録している金額で計算しています。</p></section>';
   }
   /* ---------- 締め期間ごとの引落予定 ---------- */
@@ -724,6 +740,7 @@
   function bindFlow() {
     main.querySelectorAll('[data-act="go-history"]').forEach(b => { if (b._gh) return; b._gh = 1; b.addEventListener('click', () => { meta.page = 'history'; meta.prepPanel = 'sched'; saveMeta(); renderAll(); window.scrollTo(0, 0); }); });
     const redraw = () => { const fb = $('#flowBox'); if (fb) { fb.innerHTML = flowHTML(); bindFlow(); } };
+    const fs = $('#flowStart'); if (fs) fs.addEventListener('change', () => { state.flowStart = fs.value ? Number(fs.value) : null; flowSel = 0; save(); redraw(); toast('始期日を' + (fs.value ? (fs.value === '31' ? '月末' : fs.value + '日') : '締め日の翌日') + 'にしました'); });
     main.querySelectorAll('[data-fside]').forEach(b => b.addEventListener('click', () => { flowSide = b.dataset.fside; redraw(); }));
     main.querySelectorAll('#flowBox [data-rid]').forEach(b => b.addEventListener('click', () => openIncEdit(b.dataset.rid)));
     main.querySelectorAll('#flowBox [data-hid]').forEach(b => b.addEventListener('click', () => openHistEdit(b.dataset.hid)));
