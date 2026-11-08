@@ -206,7 +206,7 @@
     rollVariable();
     const r = C.compute(state, T);
     const page = PAGES.includes(meta.page) ? meta.page : 'prep';
-    main.innerHTML = page === 'variable' ? listHTML('variable', '変動費', '何月分の引落かを選んで、金額を入力します。引落が済むと次の月に進みます。') + listHTML('once', '1回のみの引落', '日付を決めて1回だけ引き落とされるもの（年払い・臨時の支払いなど）。過ぎたものは「済み」にまとまります。')
+    main.innerHTML = page === 'variable' ? listHTML('variable', '変動費', '何月分の引落かを選んで、金額を入力します。引落が済むと次の月に進みます。1回のみの引落もここに並びます（日付が過ぎたら「済み」にまとまります）。')
       : page === 'fixed' ? listHTML('fixed', '固定費', '金額・引落日・口座が変わった時だけ変更します。')
       : page === 'settings' ? settingsHTML()
       : page === 'history' ? historyHTML()
@@ -886,13 +886,13 @@
         '<p class="sub" style="margin:-4px 0 10px">↑↓で順番を変えます。終わったら「完了」を押してください。</p>' +
         '<div class="list">' + orderRows(kind, visible.map(it => ({ key: it.id, label: it.name, sub: itemWhen(it) + '・' + (it.account || '口座なし') + '・' + (it.amount == null ? '未入力' : nf.format(it.amount) + '円') }))) + '</div></section>';
     }
-    const rows = visible.map(it => {
+    const rowOf = (it, kind) => {
       const ended = kind === 'fixed' && it.end && !C.activeIn(it, T.y, T.m);
       return '<div class="row' + (ended ? ' ended' : '') + '" data-kind="' + kind + '" data-id="' + esc(it.id) + '">' +
         '<div class="row-main"><span class="row-name">' + esc(it.name) + '</span>' +
         '<input class="amount' + (it.amount == null ? ' empty' : '') + '" inputmode="numeric" enterkeyhint="done" autocomplete="off" id="amt-' + esc(it.id) + '" data-f="amount" value="' + yenTxt(it.amount) + '" placeholder="未入力" aria-label="' + esc(it.name) + 'の金額">' +
         (kind !== 'fixed' ? '<button type="button" class="calcbtn" data-act="calc" aria-label="' + esc(it.name) + 'を電卓で計算">' + CALC_ICON + '</button>' : '') + '</div>' +
-        '<div class="row-sub">' + (kind === 'once' ? '<input class="text datein" type="date" id="date-' + esc(it.id) + '" data-f="date" value="' + esc(it.date) + '" aria-label="引落日">' : daySelect('day-' + esc(it.id), it.day, it.nm, true)) + (kind === 'variable' ? monthSelect('mon-' + esc(it.id), it) : '') + acctSelect('acc-' + esc(it.id), it.account) +
+        '<div class="row-sub">' + (kind === 'once' ? '<span class="ikchip k-once">1回のみ</span><input class="text datein" type="date" id="date-' + esc(it.id) + '" data-f="date" value="' + esc(it.date) + '" aria-label="引落日">' : daySelect('day-' + esc(it.id), it.day, it.nm, true)) + (kind === 'variable' ? monthSelect('mon-' + esc(it.id), it) : '') + acctSelect('acc-' + esc(it.id), it.account) +
         '<span class="stamp" data-stamp>' + stampText(it.updatedAt) + '</span></div>' +
         ((it.memo || it.end) ? '<div class="memo">' + (it.end ? (ended ? '終了しました（' : '終了予定 ') + it.end.replace('-', '/') + (ended ? '）' : '') + (it.memo ? '　' : '') : '') + esc(it.memo) + '</div>' : '') +
         '<div class="row-acts"><button class="ghost small" data-act="edit">詳細（名前・休日・削除）</button><button class="ghost small" data-act="hide">非表示にする</button></div>' +
@@ -903,9 +903,17 @@
         '<label>メモ<input class="text" id="memo-' + esc(it.id) + '" data-f="memo" value="' + esc(it.memo) + '"></label>' +
         '<div class="btns"><button class="danger small" data-act="del">この項目を削除</button><button class="small" data-act="close">閉じる</button></div></div>' +
         '</div>';
-    }).join('');
-    const hid = hiddenItems.length ? '<details class="hiddenbox"' + (meta['open-' + kind] ? ' open' : '') + ' data-kind="' + kind + '"><summary>非表示の項目 ' + hiddenItems.length + '件（計算に含みません）</summary>' +
-      hiddenItems.map(it => '<div class="hrow" data-kind="' + kind + '" data-id="' + esc(it.id) + '"><span class="row-name">' + esc(it.name) + '<span class="sub">' + itemWhen(it) + '・' + esc(it.account || '口座なし') + '・' + (it.amount == null ? '未入力' : nf.format(it.amount) + '円') + '</span></span><button class="small" data-act="unhide">表示する</button></div>').join('') +
+    };
+    // 変動費のページでは、1回のみの引落も同じ一覧に入れる
+    const withOnce = kind === 'variable';
+    const T0 = isoOf(T);
+    const onceAll = withOnce ? (state.once || []).slice().sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0) : [];
+    const onceVis = onceAll.filter(x => !x.hidden && x.date >= T0), onceHid = onceAll.filter(x => x.hidden && x.date >= T0);
+    if (withOnce) pastItems.push(...onceAll.filter(x => x.date < T0));
+    const rows = visible.map(it => rowOf(it, kind)).join('') + onceVis.map(it => rowOf(it, 'once')).join('');
+    const hidAll = hiddenItems.map(it => [it, kind]).concat(onceHid.map(it => [it, 'once']));
+    const hid = hidAll.length ? '<details class="hiddenbox"' + (meta['open-' + kind] ? ' open' : '') + ' data-kind="' + kind + '"><summary>非表示の項目 ' + hidAll.length + '件（計算に含みません）</summary>' +
+      hidAll.map(([it, kind]) => '<div class="hrow" data-kind="' + kind + '" data-id="' + esc(it.id) + '"><span class="row-name">' + esc(it.name) + '<span class="sub">' + itemWhen(it) + '・' + esc(it.account || '口座なし') + '・' + (it.amount == null ? '未入力' : nf.format(it.amount) + '円') + '</span></span><button class="small" data-act="unhide">表示する</button></div>').join('') +
       '</details>' : '';
     const past = pastItems.length ? '<details class="hiddenbox"' + (meta['open-past'] ? ' open' : '') + ' data-kind="past"><summary>済み ' + pastItems.length + '件（日付が過ぎたもの）</summary>' +
       pastItems.slice().reverse().map(it => '<div class="hrow" data-kind="once" data-id="' + esc(it.id) + '"><span class="row-name">' + esc(it.name) + '<span class="sub">' + dateLabel(it.date) + '・' + esc(it.account || '口座なし') + '・' + (it.amount == null ? '未入力' : nf.format(it.amount) + '円') + '</span></span><button class="small danger" data-act="pastdel">削除</button></div>').join('') + '</details>' : '';
@@ -915,9 +923,9 @@
         '<p class="sub" style="margin:-4px 0 10px">' + lead + '</p>' +
         '<div class="list">' + rowsOnce + '<div class="add"><button class="ghost" data-act="add" data-kind="once">＋ 1回のみの引落を追加</button></div></div>' + hid + past + '</section>';
     }
-    return '<section id="sec-' + kind + '" aria-label="' + title + '">' + headHTML(title, '登録' + visible.length + '件', kind, kind) +
+    return '<section id="sec-' + kind + '" aria-label="' + title + '">' + headHTML(title, '登録' + (visible.length + onceVis.length) + '件', kind, kind) +
       '<p class="sub" style="margin:-4px 0 10px">' + lead + '</p>' +
-      '<div class="list">' + rows + '<div class="add"><button class="ghost" data-act="add" data-kind="' + kind + '">＋ ' + title + 'を追加</button></div></div>' + hid + '</section>';
+      '<div class="list">' + rows + '<div class="add"><button class="ghost" data-act="add" data-kind="' + kind + '">＋ ' + title + 'を追加</button></div></div>' + hid + (withOnce ? past : '') + '</section>';
   }
 
   function hiddenAcc() { return state.hiddenAccounts || (state.hiddenAccounts = []); }
