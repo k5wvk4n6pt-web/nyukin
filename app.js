@@ -226,8 +226,8 @@
     const bl = $('#ballist'); if (bl && !bl.contains(document.activeElement)) { bl.innerHTML = balListHTML(r); bindBalList(); }
     const ptH = prepTopHTML(r);
     const pt = $('#prepTop'); if (pt) pt.innerHTML = ptH.top;
-    const pbm = $('#prepBottom'); if (pbm) pbm.innerHTML = ptH.near + prepNoticeHTML(r);
-    if (pt || pbm) { bindPanels(); bindUpcoming(); bindPrepTop(); }
+    const sn = $('#schedNotice'); if (sn) sn.innerHTML = prepNoticeHTML(r);
+    if (pt || sn) { bindPanels(); bindUpcoming(); bindPrepTop(); }
     const up = main.querySelector('.upcoming'); if (up) { up.outerHTML = upcomingHTML(r); bindUpcoming(); }
     const at = $('#acctable'); if (at) { at.outerHTML = acctableHTML(r); main.querySelectorAll('#acctable [data-goto]').forEach(b => b.addEventListener('click', () => gotoBank(b.dataset.goto))); }
     if (!$('#banksSec')) return;
@@ -345,8 +345,8 @@
     }
     // 開いたときは、不足があれば不足の内訳、なければ余りの内訳を最初から表示（閉じたら 'none'）
     const sel = meta.sbSel === 'short' || meta.sbSel === 'plus' ? meta.sbSel : meta.sbSel === 'none' ? null : (r.shortfallTotal > 0 ? 'short' : 'plus');
-    const box = (cls, title, count, amount, sub, key) => '<button class="tot ' + cls + (sel === key ? ' sel' : '') + '" data-sb="' + key + '" aria-expanded="' + (sel === key) + '"><span class="tl">' + title + '</span>' +
-      '<span class="big num">' + nf.format(amount) + '<span class="yen">円</span></span><small>' + sub + '</small><span class="tot-more">' + (sel === key ? '閉じる ▴' : '内訳 ▾') + '</span></button>';
+    const box = (cls, title, count, amount, sub, key) => '<div class="tot ' + cls + '"><span class="tl">' + title + '</span>' +
+      '<span class="big num">' + nf.format(amount) + '<span class="yen">円</span></span><small>' + sub + '</small></div>';
     const cl = md(r.closing);
     const short = box(r.shortfallTotal > 0 ? 'short' : 'zero', cl + 'までに不足', r.shortCount, r.shortfallTotal,
       r.shortCount ? r.shortCount + '口座・入金が必要' : '不足の口座はありません', 'short');
@@ -358,16 +358,17 @@
     const bulk = ''; // 「不足をまとめて解消する」ボタンは使わない
     const row = (b, mid, val, cls) => '<div class="surrow ' + cls + '"><span class="sn">' + esc(b.name) + '</span><span class="sc num">' + mid + '</span><span class="sv num">' + val + '<small>円</small></span></div>';
     let detail = '';
-    if (sel === 'short') {
+    {
       const list = r.banks.filter(b => b.balance != null && b.shortfall > 0).sort((a, b) => b.shortfall - a.shortfall);
       detail = '<div class="sbdetail short"><div class="sbd-h">' + cl + 'までに入金が必要な口座</div>' +
         (list.length ? '<div class="surlist">' + list.map(b => row(b, '残高 ' + nf.format(b.balance) + ' − 引落 ' + nf.format(b.due), nf.format(b.shortfall), 'neg')).join('') +
           '<div class="surrow total"><span class="sn">合計</span><span class="sc"></span><span class="sv num">' + nf.format(r.shortfallTotal) + '<small>円</small></span></div></div>'
           : '<p class="sub" style="margin:0">不足している口座はありません。</p>') + '</div>';
-    } else if (sel === 'plus') {
+    }
+    {
       const list = r.banks.filter(b => b.balance != null && !b.excluded && b.surplus > 0).sort((a, b) => b.surplus - a.surplus);
       const exc = r.banks.filter(b => b.balance != null && b.excluded && b.surplus > 0);
-      detail = '<div class="sbdetail plus"><div class="sbd-h">' + cl + 'までの引落後に余る口座</div>' +
+      detail += '<div class="sbdetail plus"><div class="sbd-h">' + cl + 'までの引落後に余る口座</div>' +
         (list.length ? '<div class="surlist">' + list.map(b => row(b, '残高 ' + nf.format(b.balance) + ' − 引落 ' + nf.format(b.due), nf.format(b.surplus), 'pos')).join('') +
           '<div class="surrow total"><span class="sn">合計</span><span class="sc"></span><span class="sv num">' + nf.format(r.surplusTotal) + '<small>円</small></span></div></div>'
           : '<p class="sub" style="margin:0">余りのある口座はありません。</p>') +
@@ -468,14 +469,15 @@
     const per = r.windows.map((w, i) => '<div class="period' + (w.inClose ? '' : ' after') + '" data-tile><span class="lab">' + ICON.cal(w.inClose ? '--c-blue' : '--c-pink') + w.label + 'に必要' + (w.inClose ? '' : '<span class="tag">参考</span>') + (i === 0 ? '<button class="linkish" data-act="go-close" aria-label="期限を変更">変更</button>' : '') + '</span><span class="rng">' + md(w.from) + '〜' + md(w.to) + (w.nominal ? '<br>' + md(w.nominal) + 'が休日のため' + md(w.to) + 'まで' : '') + '</span><span class="val num" data-sum="' + w.key + '">' + yen(r.totals[w.key]) + '</span></div>').join('');
     const inc = r.income.map(i => '<div class="income-row"><span class="who">' + esc(i.name) + '</span><span class="when">' + (i.next ? '<span class="' + (isWeekend(i.next) ? 'wkend' : '') + '">' + mdw(i.next) + '</span> 予定' + shiftNote(i.next) : '') + '</span>' +
       '<input class="amount' + (i.amount == null ? ' empty' : '') + '" inputmode="numeric" enterkeyhint="done" autocomplete="off" id="inc-' + esc(i.id) + '" data-inc="' + esc(i.id) + '" value="' + yenTxt(i.amount) + '" placeholder="金額（任意）" aria-label="' + esc(i.name) + 'の収入予定額"></div>').join('');
+    if (!['sched', 'need', 'money', 'flow'].includes(meta.prepPanel)) meta.prepPanel = 'sched'; // トップは「引落予定」
     const P = (k, html) => '<div class="ppanel" data-panel="' + k + '"' + (meta.prepPanel === k ? '' : ' hidden') + '>' + html + '</div>';
     const pt = prepTopHTML(r);
     return '<div id="prepTop">' + pt.top + '</div>' +
       P('money', '<div class="pphead"><span>口座残高</span><button class="pclose" data-panel-btn="money" aria-label="口座残高を閉じる">閉じる ✕</button></div>' + totalHTML(r) + '<div id="ballist">' + balListHTML(r) + '</div>') +
       P('need', '<section class="summary" id="sec-top" aria-label="過不足"><div class="acchead">' + QI.scale.replace('<svg ', '<svg class="pico" ') + '過不足<button class="pclose" data-panel-btn="need" aria-label="過不足を閉じる">閉じる ✕</button></div>' + shortboxHTML(r) + '</section>') +
-      P('sched', '<div class="pphead"><span>引落予定</span><button class="pclose" data-panel-btn="sched" aria-label="引落予定を閉じる">閉じる ✕</button></div><div id="schedBox">' + schedHTML() + '</div>') +
+      P('sched', '<div id="schedNotice">' + prepNoticeHTML(r) + '</div><div class="pphead"><span>引落予定</span></div><div id="schedBox">' + schedHTML() + '</div>') +
       P('flow', '<div class="pphead"><span>収支記録<small class="sub">（締め期間ごと）</small></span><button class="pclose" data-panel-btn="flow" aria-label="収支記録を閉じる">閉じる ✕</button></div><div id="flowBox">' + flowHTML() + '</div>') +
-      '<div id="prepBottom">' + pt.near + prepNoticeHTML(r) + '</div>';
+      '';
   }
 
   /* ---------- 準備ページ上のボタン（押すとその内容だけ開く） ---------- */
@@ -528,12 +530,17 @@
     const w0 = r.windows.filter(w => w.inClose).pop() || r.windows[0];
     const missing = r.banks.filter(b => b.dueActive && b.balance == null).length;
     const by = w0 ? md(w0.to) : '';
-    if (r.shortfallTotal > 0) return '<button class="pnotice warn" data-act="go-short"><span class="pn-i" aria-hidden="true">i</span><span>' + by + 'までに、口座へ <b class="num">¥' + nf.format(r.shortfallTotal) + '</b> の入金が必要です</span><span class="pn-chev" aria-hidden="true">›</span></button>';
+    if (r.shortfallTotal > 0) {
+      const sl = r.banks.filter(b => b.balance != null && b.shortfall > 0).sort((a, b) => b.shortfall - a.shortfall);
+      return '<div class="pnotice warn"><span class="pn-i" aria-hidden="true">i</span><div class="pn-body"><span>' + by + 'までに、口座へ <b class="num">¥' + nf.format(r.shortfallTotal) + '</b> の入金が必要です</span>' +
+        '<div class="pn-list">' + sl.map(b => '<button class="pn-row" data-goto="' + esc(b.name) + '"><span>' + esc(b.name) + '</span><b class="num">¥' + nf.format(b.shortfall) + ' 不足</b><span class="pn-chev" aria-hidden="true">›</span></button>').join('') + '</div></div></div>';
+    }
     if (missing) return '<button class="pnotice info" data-act="go-banks"><span class="pn-i" aria-hidden="true">i</span><span>残高を入れると、入金が必要か分かります（未入力 ' + missing + '口座）</span><span class="pn-chev" aria-hidden="true">›</span></button>';
     if (r.dueCount) return '<div class="pnotice ok"><span class="pn-i" aria-hidden="true">✓</span><span>' + by + 'までの引き落としに、残高は足りています</span></div>';
     return '';
   }
   function bindPrepTop() {
+    main.querySelectorAll('#schedNotice [data-goto]').forEach(b => { if (b._g) return; b._g = 1; b.addEventListener('click', () => gotoBank(b.dataset.goto)); });
     main.querySelectorAll('[data-act="go-variable"]').forEach(b => b.addEventListener('click', () => { meta.page = 'variable'; meta.reorder = null; saveMeta(); renderAll(); window.scrollTo(0, 0); }));
     main.querySelectorAll('[data-act="go-short"]').forEach(b => b.addEventListener('click', () => { const el = main.querySelector('.bank.is-short') || $('#banksSec'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }));
   }
@@ -561,13 +568,13 @@
       '</nav>';
   }
   /** 過不足を開いている間は、過不足だけのページにする（銀行別の入金準備などは隠す） */
-  function syncPanelPage() { const onPrep = meta.page === 'prep'; document.body.classList.toggle('pp-need', onPrep && meta.prepPanel === 'need'); document.body.classList.toggle('pp-money', onPrep && meta.prepPanel === 'money'); document.body.classList.toggle('pp-flow', onPrep && meta.prepPanel === 'flow'); document.body.classList.toggle('pp-sched', onPrep && meta.prepPanel === 'sched'); }
+  function syncPanelPage() { const onPrep = meta.page === 'prep'; document.body.classList.toggle('pp-need', onPrep && meta.prepPanel === 'need'); document.body.classList.toggle('pp-money', onPrep && meta.prepPanel === 'money'); document.body.classList.toggle('pp-flow', onPrep && meta.prepPanel === 'flow');  }
   function bindPanels() {
     main.querySelectorAll('[data-panel-btn]').forEach(b => { if (b._pb) return; b._pb = 1; b.addEventListener('click', () => {
-      const k = b.dataset.panelBtn; const was = meta.prepPanel; meta.prepPanel = meta.prepPanel === k ? null : k;
+      const k = b.dataset.panelBtn; const was = meta.prepPanel; meta.prepPanel = meta.prepPanel === k && k !== 'sched' ? 'sched' : k;
       if (meta.prepPanel === 'need' && was !== 'need') { delete meta.sbSel; const sbx = $('#shortbox'); if (sbx) { sbx.outerHTML = shortboxHTML(C.compute(state, today())); bindSurBrk(); } }
       saveMeta();
-      if (was === 'money' || meta.prepPanel === 'money') { renderKeep(); if (meta.prepPanel) window.scrollTo(0, 0); return; }
+      if (was === 'money' || meta.prepPanel === 'money') { renderKeep(); window.scrollTo(0, 0); return; }
       main.querySelectorAll('.ppanel').forEach(p => { p.hidden = p.dataset.panel !== meta.prepPanel; });
       main.querySelectorAll('[data-panel-btn]').forEach(x => { const on = x.dataset.panelBtn === meta.prepPanel; x.classList.toggle('on', on); x.setAttribute('aria-expanded', on); });
       syncPanelPage();
@@ -693,7 +700,7 @@
   }
   function niceStep(v) { const p = Math.pow(10, Math.floor(Math.log10(v || 1))); const n = v / p; return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * p; }
   function bindFlow() {
-    main.querySelectorAll('[data-act="go-history"]').forEach(b => { if (b._gh) return; b._gh = 1; b.addEventListener('click', () => { meta.page = 'history'; meta.prepPanel = null; saveMeta(); renderAll(); window.scrollTo(0, 0); }); });
+    main.querySelectorAll('[data-act="go-history"]').forEach(b => { if (b._gh) return; b._gh = 1; b.addEventListener('click', () => { meta.page = 'history'; meta.prepPanel = 'sched'; saveMeta(); renderAll(); window.scrollTo(0, 0); }); });
     main.querySelectorAll('[data-flow]').forEach(g => {
       const go = () => { flowSel = Number(g.dataset.flow); const fb = $('#flowBox'); if (fb) { fb.innerHTML = flowHTML(); bindFlow(); } };
       g.addEventListener('click', go); g.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });

@@ -973,7 +973,7 @@ body.pg-variable .fab.add, body.pg-fixed .fab.add, #sec-variable .section-head b
 body.pp-need #banksSec, body.pp-need #prepBottom, body.pp-need main > .note, body.pp-need .closecard,
 body.pp-money #banksSec, body.pp-money #prepBottom, body.pp-money main > .note,
 body.pp-flow #banksSec, body.pp-flow #prepBottom, body.pp-flow main > .note,
-body.pp-sched #banksSec, body.pp-sched #prepBottom, body.pp-sched main > .note { display: none !important; }
+body.pp-none-unused { display: none !important; }
 .ppanel[data-panel="sched"] { display: grid; gap: 12px; }
 .schedcard { display: grid; gap: 10px; padding: 14px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); box-shadow: var(--card-shadow); }
 .sc-nav { display: grid; grid-template-columns: 40px minmax(0, 1fr) 40px; align-items: center; gap: 8px; }
@@ -1043,6 +1043,14 @@ body.pp-sched #banksSec, body.pp-sched #prepBottom, body.pp-sched main > .note {
 label.inl { display: flex; align-items: center; gap: 8px; font-size: 13px; white-space: nowrap; width: 100%; }
 label.inl input { flex: 1; min-width: 0; }
 .seg.inkind { margin-bottom: 4px; }
+.ppanel[data-panel="sched"] #schedNotice:empty { display: none; }
+.pnotice.warn { grid-template-columns: 28px minmax(0, 1fr); align-items: start; }
+.pn-body { display: grid; gap: 8px; }
+.pn-list { display: grid; gap: 6px; }
+.pn-row { display: grid; grid-template-columns: minmax(0, 1fr) auto 14px; align-items: center; gap: 8px; width: 100%; padding: 9px 12px; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--gold) 40%, transparent); background: var(--surface); text-align: left; min-height: 0; color: var(--ink); font-weight: 700; }
+.pn-row span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pn-row b { color: var(--short); white-space: nowrap; }
+.pn-row .pn-chev { color: #C98A00; font-size: 20px; }
 @media (max-width: 360px) { .brand-ico, .brand-img, :root[data-color] .brand-img { display: none; } .roundbtn { width: 44px; height: 44px; } }
 </style>
 </head>
