@@ -218,7 +218,7 @@
     const sb = $('#shortbox'); if (sb) { sb.outerHTML = shortboxHTML(r); const bb = main.querySelector('#shortbox [data-act="bulk"]'); if (bb) bb.addEventListener('click', openBulk); bindSurBrk(); }
     const cyc = $('#cycleSec'); if (cyc) { cyc.outerHTML = cycleHTML(); bindCycle(); }
     const tt = main.querySelector('[data-total]'); if (tt) { tt.innerHTML = totalInner(r); bindTotal(); }
-    const bl = $('#ballist'); if (bl) { bl.innerHTML = balListHTML(r); bindBalList(); }
+    const bl = $('#ballist'); if (bl && !bl.contains(document.activeElement)) { bl.innerHTML = balListHTML(r); bindBalList(); }
     const ptH = prepTopHTML(r);
     const pt = $('#prepTop'); if (pt) pt.innerHTML = ptH.top;
     const pbm = $('#prepBottom'); if (pbm) pbm.innerHTML = ptH.near + prepNoticeHTML(r);
@@ -439,18 +439,17 @@
   function balListHTML(r) {
     const list = r.banks; if (!list.length) return '';
     const hide = !!meta.hideTotal;
-    return '<section class="ballist" aria-label="口座ごとの残高">' + list.map((b, i) => '<button class="balrow" data-balgo="' + esc(b.name) + '">' + ICON.bank(BANK_COLORS[i % BANK_COLORS.length]) +
-      '<span class="bn">' + esc(b.name) + (b.excluded ? '<small>余りに含めない</small>' : '') + '</span><span class="bv num' + (b.balance == null ? ' none' : '') + '">' + (b.balance == null ? '未入力' : hide ? '¥ •••••' : '¥' + nf.format(b.balance)) + '</span><span class="chev" aria-hidden="true">›</span></button>').join('') +
-      '</section><p class="sub" style="margin:0">口座を押すと、銀行別の入金準備で残高を入れ直せます。</p>';
+    return '<section class="ballist" aria-label="口座ごとの残高">' + list.map((b, i) => '<div class="balrow">' + ICON.bank(BANK_COLORS[i % BANK_COLORS.length]) +
+      '<label class="bn" for="bl-' + esc(b.name) + '">' + esc(b.name) + (b.excluded ? '<small>余りに含めない</small>' : '') + '</label>' +
+      (hide ? '<span class="bv num">¥ •••••</span>' : '<input class="amount' + (b.balance == null ? ' empty' : '') + '" id="bl-' + esc(b.name) + '" data-bal="' + esc(b.name) + '" inputmode="numeric" enterkeyhint="done" autocomplete="off" placeholder="未入力" value="' + (b.balance == null ? '' : yenTxt(b.balance)) + '">') + '</div>').join('') +
+      '</section><p class="sub" style="margin:0">' + (hide ? '残高を入れ直すときは「残高を表示」を押してください。' : '金額を押すと、その場で残高を入れ直せます。') + '</p>';
   }
   function bindBalList() {
-    main.querySelectorAll('[data-balgo]').forEach(b => b.addEventListener('click', () => {
-      meta.prepPanel = null; saveMeta();
-      main.querySelectorAll('.ppanel').forEach(p => { p.hidden = true; });
-      main.querySelectorAll('[data-panel-btn]').forEach(x => { x.classList.remove('on'); x.setAttribute('aria-expanded', 'false'); });
-      syncPanelPage();
-      setTimeout(() => gotoBank(b.dataset.balgo), 60);
-    }));
+    main.querySelectorAll('#ballist [data-bal]').forEach(el => {
+      const name = el.dataset.bal; const b = state.balances[name] || (state.balances[name] = { amount: null, updatedAt: null });
+      el.addEventListener('input', () => onAmountInput(el, () => b.amount, v => { b.amount = v; b.updatedAt = new Date().toISOString(); }));
+      el.addEventListener('blur', () => { const v = parseAmount(el.value); if (!Number.isNaN(v)) el.value = yenTxt(v); });
+    });
   }
   function gotoBank(name) {
     const card = main.querySelector('.bank[data-bank="' + CSS.escape(name) + '"]');
@@ -559,7 +558,8 @@
   function syncPanelPage() { const onPrep = meta.page === 'prep'; document.body.classList.toggle('pp-need', onPrep && meta.prepPanel === 'need'); document.body.classList.toggle('pp-money', onPrep && meta.prepPanel === 'money'); }
   function bindPanels() {
     main.querySelectorAll('[data-panel-btn]').forEach(b => { if (b._pb) return; b._pb = 1; b.addEventListener('click', () => {
-      const k = b.dataset.panelBtn; meta.prepPanel = meta.prepPanel === k ? null : k; saveMeta();
+      const k = b.dataset.panelBtn; const was = meta.prepPanel; meta.prepPanel = meta.prepPanel === k ? null : k; saveMeta();
+      if (was === 'money' || meta.prepPanel === 'money') { renderKeep(); if (meta.prepPanel) window.scrollTo(0, 0); return; }
       main.querySelectorAll('.ppanel').forEach(p => { p.hidden = p.dataset.panel !== meta.prepPanel; });
       main.querySelectorAll('[data-panel-btn]').forEach(x => { const on = x.dataset.panelBtn === meta.prepPanel; x.classList.toggle('on', on); x.setAttribute('aria-expanded', on); });
       syncPanelPage();
@@ -1338,7 +1338,7 @@
     main.querySelectorAll('[data-act="go-acc"]').forEach(b => b.addEventListener('click', () => go('acc')));
     main.querySelectorAll('[data-act="go-out"]').forEach(b => b.addEventListener('click', () => go('out')));
     main.querySelectorAll('[data-act="go-in"]').forEach(b => b.addEventListener('click', () => go('in')));
-    bindTotal(); bindUpcoming(); bindPanels(); bindPrepTop(); bindBalList();
+    bindTotal(); bindUpcoming(); bindPanels(); bindPrepTop();
     main.querySelectorAll('[data-act="go-close"]').forEach(b => b.addEventListener('click', () => { go('books'); const c = $('#closecard'); if (c) c.scrollIntoView({ block: 'start' }); }));
     main.querySelectorAll('[data-act="sample-clear"]').forEach(b => b.addEventListener('click', () => confirmSheet('サンプルを消しますか？', '<p class="sub" style="margin:0">サンプルの口座・支出・収入をすべて消して、空の状態からはじめます。</p>', '消してはじめる', () => {
       state = emptyState(); meta.page = 'prep'; saveMeta(); save(); renderAll(); window.scrollTo(0, 0); toast('空の状態になりました');

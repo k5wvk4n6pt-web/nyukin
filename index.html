@@ -975,14 +975,16 @@ body.pp-money #banksSec, body.pp-money #prepBottom, body.pp-money main > .note {
 .ppanel[data-panel="money"] { display: grid; gap: 12px; }
 .pphead { display: flex; align-items: center; gap: 8px; font-size: 17px; font-weight: 800; color: var(--navy); padding: 0 2px; }
 .ballist { border: 1px solid var(--line); border-radius: 18px; background: var(--surface); box-shadow: var(--card-shadow); padding: 2px 12px; }
-.balrow { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto 12px; align-items: center; gap: 10px; width: 100%; padding: 12px 0; border: 0; border-radius: 0; background: none; text-align: left; min-height: 0; color: var(--ink); }
+.balrow { display: grid; grid-template-columns: 30px minmax(0, 1fr) 150px; align-items: center; gap: 10px; width: 100%; padding: 12px 0; border: 0; border-radius: 0; background: none; text-align: left; min-height: 0; color: var(--ink); }
 .balrow + .balrow { border-top: 1px solid var(--line); }
 .balrow svg { width: 30px; height: 26px; }
 .balrow .bn { display: grid; font-weight: 700; font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .balrow .bn small { font-size: 11px; font-weight: 500; color: var(--muted); }
 .balrow .bv { font-weight: 800; font-size: 16px; color: var(--navy); white-space: nowrap; }
 .balrow .bv.none { color: var(--warn); font-size: 13px; }
-.balrow .chev { color: var(--muted); font-size: 20px; }
+.balrow input.amount { width: 100%; text-align: right; font-weight: 800; }
+.totalcard, :root[data-color] .totalcard { background: var(--surface); }
+.totalcard::after { display: none !important; }
 .pclose { margin-left: auto; min-height: 32px; padding: 4px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); font-size: 12px; font-weight: 700; }
 @media (max-width: 360px) { .brand-ico, .brand-img, :root[data-color] .brand-img { display: none; } .roundbtn { width: 44px; height: 44px; } }
 </style>
