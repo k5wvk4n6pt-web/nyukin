@@ -215,7 +215,10 @@
     const sb = $('#shortbox'); if (sb) { sb.outerHTML = shortboxHTML(r); const bb = main.querySelector('#shortbox [data-act="bulk"]'); if (bb) bb.addEventListener('click', openBulk); }
     const cyc = $('#cycleSec'); if (cyc) { cyc.outerHTML = cycleHTML(); bindCycle(); }
     const tt = main.querySelector('[data-total]'); if (tt) { tt.innerHTML = totalInner(r); bindTotal(); }
-    const pb = $('#prepbtns'); if (pb) { pb.outerHTML = prepBtnsHTML(r); bindPanels(); }
+    const ptH = prepTopHTML(r);
+    const pt = $('#prepTop'); if (pt) pt.innerHTML = ptH.top;
+    const pbm = $('#prepBottom'); if (pbm) pbm.innerHTML = ptH.near + prepNoticeHTML(r);
+    if (pt || pbm) { bindPanels(); bindUpcoming(); bindPrepTop(); }
     const up = main.querySelector('.upcoming'); if (up) { up.outerHTML = upcomingHTML(r); bindUpcoming(); }
     const at = $('#acctable'); if (at) { at.outerHTML = acctableHTML(r); main.querySelectorAll('#acctable [data-goto]').forEach(b => b.addEventListener('click', () => gotoBank(b.dataset.goto))); }
     if (!$('#banksSec')) return;
@@ -414,17 +417,73 @@
     const inc = r.income.map(i => '<div class="income-row"><span class="who">' + esc(i.name) + '</span><span class="when">' + (i.next ? '<span class="' + (isWeekend(i.next) ? 'wkend' : '') + '">' + mdw(i.next) + '</span> 予定' + shiftNote(i.next) : '') + '</span>' +
       '<input class="amount' + (i.amount == null ? ' empty' : '') + '" inputmode="numeric" enterkeyhint="done" autocomplete="off" id="inc-' + esc(i.id) + '" data-inc="' + esc(i.id) + '" value="' + yenTxt(i.amount) + '" placeholder="金額（任意）" aria-label="' + esc(i.name) + 'の収入予定額"></div>').join('');
     const P = (k, html) => '<div class="ppanel" data-panel="' + k + '"' + (meta.prepPanel === k ? '' : ' hidden') + '>' + html + '</div>';
-    return prepBtnsHTML(r) +
-      P('total', totalHTML(r)) +
-      P('accts', '<section class="summary" aria-label="口座一覧">' + acctableHTML(r) + '</section>') +
+    const pt = prepTopHTML(r);
+    return '<div id="prepTop">' + pt.top + '</div>' +
+      P('money', totalHTML(r) + '<section class="summary" aria-label="口座一覧">' + acctableHTML(r) + '</section>') +
       P('need', '<section class="summary" id="sec-top" aria-label="今後の予定"><div><div class="acchead">' + ICON.cal('--c-blue') + '今後の予定</div><div class="periods">' + per + '</div></div>' + shortboxHTML(r) + '</section>') +
-      P('upcoming', upcomingHTML(r) || '<section class="upcoming"><p class="sub" style="margin:0">これからの入出金の予定はありません。</p></section>') +
-      P('income', '<section class="incomecard" id="incomecard" aria-label="収入予定"><div class="acchead">' + ICON.coins + '収入予定<span class="sub">（未入金の収入は残高に足しません）</span></div>' +
-      (inc ? '<div class="income">' + inc + '</div>' : '<p class="sub" style="margin:0">収入はまだありません。「設定 → 収入」から追加できます。</p>') + '</section>') +
-      P('cycle', cycleHTML());
+      P('flow', '<section class="incomecard" id="incomecard" aria-label="収入予定"><div class="acchead">' + ICON.coins + '収入予定<span class="sub">（未入金の収入は残高に足しません）</span></div>' +
+      (inc ? '<div class="income">' + inc + '</div>' : '<p class="sub" style="margin:0">収入はまだありません。「設定 → 収入」から追加できます。</p>') + '</section>' + cycleHTML()) +
+      '<div id="prepBottom">' + pt.near + prepNoticeHTML(r) + '</div>';
   }
 
   /* ---------- 準備ページ上のボタン（押すとその内容だけ開く） ---------- */
+  /* ---------- 準備ページの上（次の引落まで・必要な入金額・4つのボタン・直近の引落予定） ---------- */
+  const QI = {
+    sched: '<svg viewBox="0 0 48 48" aria-hidden="true"><rect x="7" y="10" width="34" height="30" rx="5" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="3.2"/><path d="M7 18h34" stroke="var(--accent)" stroke-width="3.2"/><path d="M16 6v8M32 6v8" stroke="var(--accent)" stroke-width="3.4" stroke-linecap="round"/><g fill="var(--gold)"><circle cx="16" cy="26" r="2.6"/><circle cx="24" cy="26" r="2.6"/><circle cx="16" cy="33" r="2.6"/><circle cx="24" cy="33" r="2.6"/></g><circle cx="32" cy="26" r="2.6" fill="var(--navy)"/></svg>',
+    bank: '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M24 5 L43 15 V18 H5 V15 Z" fill="var(--gold)"/><rect x="9" y="21" width="6" height="14" rx="1.5" fill="var(--accent)"/><rect x="21" y="21" width="6" height="14" rx="1.5" fill="var(--accent)"/><rect x="33" y="21" width="6" height="14" rx="1.5" fill="var(--accent)"/><rect x="5" y="37" width="38" height="5" rx="2.5" fill="var(--accent)"/></svg>',
+    chart: '<svg viewBox="0 0 48 48" aria-hidden="true"><rect x="8" y="26" width="8" height="15" rx="2" fill="var(--accent)"/><rect x="20" y="17" width="8" height="24" rx="2" fill="var(--accent)"/><rect x="32" y="7" width="8" height="34" rx="2" fill="var(--gold)"/></svg>',
+    manage: '<svg viewBox="0 0 48 48" aria-hidden="true"><rect x="7" y="6" width="28" height="34" rx="4" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="3.2"/><path d="M14 16h14M14 23h10" stroke="var(--accent)" stroke-width="3.2" stroke-linecap="round"/><circle cx="35" cy="34" r="9" fill="var(--gold)"/><path d="M31 34l3 3 5-6" stroke="#fff" stroke-width="2.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+  };
+  const LI = {
+    card: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="M3 10h18"/><rect x="14" y="13" width="4" height="2.2" rx=".6" fill="var(--gold)" stroke="none"/></svg>',
+    phone: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18h2" stroke-linecap="round"/></svg>',
+    bulb: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 17h6M10 20.5h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2V17h5v-1.1c0-.8.4-1.5 1-2A6 6 0 0 0 12 3z" fill="color-mix(in srgb, var(--gold) 35%, transparent)"/></svg>',
+    home: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3.5 11 12 4l8.5 7"/><path d="M6 9.5V20h12V9.5"/></svg>',
+    yen: '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M8.5 7.5 12 12l3.5-4.5M12 12v5M9 12.5h6M9 15h6"/></svg>'
+  };
+  function lineIcon(name) {
+    const n = String(name);
+    if (/カード|card|ｶｰﾄﾞ|PAY|pay|ペイ/i.test(n)) return LI.card;
+    if (/携帯|電話|au|docomo|ドコモ|softbank|ソフトバンク|楽天モバイル|LINEMO|ahamo|povo|UQ|ワイモバ|スマホ/i.test(n)) return LI.phone;
+    if (/電気|ガス|水道|光熱|でんき/.test(n)) return LI.bulb;
+    if (/家賃|住宅|ローン|管理費|マンション/.test(n)) return LI.home;
+    return LI.yen;
+  }
+  function prepTopHTML(r) {
+    const T = today(), t0 = serial2(T);
+    const w0 = r.windows.filter(w => w.inClose).pop() || r.windows[0];
+    const items = [];
+    for (const b of r.banks) for (const w of r.windows) for (const l of b.lines[w.key]) if (l.amount !== 0 && serial2(l.date) >= t0) items.push({ date: l.date, name: l.name.replace(/（\d+月分は未入力）$/, ''), amount: l.amount, bank: b.name, short: b.shortfall > 0 });
+    const seen = new Set();
+    const list = items.sort((a, b) => serial2(a.date) - serial2(b.date)).filter(x => { const k = x.bank + x.name + serial2(x.date); if (seen.has(k)) return false; seen.add(k); return true; });
+    const next = list[0];
+    const days = next ? Math.round((new Date(next.date.y, next.date.m - 1, next.date.d) - new Date(T.y, T.m - 1, T.d)) / 864e5) : null;
+    const missing = r.banks.filter(b => b.dueActive && b.balance == null).length;
+    const st = r.shortfallTotal > 0 ? '<span class="pst bad">不足</span>' : missing ? '<span class="pst warn">未入力</span>' : r.dueCount ? '<span class="pst ok">✓ 足りる</span>' : '';
+    const hero = '<button class="herocard" data-panel-btn="need" aria-expanded="' + (meta.prepPanel === 'need') + '">' +
+      '<span class="hc-l"><span class="hc-lab">次の引落まで</span><span class="hc-days num">' + (days == null ? '—' : days === 0 ? '今日' : days + '<small>日</small>') + '</span></span>' +
+      '<span class="hc-r"><span class="hc-lab">' + (w0 ? esc(w0.label) + 'に必要な金額' : '必要な金額') + st + '</span><span class="hc-amt num">¥' + nf.format(w0 ? (r.totals[w0.key] || 0) : 0) + '</span></span>' +
+      '<span class="hc-chev" aria-hidden="true">›</span></button>';
+    const q = (k, ico, lab) => '<button class="qbtn' + (meta.prepPanel === k ? ' on' : '') + '" ' + (k === 'manage' ? 'data-act="go-variable"' : 'data-panel-btn="' + k + '" aria-expanded="' + (meta.prepPanel === k) + '"') + '>' + ico + '<span>' + lab + '</span></button>';
+    const quick = '<div class="quick4">' + q('need', QI.sched, '引落予定') + q('money', QI.bank, '口座の残高') + q('flow', QI.chart, '収支の確認') + q('manage', QI.manage, '引落の管理') + '</div>';
+    const rows = list.slice(0, 3).map(x => '<div class="nrow"><span class="ndate' + (x.short ? ' bad' : '') + '">' + md(x.date) + '</span><span class="nico">' + lineIcon(x.name) + '</span><span class="nname">' + esc(x.name) + '<small>' + esc(x.bank) + '</small></span><span class="namt num">' + (x.amount == null ? '<span class="flag">未入力</span>' : '¥' + nf.format(x.amount)) + '</span></div>').join('');
+    const near = '<section class="nearlist" aria-label="直近の引落予定"><div class="nhead"><h2>直近の引落予定</h2><button class="more" data-act="go-banks">すべて見る ›</button></div>' +
+      '<div class="ncard">' + (rows || '<p class="sub" style="margin:0;padding:14px">これからの引き落としはありません。</p>') + '</div></section>';
+    return { top: hero + quick, near };
+  }
+  function prepNoticeHTML(r) {
+    const w0 = r.windows.filter(w => w.inClose).pop() || r.windows[0];
+    const missing = r.banks.filter(b => b.dueActive && b.balance == null).length;
+    const by = w0 ? md(w0.to) : '';
+    if (r.shortfallTotal > 0) return '<button class="pnotice warn" data-act="go-short"><span class="pn-i" aria-hidden="true">i</span><span>' + by + 'までに、口座へ <b class="num">¥' + nf.format(r.shortfallTotal) + '</b> の入金が必要です</span><span class="pn-chev" aria-hidden="true">›</span></button>';
+    if (missing) return '<button class="pnotice info" data-act="go-banks"><span class="pn-i" aria-hidden="true">i</span><span>残高を入れると、入金が必要か分かります（未入力 ' + missing + '口座）</span><span class="pn-chev" aria-hidden="true">›</span></button>';
+    if (r.dueCount) return '<div class="pnotice ok"><span class="pn-i" aria-hidden="true">✓</span><span>' + by + 'までの引き落としに、残高は足りています</span></div>';
+    return '';
+  }
+  function bindPrepTop() {
+    main.querySelectorAll('[data-act="go-variable"]').forEach(b => b.addEventListener('click', () => { meta.page = 'variable'; meta.reorder = null; saveMeta(); renderAll(); window.scrollTo(0, 0); }));
+    main.querySelectorAll('[data-act="go-short"]').forEach(b => b.addEventListener('click', () => { const el = main.querySelector('.bank.is-short') || $('#banksSec'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }));
+  }
   function prepBtnsHTML(r) {
     const T = today(), t0 = serial2(T);
     const withBal = r.banks.filter(b => b.balance != null);
@@ -449,11 +508,12 @@
       '</nav>';
   }
   function bindPanels() {
-    main.querySelectorAll('[data-panel-btn]').forEach(b => b.addEventListener('click', () => {
+    main.querySelectorAll('[data-panel-btn]').forEach(b => { if (b._pb) return; b._pb = 1; b.addEventListener('click', () => {
       const k = b.dataset.panelBtn; meta.prepPanel = meta.prepPanel === k ? null : k; saveMeta();
       main.querySelectorAll('.ppanel').forEach(p => { p.hidden = p.dataset.panel !== meta.prepPanel; });
       main.querySelectorAll('[data-panel-btn]').forEach(x => { const on = x.dataset.panelBtn === meta.prepPanel; x.classList.toggle('on', on); x.setAttribute('aria-expanded', on); });
-    }));
+      const op = main.querySelector('.ppanel:not([hidden])'); if (op) op.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }); });
   }
 
   /* ---------- 全口座の合計残高（隠すこともできる） ---------- */
@@ -472,12 +532,11 @@
     return '<section class="totalcard" id="totalbal" aria-label="全口座の合計残高">' + ICON.coins.replace('<svg ', '<svg class="coins" ') + '<div class="tl-body" data-total>' + totalInner(r) + '</div></section>';
   }
   function bindUpcoming() {
-    const b = main.querySelector('[data-act="go-banks"]'); if (!b) return;
-    b.addEventListener('click', () => { const el = $('#banksSec'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+    main.querySelectorAll('[data-act="go-banks"]').forEach(b => { if (b._gb) return; b._gb = 1; b.addEventListener('click', () => { const el = $('#banksSec'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }); });
   }
   function bindTotal() {
     const b = main.querySelector('[data-act="eye"]'); if (!b) return;
-    b.addEventListener('click', () => { meta.hideTotal = !meta.hideTotal; saveMeta(); const t = main.querySelector('[data-total]'); const rr = C.compute(state, today()); t.innerHTML = totalInner(rr); bindTotal(); const pb = $('#prepbtns'); if (pb) { pb.outerHTML = prepBtnsHTML(rr); bindPanels(); } });
+    b.addEventListener('click', () => { meta.hideTotal = !meta.hideTotal; saveMeta(); const t = main.querySelector('[data-total]'); const rr = C.compute(state, today()); t.innerHTML = totalInner(rr); bindTotal(); });
   }
   /* ---------- これからの入出金（直近の予定） ---------- */
   const ARROW = d => '<svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">' + (d === 'in' ? '<path d="M8 13V3M3.5 7.5 8 3l4.5 4.5"/>' : '<path d="M8 3v10M3.5 8.5 8 13l4.5-4.5"/>') + '</svg>';
@@ -1226,7 +1285,7 @@
     main.querySelectorAll('[data-act="go-acc"]').forEach(b => b.addEventListener('click', () => go('acc')));
     main.querySelectorAll('[data-act="go-out"]').forEach(b => b.addEventListener('click', () => go('out')));
     main.querySelectorAll('[data-act="go-in"]').forEach(b => b.addEventListener('click', () => go('in')));
-    bindTotal(); bindUpcoming(); bindPanels();
+    bindTotal(); bindUpcoming(); bindPanels(); bindPrepTop();
     main.querySelectorAll('[data-act="go-close"]').forEach(b => b.addEventListener('click', () => { go('books'); const c = $('#closecard'); if (c) c.scrollIntoView({ block: 'start' }); }));
     main.querySelectorAll('[data-act="sample-clear"]').forEach(b => b.addEventListener('click', () => confirmSheet('サンプルを消しますか？', '<p class="sub" style="margin:0">サンプルの口座・支出・収入をすべて消して、空の状態からはじめます。</p>', '消してはじめる', () => {
       state = emptyState(); meta.page = 'prep'; saveMeta(); save(); renderAll(); window.scrollTo(0, 0); toast('空の状態になりました');
