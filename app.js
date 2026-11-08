@@ -466,10 +466,10 @@
     const P = (k, html) => '<div class="ppanel" data-panel="' + k + '"' + (meta.prepPanel === k ? '' : ' hidden') + '>' + html + '</div>';
     const pt = prepTopHTML(r);
     return '<div id="prepTop">' + pt.top + '</div>' +
-      P('money', '<div class="pphead"><span>口座の残高</span><button class="pclose" data-panel-btn="money" aria-label="口座の残高を閉じる">閉じる ✕</button></div>' + totalHTML(r) + '<div id="ballist">' + balListHTML(r) + '</div>') +
+      P('money', '<div class="pphead"><span>口座残高</span><button class="pclose" data-panel-btn="money" aria-label="口座残高を閉じる">閉じる ✕</button></div>' + totalHTML(r) + '<div id="ballist">' + balListHTML(r) + '</div>') +
       P('need', '<section class="summary" id="sec-top" aria-label="過不足"><div class="acchead">' + QI.scale.replace('<svg ', '<svg class="pico" ') + '過不足<button class="pclose" data-panel-btn="need" aria-label="過不足を閉じる">閉じる ✕</button></div>' + shortboxHTML(r) + '</section>') +
       P('sched', '<div class="pphead"><span>引落予定</span><button class="pclose" data-panel-btn="sched" aria-label="引落予定を閉じる">閉じる ✕</button></div><div id="schedBox">' + schedHTML() + '</div>') +
-      P('flow', '<div class="pphead"><span>締め期間ごとの収支</span><button class="pclose" data-panel-btn="flow" aria-label="収支を閉じる">閉じる ✕</button></div><div id="flowBox">' + flowHTML() + '</div>') +
+      P('flow', '<div class="pphead"><span>収支記録<small class="sub">（締め期間ごと）</small></span><button class="pclose" data-panel-btn="flow" aria-label="収支記録を閉じる">閉じる ✕</button></div><div id="flowBox">' + flowHTML() + '</div>') +
       '<div id="prepBottom">' + pt.near + prepNoticeHTML(r) + '</div>';
   }
 
@@ -513,7 +513,7 @@
       '<span class="hc-r"><span class="hc-lab">' + (w0 ? esc(w0.label) + 'に必要な金額' : '必要な金額') + st + '</span><span class="hc-amt num">¥' + nf.format(w0 ? (r.totals[w0.key] || 0) : 0) + '</span></span>' +
       '<span class="hc-chev" aria-hidden="true">›</span></button>';
     const q = (k, ico, lab) => '<button class="qbtn' + (meta.prepPanel === k ? ' on' : '') + '" ' + (k === 'manage' ? 'data-act="go-variable"' : 'data-panel-btn="' + k + '" aria-expanded="' + (meta.prepPanel === k) + '"') + '>' + ico + '<span>' + lab + '</span></button>';
-    const quick = '<div class="quick4">' + q('need', QI.scale, '過不足') + q('money', QI.bank, '口座の残高') + q('flow', QI.chart, '収支の確認') + q('sched', QI.sched, '引落予定') + '</div>';
+    const quick = '<div class="quick4">' + q('need', QI.scale, '過不足') + q('money', QI.bank, '口座残高') + q('flow', QI.chart, '収支記録') + q('sched', QI.sched, '引落予定') + '</div>';
     const rows = list.slice(0, 3).map(x => '<div class="nrow"><span class="ndate' + (x.short ? ' bad' : '') + '">' + md(x.date) + '</span><span class="nico">' + lineIcon(x.name) + '</span><span class="nname">' + esc(x.name) + '<small>' + esc(x.bank) + '</small></span><span class="namt num">' + (x.amount == null ? '<span class="flag">未入力</span>' : '¥' + nf.format(x.amount)) + '</span></div>').join('');
     const near = '<section class="nearlist" aria-label="直近の引落予定"><div class="nhead"><h2>直近の引落予定</h2><button class="more" data-act="go-banks">すべて見る ›</button></div>' +
       '<div class="ncard">' + (rows || '<p class="sub" style="margin:0;padding:14px">これからの引き落としはありません。</p>') + '</div></section>';
