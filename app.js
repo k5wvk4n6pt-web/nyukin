@@ -2600,7 +2600,27 @@
   setInterval(tick, 30000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) { tick(); syncTyping(); } });
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
-  if (!N.isNative && 'serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(() => {});
+  /* ---------- 新しい版のお知らせ（ホーム画面に追加したWeb版） ----------
+     開いたとき・裏から戻ったときに新しい版を確かめ、入れ替わったら「更新する」を出す。勝手には読み込み直さない。 */
+  if (!N.isNative && 'serviceWorker' in navigator && location.protocol !== 'file:') {
+    const hadCtl = !!navigator.serviceWorker.controller;
+    let lastCheck = 0, shown = false;
+    const showUpdate = () => {
+      if (shown) return; shown = true;
+      const bar = document.createElement('div'); bar.className = 'updbar'; bar.setAttribute('role', 'status');
+      bar.innerHTML = '<span>新しい版があります</span><button type="button" class="primary small" id="updGo">更新する</button><button type="button" class="small updx" id="updLater" aria-label="あとで">あとで</button>';
+      document.body.appendChild(bar);
+      $('#updGo').onclick = () => { try { saveMeta(); } catch (e) {} location.reload(); };
+      $('#updLater').onclick = () => { bar.remove(); };
+    };
+    navigator.serviceWorker.register('sw.js').then(reg => {
+      const check = () => { const now = Date.now(); if (now - lastCheck < 60000) return; lastCheck = now; reg.update().catch(() => {}); };
+      document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') check(); });
+      window.addEventListener('focus', check);
+      setTimeout(check, 3000);
+    }).catch(() => {});
+    navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadCtl) showUpdate(); });
+  }
   if (N.isNative) {
     refreshPro(); refreshIcon();
     // iCloudの状態を確認（ウェルカム画面で復元を出す・自動バックアップ）

@@ -1023,6 +1023,10 @@ body.pp-none-unused { display: none !important; }
 .ikchip.k-once { background: color-mix(in srgb, #F2B705 20%, var(--surface)); color: #8A6500; }
 .imons { font-size: 13px; font-weight: 700; color: var(--navy); white-space: nowrap; }
 .irow2 .row-sub { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.updbar { position: fixed; z-index: 60; left: 50%; transform: translateX(-50%); top: calc(env(safe-area-inset-top, 0px) + 10px); width: min(92vw, 420px); display: flex; align-items: center; gap: 8px; padding: 10px 10px 10px 16px; border-radius: 16px; background: var(--surface); color: var(--ink); border: 1px solid var(--line); box-shadow: 0 8px 28px rgba(20, 51, 107, .22); font-weight: 700; font-size: 14px; }
+.updbar span { flex: 1; min-width: 0; }
+.updbar button { white-space: nowrap; }
+.updbar .updx { background: transparent; border-color: transparent; color: var(--muted); }
 .fd-lh { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-top: 4px; }
 .fd-lh b { color: var(--navy); font-size: 15px; }
 .fd-lh .sub { font-size: 12px; }
