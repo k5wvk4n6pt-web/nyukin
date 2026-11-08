@@ -971,7 +971,42 @@ body.pg-variable .fab.add, body.pg-fixed .fab.add, #sec-variable .section-head b
 .tots .tot.plus .big { color: var(--ok); } .tots .tot.short .big { color: var(--short); } .tots .tot.zero .big { color: var(--muted); }
 /* 過不足だけのページ */
 body.pp-need #banksSec, body.pp-need #prepBottom, body.pp-need main > .note, body.pp-need .closecard,
-body.pp-money #banksSec, body.pp-money #prepBottom, body.pp-money main > .note { display: none !important; }
+body.pp-money #banksSec, body.pp-money #prepBottom, body.pp-money main > .note,
+body.pp-flow #banksSec, body.pp-flow #prepBottom, body.pp-flow main > .note { display: none !important; }
+.ppanel[data-panel="flow"] { display: grid; gap: 12px; }
+.flowcard { display: grid; gap: 12px; padding: 14px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); box-shadow: var(--card-shadow); --fin: #4C7FD3; --fout: #C9682E; }
+:root[data-color="pink"] .flowcard { --fin: #CB5E85; --fout: #3A7BC8; }
+:root[data-color="green"] .flowcard { --fin: #41A07A; --fout: #8A62D0; }
+:root[data-color="purple"] .flowcard { --fin: #8466CC; --fout: #C9682E; }
+:root[data-color="orange"] .flowcard { --fin: #CB7140; --fout: #4F7CC4; }
+.fg-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; font-size: 13px; font-weight: 700; color: var(--ink); }
+.fg-legend .sub { margin-left: auto; font-weight: 500; font-size: 12px; }
+.sw { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+.sw.in { background: var(--fin); } .sw.out { background: var(--fout); }
+.flowchart { width: 100%; height: auto; display: block; overflow: visible; }
+.fg-grid { stroke: var(--line); stroke-width: 1; }
+.fg-ax { font-size: 9.5px; fill: var(--muted); }
+.fg-lab { font-size: 10.5px; font-weight: 700; fill: var(--ink); }
+.fg-sub { font-size: 9.5px; fill: var(--muted); }
+.fg-in { fill: var(--fin); } .fg-out { fill: var(--fout); } .fg-out.faint { opacity: .35; }
+.fg-hit { fill: transparent; }
+.fg-col { cursor: pointer; outline: none; }
+.fg-col.sel .fg-hit, .fg-col:focus-visible .fg-hit { fill: var(--accent-soft); }
+.fg-col.sel .fg-lab { fill: var(--accent); }
+.flowdet { display: grid; gap: 10px; }
+.fd-h { display: flex; align-items: baseline; gap: 6px; color: var(--navy); }
+.fd-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.fd-grid > div { display: grid; gap: 2px; padding: 10px; border-radius: 12px; background: var(--accent-soft); min-width: 0; }
+.fd-grid .k { font-size: 12px; font-weight: 700; color: var(--navy); }
+.fd-grid .v { font-size: clamp(15px, 4.4vw, 19px); font-weight: 800; color: var(--ink); white-space: nowrap; }
+.fd-grid .v small { font-size: 11px; margin-left: 1px; }
+.fd-grid .neg { background: var(--short-bg); } .fd-grid .neg .v { color: var(--short); }
+.fd-grid .pos { background: var(--ok-bg); } .fd-grid .pos .v { color: var(--ok); }
+.fd-grid .flag { font-size: 11px; }
+.fd-list { display: grid; border-top: 1px solid var(--line); }
+.fd-row { display: flex; justify-content: space-between; gap: 10px; padding: 7px 2px; border-bottom: 1px solid var(--line); font-size: 14px; }
+.fd-row span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fd-row .num { font-weight: 700; white-space: nowrap; }
 .ppanel[data-panel="money"] { display: grid; gap: 12px; }
 .pphead { display: flex; align-items: center; gap: 8px; font-size: 17px; font-weight: 800; color: var(--navy); padding: 0 2px; }
 .ballist { border: 1px solid var(--line); border-radius: 18px; background: var(--surface); box-shadow: var(--card-shadow); padding: 2px 12px; }

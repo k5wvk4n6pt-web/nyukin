@@ -217,6 +217,7 @@
     main.querySelectorAll('[data-sum]').forEach(el => { el.innerHTML = yen(r.totals[el.dataset.sum]); });
     const sb = $('#shortbox'); if (sb) { sb.outerHTML = shortboxHTML(r); const bb = main.querySelector('#shortbox [data-act="bulk"]'); if (bb) bb.addEventListener('click', openBulk); bindSurBrk(); }
     const cyc = $('#cycleSec'); if (cyc) { cyc.outerHTML = cycleHTML(); bindCycle(); }
+    const fb = $('#flowBox'); if (fb) { fb.innerHTML = flowHTML(); bindFlow(); }
     const tt = main.querySelector('[data-total]'); if (tt) { tt.innerHTML = totalInner(r); bindTotal(); }
     const bl = $('#ballist'); if (bl && !bl.contains(document.activeElement)) { bl.innerHTML = balListHTML(r); bindBalList(); }
     const ptH = prepTopHTML(r);
@@ -467,8 +468,7 @@
     return '<div id="prepTop">' + pt.top + '</div>' +
       P('money', '<div class="pphead"><span>口座の残高</span><button class="pclose" data-panel-btn="money" aria-label="口座の残高を閉じる">閉じる ✕</button></div>' + totalHTML(r) + '<div id="ballist">' + balListHTML(r) + '</div>') +
       P('need', '<section class="summary" id="sec-top" aria-label="過不足"><div class="acchead">' + QI.scale.replace('<svg ', '<svg class="pico" ') + '過不足<button class="pclose" data-panel-btn="need" aria-label="過不足を閉じる">閉じる ✕</button></div>' + shortboxHTML(r) + '</section>') +
-      P('flow', '<section class="incomecard" id="incomecard" aria-label="収入予定"><div class="acchead">' + ICON.coins + '収入予定<span class="sub">（未入金の収入は残高に足しません）</span></div>' +
-      (inc ? '<div class="income">' + inc + '</div>' : '<p class="sub" style="margin:0">収入はまだありません。「設定 → 収入」から追加できます。</p>') + '</section>' + cycleHTML()) +
+      P('flow', '<div class="pphead"><span>締め期間ごとの収支</span><button class="pclose" data-panel-btn="flow" aria-label="収支を閉じる">閉じる ✕</button></div><div id="flowBox">' + flowHTML() + '</div>') +
       '<div id="prepBottom">' + pt.near + prepNoticeHTML(r) + '</div>';
   }
 
@@ -555,7 +555,7 @@
       '</nav>';
   }
   /** 過不足を開いている間は、過不足だけのページにする（銀行別の入金準備などは隠す） */
-  function syncPanelPage() { const onPrep = meta.page === 'prep'; document.body.classList.toggle('pp-need', onPrep && meta.prepPanel === 'need'); document.body.classList.toggle('pp-money', onPrep && meta.prepPanel === 'money'); }
+  function syncPanelPage() { const onPrep = meta.page === 'prep'; document.body.classList.toggle('pp-need', onPrep && meta.prepPanel === 'need'); document.body.classList.toggle('pp-money', onPrep && meta.prepPanel === 'money'); document.body.classList.toggle('pp-flow', onPrep && meta.prepPanel === 'flow'); }
   function bindPanels() {
     main.querySelectorAll('[data-panel-btn]').forEach(b => { if (b._pb) return; b._pb = 1; b.addEventListener('click', () => {
       const k = b.dataset.panelBtn; const was = meta.prepPanel; meta.prepPanel = meta.prepPanel === k ? null : k; saveMeta();
@@ -603,6 +603,74 @@
   }
 
   let cycleOffset = 0; // 0=今のサイクル（画面を開き直すと今に戻る）
+  /* ---------- 締め期間ごとの収支（グラフ） ---------- */
+  let flowSel = 0; // 0=今回の締め期間、-1=前回…
+  const FLOW_FROM = -5, FLOW_TO = 1;
+  /** 1つの締め期間の収支。過ぎた日は「記録」、今日以降は登録内容から */
+  function flowData(off) {
+    const T = today(), tIso = isoOf(T);
+    const cy = C.cycle(state, T, off);
+    const fIso = isoOf(cy.from), toIso = isoOf(cy.to);
+    const items = []; let expense = 0, unentered = 0, recorded = false;
+    for (const h of state.history || []) {
+      if (h.date < fIso || h.date > toIso || h.date >= tIso) continue;
+      recorded = true;
+      if (h.amount == null) { unentered++; continue; }
+      expense += h.amount; items.push({ name: h.name, account: h.account, date: h.date, amount: h.amount, past: true });
+    }
+    if (toIso >= tIso) {
+      const from = fIso > tIso ? cy.from : T;
+      const hiddenAcc = new Set(state.hiddenAccounts || []);
+      for (const k of ['variable', 'fixed', 'once']) for (const it of state[k] || []) {
+        if (it.hidden || hiddenAcc.has(it.account) || !state.accounts.includes(it.account)) continue;
+        for (const o of C.occurrencesIn(it, from, cy.to, false)) {
+          const amt = C.amountFor(it, o); if (amt === 0) continue;
+          if (amt == null) { unentered++; continue; }
+          expense += amt; items.push({ name: it.name, account: it.account, date: isoOf(o), amount: amt, past: false });
+        }
+      }
+    }
+    const pastOnly = toIso < tIso;
+    return { off, from: cy.from, to: cy.to, income: cy.income, incomeMissing: cy.incomeMissing, expense, unentered, items, diff: cy.income - expense, noRecord: pastOnly && !recorded };
+  }
+  function flowHTML() {
+    const data = []; for (let o = FLOW_FROM; o <= FLOW_TO; o++) data.push(flowData(o));
+    const max = Math.max(1, ...data.map(d => Math.max(d.income, d.expense)));
+    const step = niceStep(max / 3), top = Math.ceil(max / step) * step;
+    const W = 340, H = 190, L = 34, Rr = 6, T0 = 14, B = 34, ch = H - T0 - B, gw = (W - L - Rr) / data.length, bw = Math.min(14, gw / 2 - 4);
+    const y = v => T0 + ch - (v / top) * ch;
+    let g = '';
+    for (let v = 0; v <= top + 1; v += step) g += '<line x1="' + L + '" x2="' + (W - Rr) + '" y1="' + y(v) + '" y2="' + y(v) + '" class="fg-grid"/><text x="' + (L - 4) + '" y="' + (y(v) + 3.5) + '" class="fg-ax" text-anchor="end">' + (v === 0 ? '0' : (v / 10000) + '万') + '</text>';
+    const bar = (x, v, cls) => { if (!v) return ''; const h = Math.max(2, (v / top) * ch), yy = T0 + ch - h, r = Math.min(4, bw / 2, h); return '<path class="' + cls + '" d="M' + x + ',' + (T0 + ch) + 'V' + (yy + r) + 'Q' + x + ',' + yy + ' ' + (x + r) + ',' + yy + 'H' + (x + bw - r) + 'Q' + (x + bw) + ',' + yy + ' ' + (x + bw) + ',' + (yy + r) + 'V' + (T0 + ch) + 'Z"/>'; };
+    data.forEach((d, i) => {
+      const cx = L + gw * i + gw / 2, sel = d.off === flowSel;
+      g += '<g class="fg-col' + (sel ? ' sel' : '') + '" data-flow="' + d.off + '" tabindex="0" role="button" aria-label="' + md(d.to) + '締め 収入' + nf.format(d.income) + '円 支出' + nf.format(d.expense) + '円">' +
+        '<rect class="fg-hit" x="' + (L + gw * i + 1) + '" y="' + (T0 - 8) + '" width="' + (gw - 2) + '" height="' + (ch + 8 + B) + '" rx="8"/>' +
+        bar(cx - bw - 1, d.income, 'fg-in') + bar(cx + 1, d.expense, 'fg-out' + (d.noRecord ? ' faint' : '')) +
+        '<text x="' + cx + '" y="' + (H - B + 15) + '" class="fg-lab" text-anchor="middle">' + md(d.to) + '</text>' +
+        '<text x="' + cx + '" y="' + (H - B + 28) + '" class="fg-sub" text-anchor="middle">' + (d.off === 0 ? '今回' : d.off === -1 ? '前回' : d.off === 1 ? '次回' : '') + '</text></g>';
+    });
+    const svg = '<svg class="flowchart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="締め期間ごとの収入と支出">' + g + '</svg>';
+    const d = data.find(x => x.off === flowSel) || data[-FLOW_FROM];
+    const neg = d.diff < 0;
+    const byName = {}; for (const it of d.items) { const k = it.name; byName[k] = (byName[k] || 0) + it.amount; }
+    const top5 = Object.entries(byName).sort((a, b) => b[1] - a[1]);
+    const detail = '<div class="flowdet"><div class="fd-h"><b>' + md(d.from) + '〜' + md(d.to) + '</b><span class="sub">（' + md(d.to) + '締め）</span></div>' +
+      '<div class="fd-grid"><div><span class="k"><i class="sw in"></i>収入</span><span class="v num">' + nf.format(d.income) + '<small>円</small></span>' + (d.incomeMissing ? '<span class="flag">金額未入力 ' + d.incomeMissing + '件</span>' : '') + '</div>' +
+      '<div><span class="k"><i class="sw out"></i>支出</span><span class="v num">' + nf.format(d.expense) + '<small>円</small></span>' + (d.unentered ? '<span class="flag">金額未入力 ' + d.unentered + '件</span>' : '') + '</div>' +
+      '<div class="' + (neg ? 'neg' : 'pos') + '"><span class="k">差し引き</span><span class="v num">' + (neg ? '−' : '＋') + nf.format(Math.abs(d.diff)) + '<small>円</small></span></div></div>' +
+      (d.noRecord ? '<p class="sub" style="margin:0">この期間は記録がないため、支出は0円になっています（記録は使い始めた日から残ります）。</p>' : '') +
+      (top5.length ? '<div class="fd-list">' + top5.map(([n, v]) => '<div class="fd-row"><span>' + esc(n) + '</span><span class="num">' + nf.format(v) + '円</span></div>').join('') + '</div>' : '') + '</div>';
+    return '<section class="flowcard"><div class="fg-legend"><span><i class="sw in"></i>収入</span><span><i class="sw out"></i>支出</span><span class="sub">棒を押すと内訳</span></div>' + svg + detail +
+      '<p class="note" style="margin:0">過ぎた日の支出は「記録」、今日からあとは登録している金額で計算しています。収入は「設定 → 収入」の金額です。</p></section>';
+  }
+  function niceStep(v) { const p = Math.pow(10, Math.floor(Math.log10(v || 1))); const n = v / p; return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * p; }
+  function bindFlow() {
+    main.querySelectorAll('[data-flow]').forEach(g => {
+      const go = () => { flowSel = Number(g.dataset.flow); const fb = $('#flowBox'); if (fb) { fb.innerHTML = flowHTML(); bindFlow(); } };
+      g.addEventListener('click', go); g.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+    });
+  }
   function cycleHTML() {
     const cy = C.cycle(state, today(), cycleOffset);
     const label = cycleOffset === 0 ? '今回' : cycleOffset === -1 ? '前回' : cycleOffset === 1 ? '次回' : (cycleOffset > 0 ? cycleOffset + '回あと' : -cycleOffset + '回前');
@@ -1338,7 +1406,7 @@
     main.querySelectorAll('[data-act="go-acc"]').forEach(b => b.addEventListener('click', () => go('acc')));
     main.querySelectorAll('[data-act="go-out"]').forEach(b => b.addEventListener('click', () => go('out')));
     main.querySelectorAll('[data-act="go-in"]').forEach(b => b.addEventListener('click', () => go('in')));
-    bindTotal(); bindUpcoming(); bindPanels(); bindPrepTop();
+    bindTotal(); bindUpcoming(); bindPanels(); bindPrepTop(); bindFlow();
     main.querySelectorAll('[data-act="go-close"]').forEach(b => b.addEventListener('click', () => { go('books'); const c = $('#closecard'); if (c) c.scrollIntoView({ block: 'start' }); }));
     main.querySelectorAll('[data-act="sample-clear"]').forEach(b => b.addEventListener('click', () => confirmSheet('サンプルを消しますか？', '<p class="sub" style="margin:0">サンプルの口座・支出・収入をすべて消して、空の状態からはじめます。</p>', '消してはじめる', () => {
       state = emptyState(); meta.page = 'prep'; saveMeta(); save(); renderAll(); window.scrollTo(0, 0); toast('空の状態になりました');
