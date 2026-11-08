@@ -682,6 +682,7 @@
         '<text x="' + cx + '" y="' + (H - B + 15) + '" class="fg-lab" text-anchor="middle">' + md(d.from) + '</text>' +
         '<text x="' + cx + '" y="' + (H - B + 28) + '" class="fg-sub" text-anchor="middle">' + (d.off === 0 ? '今回' : d.off === -1 ? '前回' : d.off === 1 ? '次回' : '') + '</text></g>';
     });
+    g += '<text x="' + (L - 2) + '" y="' + (H - B + 15) + '" class="fg-ax fg-axlab" text-anchor="end">始期日</text>';
     const svg = '<svg class="flowchart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="始期日ごとの収入と支出">' + g + '</svg>';
     const d = data.find(x => x.off === flowSel) || data[-FLOW_FROM];
     const neg = d.diff < 0;
