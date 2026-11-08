@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   const C = window.KCalc;
-  const APP_VERSION = '2026.11.09a';
+  const APP_VERSION = '2026.11.09b';
   /** ファイルの一部だけが新しい（アップロード漏れ・古いキャッシュ）と計算が合わなくなるので知らせる */
   /** 古いままのファイル名（なければ空）。native.js は中身が変わったときだけ気にする */
   function staleFiles() {
@@ -46,7 +46,7 @@
   function today() { return C.fromDate(new Date()); }
   function keyOf(dt) { return dt.y + '-' + dt.m + '-' + dt.d; }
   function uid(p) { return p + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
-  function dayLabel(d) { return d === 'end' ? '月末' : d + '日'; }
+  function dayLabel(d) { return d === 'end' ? '月末' : d === 'close' ? '締め日' : d + '日'; }
 
   /** 金額入力の読み取り（全角数字・カンマ・円を許容。空欄は「未入力」= null） */
   function parseAmount(s) {
@@ -130,7 +130,7 @@
   }
   function saveMeta() { try { localStorage.setItem(META, JSON.stringify(meta)); } catch (e) { /* 表示だけの情報 */ } }
 
-  function validDay(d) { return d === 'end' || (Number.isInteger(d) && d >= 1 && d <= 31); }
+  function validDay(d) { return d === 'end' || d === 'close' || (Number.isInteger(d) && d >= 1 && d <= 31); }
   function validAmt(a) { return a === null || (typeof a === 'number' && isFinite(a) && a >= 0); }
 
   /** 読み込んだデータの形をそろえる。おかしな値があれば例外 */
@@ -202,6 +202,7 @@
       main.innerHTML = '<div class="notice"><div><b>アプリのファイルが一部だけ古いままです。</b><br>古いファイル：<b>' + staleFiles().join('、') + '</b><br>このファイルをアップロードし直してください。アップロード済みなら、アプリを閉じて数分後に開き直してください。（app.js：' + APP_VERSION + '／calc.js：' + (C && C.VERSION || '古い版') + '）</div></div>';
       return;
     }
+    C.setCloseCtx(state);
     recordPast();
     rollVariable();
     const r = C.compute(state, T);
@@ -857,6 +858,7 @@
     let h = '<select id="' + id + '" aria-label="引落日">' + (allowNext ? '<optgroup label="その月">' : '');
     for (let i = 1; i <= 31; i++) h += '<option value="' + i + '"' + (!nm && d === i ? ' selected' : '') + '>' + i + '日</option>';
     h += '<option value="end"' + (!nm && d === 'end' ? ' selected' : '') + '>月末</option>';
+    if (allowNext) h += '<option value="close"' + (d === 'close' ? ' selected' : '') + '>締め日</option>';
     if (allowNext) {
       h += '</optgroup><optgroup label="翌月（例：11月分を12月に引落）">';
       for (let i = 1; i <= 31; i++) h += '<option value="n' + i + '"' + (nm && d === i ? ' selected' : '') + '>翌' + i + '日</option>';
@@ -865,7 +867,7 @@
     return h + '</select>';
   }
   /** 引落日の選択値 → { day, nm }（"n10" = 翌10日） */
-  function parseDay(v) { const nm = String(v).charAt(0) === 'n' ? 1 : 0; const r = nm ? String(v).slice(1) : String(v); return { day: r === 'end' ? 'end' : Number(r), nm }; }
+  function parseDay(v) { if (v === 'close') return { day: 'close', nm: 0 }; const nm = String(v).charAt(0) === 'n' ? 1 : 0; const r = nm ? String(v).slice(1) : String(v); return { day: r === 'end' ? 'end' : Number(r), nm }; }
   function setDay(it, v) { const p = parseDay(v); it.day = p.day; if (p.nm) it.nm = 1; else delete it.nm; }
   function acctSelect(id, a) {
     const opts = state.accounts.slice(); if (a && !opts.includes(a)) opts.push(a);
@@ -996,7 +998,7 @@
     const kname = { variable: '変動費', fixed: '固定費', once: '1回のみ' }[kind];
     const accs = visibleAccounts();
     const acc = accs.includes(keep.acc) ? keep.acc : accs.includes(meta.qacc) ? meta.qacc : '';
-    const day = meta.qday === 'end' || (Number(meta.qday) >= 1 && Number(meta.qday) <= 31) ? (meta.qday === 'end' ? 'end' : Number(meta.qday)) : 27;
+    const day = meta.qday === 'close' ? 'close' : meta.qday === 'end' || (Number(meta.qday) >= 1 && Number(meta.qday) <= 31) ? (meta.qday === 'end' ? 'end' : Number(meta.qday)) : 27;
     return '<div class="card form">' +
       '<div class="shead">支出を追加<span class="sub">追加した項目は「' + (kind === 'fixed' ? '固定費' : '変動費') + '」ページに表示され、すぐ計算に入ります' + (kind === 'once' ? '（1回のみは変動費ページの下）' : '') + '</span></div>' +
       '<div class="seg small-seg">' + [['variable', '変動費'], ['fixed', '固定費'], ['once', '1回のみ']].map(k => '<button class="' + (k[0] === kind ? 'on' : '') + '" data-qkind="' + k[0] + '">' + k[1] + '</button>').join('') + '</div>' +
@@ -2327,7 +2329,7 @@
     const accs = visibleAccounts();
     if (!accs.length) { toast('先に「設定 → 口座」で口座を登録してください'); return; }
     const acc = accs.includes(meta.qacc) ? meta.qacc : '';
-    const day = meta.qday === 'end' || (Number(meta.qday) >= 1 && Number(meta.qday) <= 31) ? (meta.qday === 'end' ? 'end' : Number(meta.qday)) : 27;
+    const day = meta.qday === 'close' ? 'close' : meta.qday === 'end' || (Number(meta.qday) >= 1 && Number(meta.qday) <= 31) ? (meta.qday === 'end' ? 'end' : Number(meta.qday)) : 27;
     const m = $('#modal');
     m.innerHTML = '<div class="sheet form xsheet" role="dialog" aria-modal="true" aria-labelledby="mt"><h2 id="mt">支出を追加</h2>' +
       '<div class="seg askind" role="tablist" aria-label="支出の種類">' + [['variable', '変動費'], ['fixed', '固定費'], ['once', '1回のみ']].map(k => '<button type="button" role="tab" data-askind="' + k[0] + '" class="' + (k[0] === kind ? 'on' : '') + '" aria-selected="' + (k[0] === kind) + '">' + k[1] + '</button>').join('') + '</div>' +

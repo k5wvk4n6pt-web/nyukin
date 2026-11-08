@@ -11,7 +11,10 @@
   function fromDate(d) { return { y: d.getFullYear(), m: d.getMonth() + 1, d: d.getDate() }; }
 
   /** その月の引落日（月末・31日などは月の最終日に合わせる） */
+  let closeCtx = { day: 10, shift: 'after' }; // 「締め日」を引落日にした項目のための、今の帳簿の締め日設定
+  function setCloseCtx(data) { closeCtx = closeSettings(data).d1; }
   function occurrence(item, y, m) {
+    if (item.day === 'close') { const c = closingOf(y, m, closeCtx); return { y: c.y, m: c.m, d: c.d }; }
     const ld = lastDay(y, m);
     const d = item.day === 'end' ? ld : Math.min(Number(item.day), ld);
     return { y, m, d };
@@ -67,6 +70,7 @@
   /** その月の実際の日付（休日なら設定どおりずらす）。orig に元の日付 */
   function actual(item, y, m, isIncome) {
     const o = occurrence(item, y, m);
+    if (item.day === 'close') return o; // 締め日はすでに始期日の休日の扱いで決まっているので、さらにずらさない
     const a = shiftDate(o, shiftMode(item, isIncome));
     return serial(a) === serial(o) ? o : Object.assign({ orig: o }, a);
   }
@@ -237,6 +241,7 @@
   }
 
   function compute(data, T) {
+    setCloseCtx(data);
     const cs = closeSettings(data);
     const W = windows(T, cs);
     // 非表示の項目・口座・収入は計算に含めない
@@ -312,7 +317,7 @@
     };
   }
 
-  const api = { startOf, VERSION: '2026.11.09a', amountFor, cycle, onceDate, deadlineLabel, closeSettings, nextClosing, closingOf, holidays, holidayName, isBusinessDay, shiftDate, shiftMode, actual, addDays, WD, lastDay, serial, addMonth, weekday, fromDate, occurrence, activeIn, windows, occurrencesIn, nextDate, compute };
+  const api = { startOf, setCloseCtx, VERSION: '2026.11.09b', amountFor, cycle, onceDate, deadlineLabel, closeSettings, nextClosing, closingOf, holidays, holidayName, isBusinessDay, shiftDate, shiftMode, actual, addDays, WD, lastDay, serial, addMonth, weekday, fromDate, occurrence, activeIn, windows, occurrencesIn, nextDate, compute };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.KCalc = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
