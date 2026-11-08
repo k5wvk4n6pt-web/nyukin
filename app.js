@@ -955,13 +955,14 @@
     const on = meta.reorder === 'income';
     if (on) return '<div class="card"><div class="pad">' + headHTML('収入', state.income.length + '件', 'income') + '</div>' + orderRows('income', state.income.map(i => ({ key: i.id, label: i.name, sub: incWhen(i) + (i.hidden ? '・非表示' : '') }))) + '</div>';
     const row = i => { const k = incKind(i);
-      return '<div class="irow' + (i.hidden ? ' is-hidden' : '') + '" data-inc-id="' + esc(i.id) + '">' +
+      return '<div class="irow' + (i.hidden ? ' is-hidden' : '') + (i.amount == null ? ' noamt' : '') + '" data-inc-id="' + esc(i.id) + '">' +
+        '<div class="irow-head"><span class="ih-kind">' + INKIND[k] + '・' + esc(incWhen(i)) + '</span>' + (i.amount == null ? '<span class="pst warn">金額未入力</span>' : '') + '</div>' +
         '<div class="irow-top"><input class="text" id="incname-' + esc(i.id) + '" value="' + esc(i.name) + '" aria-label="収入の名前">' +
         '<input class="amount" inputmode="numeric" enterkeyhint="done" autocomplete="off" id="incamt-' + esc(i.id) + '" data-inc="' + esc(i.id) + '" value="' + yenTxt(i.amount) + '" placeholder="金額" aria-label="' + esc(i.name) + 'の金額"></div>' +
         (k === 'once' ? '<div class="irow-bot"><label class="inl">入金日<input type="date" class="text" id="incdate-' + esc(i.id) + '" value="' + esc(i.date) + '"></label></div>'
           : (k === 'months' ? monthsPick('incmon-' + esc(i.id), i.months) : '') + '<div class="irow-bot">' + daySelect('incday-' + esc(i.id), i.day) + '</div>') +
         '<div class="irow-bot">' + shiftSelect('incshift-' + esc(i.id), i.shift || 'before', '入金日が休日のとき') + '</div>' +
-        '<div class="irow-bot"><span class="grow"></span>' + hideBtn(!!i.hidden, 'inchide') + '<button class="danger small" data-act="incdel">削除</button></div></div>'; };
+        '<div class="irow-bot irow-act"><span class="grow"></span>' + hideBtn(!!i.hidden, 'inchide') + '<button class="danger small" data-act="incdel" aria-label="「' + esc(i.name) + '」を削除">「' + esc(i.name.length > 8 ? i.name.slice(0, 8) + '…' : i.name) + '」を削除</button></div></div>'; };
     const groups = ['monthly', 'months', 'once'].map(k => { const l = state.income.filter(i => incKind(i) === k); return l.length ? '<div class="igroup"><div class="ig-h">' + INKIND[k] + '<span class="sub">' + l.length + '件</span></div>' + l.map(row).join('') + '</div>' : ''; }).join('');
     const nk = ['monthly', 'months', 'once'].includes(meta.incNewKind) ? meta.incNewKind : 'monthly';
     const T = today();

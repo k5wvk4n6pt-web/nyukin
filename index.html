@@ -1054,6 +1054,14 @@ label.inl input { flex: 1; min-width: 0; }
 .pn-row b { color: var(--short); white-space: nowrap; }
 .pn-row .pn-chev { color: #C98A00; font-size: 20px; }
 .backlink { min-height: 36px; padding: 4px 2px; margin-bottom: 4px; border: 0; background: none; color: var(--accent); font-size: 15px; font-weight: 700; }
+/* 収入：1件ずつ枠で囲んで、どのボタンがどの収入のものか分かるように */
+.igroup { gap: 10px; padding: 0 12px 12px; }
+.igroup .ig-h { padding: 10px 4px 0; }
+.irow, .igroup .irow { border: 1px solid var(--line); border-radius: 16px; background: var(--surface); box-shadow: var(--card-shadow); padding: 12px; border-top: 1px solid var(--line); }
+.irow.noamt { border-color: color-mix(in srgb, var(--warn) 55%, var(--line)); box-shadow: inset 4px 0 0 var(--warn), var(--card-shadow); }
+.irow-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; color: var(--muted); font-weight: 700; }
+.irow-act { border-top: 1px dashed var(--line); padding-top: 8px; }
+.irow-act .danger { max-width: 60%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (max-width: 360px) { .brand-ico, .brand-img, :root[data-color] .brand-img { display: none; } .roundbtn { width: 44px; height: 44px; } }
 </style>
 </head>
