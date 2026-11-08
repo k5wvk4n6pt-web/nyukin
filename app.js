@@ -1863,7 +1863,8 @@
     const col = proActive() ? colorOf() : 'blue';
     if (col === 'blue') root.removeAttribute('data-color'); else root.setAttribute('data-color', col);
     const dark = t === 'dark' || (t === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-    document.querySelectorAll('meta[name="theme-color"]').forEach(m => { m.setAttribute('content', dark ? '#17191E' : '#FBF8F4'); m.removeAttribute('media'); });
+    const TC = { blue: ['#E3EEFB', '#13213A'], pink: ['#F7CFDD', '#3A1D2E'], green: ['#C9EBD9', '#173327'], purple: ['#D9CEF7', '#241E3D'], orange: ['#F8D3B8', '#382315'] }[col];
+    document.querySelectorAll('meta[name="theme-color"]').forEach(m => { m.setAttribute('content', TC[dark ? 1 : 0]); m.removeAttribute('media'); });
 
   }
   function openTheme() {
