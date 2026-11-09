@@ -391,9 +391,9 @@
     const box = (cls, title, count, amount, sub, key) => '<div class="tot ' + cls + '"><span class="tl">' + title + '</span>' +
       '<span class="big num">' + nf.format(amount) + '<span class="yen">円</span></span><small>' + sub + '</small></div>';
     const cl = md(r.closing);
-    const short = box(r.shortfallTotal > 0 ? 'short' : 'zero', cl + 'までに不足', r.shortCount, r.shortfallTotal,
+    const short = box(r.shortfallTotal > 0 ? 'short' : 'zero', cl + 'までの不足', r.shortCount, r.shortfallTotal,
       r.shortCount ? r.shortCount + '口座・入金が必要' : '不足の口座はありません', 'short');
-    const plus = box(r.surplusTotal > 0 ? 'plus' : 'zero', cl + 'までの引落後の余り', r.surplusCount, r.surplusTotal,
+    const plus = box(r.surplusTotal > 0 ? 'plus' : 'zero', cl + 'までの余り', r.surplusCount, r.surplusTotal,
       r.surplusCount ? r.surplusCount + '口座' : '余りの口座はありません', 'plus');
     const showAll = serial2(r.endAll) > serial2(r.closing);
     const allLine = showAll ? '<div class="allline"><span>' + md(r.endAll) + 'まで見ると</span><span class="num">不足 <b>' + nf.format(r.shortTotalAll) + '円</b></span><span class="num">余り <b>' + nf.format(r.surplusTotalAll) + '円</b></span></div>' : '';
@@ -417,11 +417,21 @@
           : '<p class="sub" style="margin:0">余りのある口座はありません。</p>') +
         (exc.length ? '<p class="sub" style="margin:6px 0 0">余りに含めない口座：' + exc.map(b => esc(b.name) + '（' + nf.format(b.surplus) + '円）').join('、') + '</p>' : '') + '</div>';
     }
-    return '<div id="shortbox"><div class="tots">' + short + plus + '</div>' + detail + miss + '</div>';
+    // 不足と余りが両方あるときは、口座ごとの見方であることと、全体で足りるかを添える
+    let both = '';
+    if (r.shortfallTotal > 0 && r.surplusTotal > 0) {
+      const net = r.surplusTotal - r.shortfallTotal;
+      both = '<div class="sbnet ' + (net >= 0 ? 'ok' : 'bad') + '"><b>' + (net >= 0 ? '全体ではお金は足りています' : '全体でも ' + nf.format(-net) + '円 足りません') + '</b>' +
+        '<span>不足と余りは口座ごとに見ています。引き落とされる口座にお金がないと引き落とせないので、' +
+        (net >= 0 ? '余っている口座から、不足している口座へ ' + nf.format(r.shortfallTotal) + '円 移してください。' : '余っている口座から移したうえで、あと ' + nf.format(-net) + '円 の入金が必要です。') + '</span>' +
+        '<button class="small" data-act="xfer-any">口座間でお金を移す</button></div>';
+    }
+    return '<div id="shortbox"><div class="tots">' + short + plus + '</div>' + both + detail + miss + '</div>';
   }
 
   function bindSurBrk() {
     const box = main.querySelector('#shortbox'); if (!box) return;
+    box.querySelectorAll('[data-act="xfer-any"]').forEach(b => { if (b._x) return; b._x = 1; b.addEventListener('click', () => { if (accountCatalog().length < 2) { toast('口座が2つ以上必要です'); return; } openTransfer('', ''); }); });
     box.querySelectorAll('[data-sb]').forEach(b => b.addEventListener('click', () => {
       const cur = box.querySelector('.tot.sel'); const curKey = cur ? cur.dataset.sb : null;
       meta.sbSel = curKey === b.dataset.sb ? 'none' : b.dataset.sb; saveMeta();
