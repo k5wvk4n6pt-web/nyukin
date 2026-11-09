@@ -490,7 +490,7 @@
     const list = r.banks; if (!list.length) return '';
     const hide = !!meta.hideTotal;
     return '<section class="ballist" aria-label="口座ごとの残高">' + list.map((b, i) => '<div class="balrow">' + ICON.bank(BANK_COLORS[i % BANK_COLORS.length]) +
-      '<label class="bn" for="bl-' + esc(b.name) + '">' + esc(b.name) + (b.excluded ? '<small>余りに含めない</small>' : '') + '</label>' +
+      '<label class="bn" for="bl-' + esc(b.name) + '">' + esc(b.name) + (b.excluded ? '<small>合計に含めない</small>' : '') + '</label>' +
       (hide ? '<span class="bv num">¥ •••••</span>' : '<input class="amount' + (b.balance == null ? ' empty' : '') + '" id="bl-' + esc(b.name) + '" data-bal="' + esc(b.name) + '" inputmode="numeric" enterkeyhint="done" autocomplete="off" placeholder="未入力" value="' + (b.balance == null ? '' : yenTxt(b.balance)) + '">') + '</div>').join('') +
       '</section><p class="sub" style="margin:0">' + (hide ? '残高を入れ直すときは「残高を表示」を押してください。' : '金額を押すと、その場で残高を入れ直せます。') + '</p>';
   }
@@ -631,13 +631,14 @@
   const EYE = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
   const EYE_OFF = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18"/><path d="M10.6 5.1A10.6 10.6 0 0 1 12 5c6.4 0 10 7 10 7a17.8 17.8 0 0 1-3.2 4.1M6.6 6.6C3.7 8.4 2 12 2 12s3.6 7 10 7a9.9 9.9 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>';
   function totalInner(r) {
-    const withBal = r.banks.filter(b => b.balance != null);
-    const missing = r.banks.filter(b => b.active && b.balance == null).length;
+    const exN = r.banks.filter(b => b.excluded).length; // 「合計に含めない」口座は合計残高に入れない
+    const withBal = r.banks.filter(b => b.balance != null && !b.excluded);
+    const missing = r.banks.filter(b => b.active && b.balance == null && !b.excluded).length;
     const total = withBal.reduce((a, b) => a + b.balance, 0);
     const hide = !!meta.hideTotal;
     return '<span class="tl-lab">全口座の合計残高<button class="eye" data-act="eye" aria-pressed="' + hide + '">' + (hide ? EYE_OFF + '残高を表示' : EYE + '残高を隠す') + '</button></span>' +
       '<span class="tl-val num' + (hide ? ' masked' : '') + '">' + (hide ? '¥ ••••••' : '¥' + nf.format(total)) + '</span>' +
-      '<span class="tl-note">' + (withBal.length ? withBal.length + '口座の残高の合計' + (missing ? '（残高未入力の口座 ' + missing + '件）' : '') : '下の「銀行別の入金準備」で残高を入れると合計が出ます') + '</span>';
+      '<span class="tl-note">' + (withBal.length ? withBal.length + '口座の残高の合計' + (missing ? '（残高未入力の口座 ' + missing + '件）' : '') + (exN ? '・合計に含めない口座 ' + exN + '件' : '') : '下の「銀行別の入金準備」で残高を入れると合計が出ます') + '</span>';
   }
   function totalHTML(r) {
     return '<section class="totalcard" id="totalbal" aria-label="全口座の合計残高">' + ICON.coins.replace('<svg ', '<svg class="coins" ') + '<div class="tl-body" data-total>' + totalInner(r) + '</div></section>';
@@ -1129,7 +1130,7 @@
         '<input class="text" id="accname-' + i + '" value="' + esc(a) + '" aria-label="口座名">' +
         '<span class="sub nowrap">' + used(a) + '件</span></div>' +
         '<div class="srow sub-row' + (hiddenAcc().includes(a) ? ' is-hidden' : '') + '" data-acc-j="' + i + '">' +
-        '<label class="check"><input type="checkbox" data-act="accsurplus"' + (exclSurplus().includes(a) ? '' : ' checked') + '>余りの合計に含める</label>' +
+        '<label class="check"><input type="checkbox" data-act="accsurplus"' + (exclSurplus().includes(a) ? '' : ' checked') + '>合計に含める（合計残高・余りの合計）</label>' +
         hideBtn(hiddenAcc().includes(a), 'acchide') +
         '<button class="danger small" data-act="accdel">削除</button></div>').join('');
     const autoSw = '<div class="card form autodeduct"><label class="switchrow"><span><b>引落日に残高から引く</b><small>引落日になってアプリを開くと、その日の引き落とし額を口座の残高から自動で引きます（引落日以降に残高を入れ直した口座は引きません）</small></span><input type="checkbox" id="autoDeduct" role="switch"' + (state.autoDeduct !== false ? ' checked' : '') + '></label></div>';
@@ -1513,7 +1514,7 @@
       row.querySelector('[data-act="accsurplus"]').addEventListener('change', e => {
         const ex = exclSurplus();
         state.excludeSurplus = e.target.checked ? ex.filter(a => a !== old) : ex.concat(old);
-        save(); toast(e.target.checked ? '「' + old + '」を余りの合計に含めます' : '「' + old + '」を余りの合計に含めません');
+        save(); toast(e.target.checked ? '「' + old + '」を合計残高と余りの合計に含めます' : '「' + old + '」を合計残高と余りの合計に含めません');
       });
       row.querySelector('input').addEventListener('change', e => {
         const n = e.target.value.trim();
