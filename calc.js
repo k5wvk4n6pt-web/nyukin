@@ -247,6 +247,9 @@
     // 非表示の項目・口座・収入は計算に含めない
     const hiddenAcc = new Set(data.hiddenAccounts || []);
     const exclSurplus = new Set(data.excludeSurplus || []);
+    // 今日の引き落としで、もう残高から引いたものは「これから必要な額」に入れない（二重に数えないため）
+    const p2 = n => (n < 10 ? '0' : '') + n, isoS = d => d.y + '-' + p2(d.m) + '-' + p2(d.d), tIso = isoS(T);
+    const paidToday = new Set((data.history || []).filter(h => h && h.deducted && h.src && h.date === tIso).map(h => h.src));
     const items = []
       .concat((data.variable || []).filter(x => !x.hidden).map(x => Object.assign({ kind: '変動費' }, x)))
       .concat((data.fixed || []).filter(x => !x.hidden).map(x => Object.assign({ kind: '固定費' }, x)))
@@ -259,6 +262,7 @@
         if (it.account !== name) continue;
         for (const w of W) {
           for (const o of occurrencesIn(it, w.from, w.to)) {
+            if (paidToday.has(it.id) && isoS(o) === tIso) continue;
             const amt = amountFor(it, o);
             if (amt == null) { b.unentered++; if (w.inClose) b.unenteredDue++; }
             else b.sums[w.key] += Number(amt);
@@ -317,7 +321,7 @@
     };
   }
 
-  const api = { startOf, setCloseCtx, VERSION: '2026.11.09b', amountFor, cycle, onceDate, deadlineLabel, closeSettings, nextClosing, closingOf, holidays, holidayName, isBusinessDay, shiftDate, shiftMode, actual, addDays, WD, lastDay, serial, addMonth, weekday, fromDate, occurrence, activeIn, windows, occurrencesIn, nextDate, compute };
+  const api = { startOf, setCloseCtx, VERSION: '2026.11.10a', amountFor, cycle, onceDate, deadlineLabel, closeSettings, nextClosing, closingOf, holidays, holidayName, isBusinessDay, shiftDate, shiftMode, actual, addDays, WD, lastDay, serial, addMonth, weekday, fromDate, occurrence, activeIn, windows, occurrencesIn, nextDate, compute };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.KCalc = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
