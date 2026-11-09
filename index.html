@@ -1038,6 +1038,12 @@ input[type="date"]::-webkit-date-and-time-value, input[type="month"]::-webkit-da
 .recsw { margin-bottom: 0; }
 .probadge.sm { padding: 1px 6px; font-size: 10px; margin-right: 6px; vertical-align: 1px; }
 .prosheet h2 { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+.paidrow { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--line); }
+.paidrow .paidok { color: var(--ok, #2E7D5B); font-weight: 700; font-size: 13px; }
+.paidrow button { white-space: nowrap; }
+.paidbtns { flex-direction: column; align-items: stretch; }
+.paidbtns > button { flex: 0 0 auto; width: 100%; }
 .fd-lh { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px; }
 .fd-lh b { color: var(--navy); font-size: 15px; }
 .fd-lh .sub { font-size: 12px; }

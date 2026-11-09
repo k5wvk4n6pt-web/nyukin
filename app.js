@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   const C = window.KCalc;
-  const APP_VERSION = '2026.11.10b';
+  const APP_VERSION = '2026.11.10c';
   /** ファイルの一部だけが新しい（アップロード漏れ・古いキャッシュ）と計算が合わなくなるので知らせる */
   /** 古いままのファイル名（なければ空）。native.js は中身が変わったときだけ気にする */
   function staleFiles() {
@@ -704,8 +704,8 @@
         if (it.hidden || hiddenAcc.has(it.account) || !state.accounts.includes(it.account)) continue;
         for (const o of C.occurrencesIn(it, from, cy.to, false)) {
           const amt = C.amountFor(it, o); if (amt === 0) continue;
-          if (amt == null) { unentered++; items.push({ name: it.name, account: it.account, date: isoOf(o), amount: null, past: false }); continue; }
-          expense += amt; items.push({ name: it.name, account: it.account, date: isoOf(o), amount: amt, past: false });
+          if (amt == null) { unentered++; items.push({ name: it.name, account: it.account, date: isoOf(o), amount: null, past: false, src: it.id }); continue; }
+          expense += amt; items.push({ name: it.name, account: it.account, date: isoOf(o), amount: amt, past: false, src: it.id });
         }
       }
     }
@@ -766,8 +766,13 @@
     const label = schedOff === 0 ? '今回' : schedOff === -1 ? '前回' : schedOff === 1 ? '次回' : schedOff > 0 ? schedOff + '回あと' : -schedOff + '回前';
     const tIso = isoOf(today());
     const list = d.items.slice().sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
+    const todayRec = src => (state.history || []).find(h => h.src === src && h.date === tIso);
     const rows = list.map(x => { const o = isoToObj(x.date); const done = x.date < tIso;
-      return '<div class="srow2' + (done ? ' done' : '') + '"><span class="ndate">' + mdw(o) + '</span><span class="nico">' + lineIcon(x.name) + '</span><span class="nname">' + esc(x.name) + '<small>' + esc(x.account) + (done ? '・引落済み' : '') + '</small></span><span class="namt num">' + (x.amount == null ? '<span class="flag">未入力</span>' : '¥' + nf.format(x.amount)) + '</span></div>'; }).join('');
+      let act = '';
+      if (!x.past && x.date === tIso && x.amount != null && x.src) { const h = todayRec(x.src);
+        if (h && h.paid) act = '<div class="paidrow"><span class="paidok">✓ 引落完了' + (h.deducted ? '（残高から引きました）' : '') + '</span><button class="small" data-unpaid="' + esc(x.src) + '">取り消す</button></div>';
+        else if (h) act = '<div class="paidrow"><span class="sub">今日の引き落とし</span><button class="small primary" data-paid="' + esc(x.src) + '">引落完了</button></div>'; }
+      return '<div class="srow2' + (done ? ' done' : '') + '"><span class="ndate">' + mdw(o) + '</span><span class="nico">' + lineIcon(x.name) + '</span><span class="nname">' + esc(x.name) + '<small>' + esc(x.account) + (done ? '・引落済み' : '') + '</small></span><span class="namt num">' + (x.amount == null ? '<span class="flag">未入力</span>' : '¥' + nf.format(x.amount)) + '</span>' + act + '</div>'; }).join('');
     return '<section class="schedcard"><div class="sc-nav"><button class="small" data-sched="-1" aria-label="前の締め期間">‹</button><div class="sc-t"><b>' + label + '（' + md(d.to) + '締め）</b><span class="sub">' + md(d.from) + '〜' + md(d.to) + '</span></div><button class="small" data-sched="1" aria-label="次の締め期間">›</button></div>' +
       (rows ? '<div class="sc-list">' + rows + '</div>' : '<p class="sub" style="margin:0;padding:8px 2px">この期間の引き落としはありません。</p>') +
       '<div class="sc-total"><span>合計 ' + list.length + '件</span><b class="num">¥' + nf.format(d.expense) + '</b></div>' +
@@ -777,6 +782,30 @@
   }
   function bindSched() {
     main.querySelectorAll('[data-sched]').forEach(b => b.addEventListener('click', () => { schedOff += Number(b.dataset.sched); const sb = $('#schedBox'); if (sb) { sb.innerHTML = schedHTML(); bindSched(); } }));
+    main.querySelectorAll('[data-paid]').forEach(b => b.addEventListener('click', () => openPaid(b.dataset.paid)));
+    main.querySelectorAll('[data-unpaid]').forEach(b => b.addEventListener('click', () => {
+      const h = (state.history || []).find(x => x.src === b.dataset.unpaid && x.date === isoToday()); if (!h) return;
+      if (h.deducted) { const bal = state.balances[h.account]; if (bal && bal.amount != null) bal.amount += h.amount; }
+      h.paid = false; h.deducted = false; h.deductChecked = false; save(); renderKeep(); toast('「' + h.name + '」の引落完了を取り消しました' + (h.amount ? '' : ''));
+    }));
+  }
+  /** 当日の引き落としを「完了」にする（残高から引くか、もう直したかを選ぶ） */
+  function openPaid(src) {
+    const h = (state.history || []).find(x => x.src === src && x.date === isoToday()); if (!h) return;
+    const bal = state.balances[h.account]; const hasBal = bal && bal.amount != null;
+    const m = $('#modal');
+    m.innerHTML = '<div class="sheet form" role="dialog" aria-modal="true" aria-labelledby="mt"><h2 id="mt">引落完了にする</h2>' +
+      '<p style="margin:0"><b>' + esc(h.name) + '</b>（' + esc(h.account) + '）<br><b class="num">¥' + nf.format(h.amount) + '</b> の引き落としが済みましたか？</p>' +
+      (hasBal ? '<p class="sub" style="margin:0">今の残高：¥' + nf.format(bal.amount) + ' → 引くと ¥' + nf.format(bal.amount - h.amount) + '</p>' : '<p class="sub" style="margin:0">この口座は残高が未入力です。</p>') +
+      '<div class="btnrow paidbtns">' +
+      (hasBal ? '<button id="pd-sub" class="primary">残高から ¥' + nf.format(h.amount) + ' 引く</button>' : '') +
+      '<button id="pd-keep">' + (hasBal ? '残高はもう直した（引かない）' : '完了にする') + '</button><button id="mCancel">やめる</button></div></div>';
+    m.hidden = false;
+    const close = () => { m.hidden = true; m.innerHTML = ''; };
+    $('#mCancel').onclick = close; m.onclick = e => { if (e.target === m) close(); };
+    const done = sub => { if (sub && hasBal) { bal.amount -= h.amount; h.deducted = true; } else h.deducted = false; h.paid = true; h.deductChecked = true; save(); close(); renderKeep(); toast('「' + h.name + '」を引落完了にしました' + (sub && hasBal ? '（残高から引きました）' : '')); };
+    if (hasBal) $('#pd-sub').onclick = () => done(true);
+    $('#pd-keep').onclick = () => done(false);
   }
   function niceStep(v) { const p = Math.pow(10, Math.floor(Math.log10(v || 1))); const n = v / p; return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10) * p; }
   function bindBack() {
@@ -1133,7 +1162,7 @@
         '<label class="check"><input type="checkbox" data-act="accsurplus"' + (exclSurplus().includes(a) ? '' : ' checked') + '>合計に含める（合計残高・余りの合計）</label>' +
         hideBtn(hiddenAcc().includes(a), 'acchide') +
         '<button class="danger small" data-act="accdel">削除</button></div>').join('');
-    const autoSw = '<div class="card form autodeduct"><label class="switchrow"><span><b>引落日に残高から引く</b><small>引落日になってアプリを開くと、その日の引き落とし額を口座の残高から自動で引きます（引落日に残高を入れ直した口座は、引き落とし後の残高を入れたものとして扱い、引きません）</small></span><input type="checkbox" id="autoDeduct" role="switch"' + (state.autoDeduct !== false ? ' checked' : '') + '></label></div>';
+    const autoSw = '<div class="card form autodeduct"><label class="switchrow"><span><b>引落日が過ぎたら残高から引く</b><small>引落日の当日は、引落予定の「引落完了」を押すと残高から引けます。押さなかった分は、翌日にアプリを開いたときに自動で引きます（引落日以降に残高を入れ直した口座は引きません）</small></span><input type="checkbox" id="autoDeduct" role="switch"' + (state.autoDeduct !== false ? ' checked' : '') + '></label></div>';
     return autoSw + '<div class="card">' + '<div class="pad">' + headHTML('口座', state.accounts.length + '口座', 'accounts') +
       '<p class="sub" style="margin:0">準備ページは引落の近い口座から並びます。同じ日の口座は、ここでの並び順になります。名前を変えると、その口座の引落もまとめて変わります。</p></div>' +
       list + (on ? '' : '<div class="srow add-row"><input class="text" id="accnew" placeholder="新しい口座名" aria-label="新しい口座名"><button class="small" data-act="accadd">追加</button></div>') + '</div>';
@@ -2087,7 +2116,7 @@
     if (state.autoDeduct === false) return;
     const done = {};
     for (const h of state.history || []) {
-      if (!h.auto || h.deductChecked || h.date < state.deductSince || h.date > todayIso) continue; // 引落日の当日から引く
+      if (!h.auto || h.deductChecked || h.paid || h.date < state.deductSince || h.date >= todayIso) continue; // 当日は「引落完了」ボタンで。押さなかった分は翌日に引く
       h.deductChecked = true;
       if (h.amount == null || h.amount === 0) continue;
       const b = state.balances[h.account];
