@@ -423,15 +423,14 @@
       const net = r.surplusTotal - r.shortfallTotal;
       both = '<div class="sbnet ' + (net >= 0 ? 'ok' : 'bad') + '"><b>' + (net >= 0 ? '全体ではお金は足りています' : '全体でも ' + nf.format(-net) + '円 足りません') + '</b>' +
         '<span>不足と余りは口座ごとに見ています。引き落とされる口座にお金がないと引き落とせないので、' +
-        (net >= 0 ? '余っている口座から、不足している口座へ ' + nf.format(r.shortfallTotal) + '円 移してください。' : '余っている口座から移したうえで、あと ' + nf.format(-net) + '円 の入金が必要です。') + '</span>' +
-        '<button class="small" data-act="xfer-any">口座間でお金を移す</button></div>';
+        (net >= 0 ? '銀行で、余っている口座から不足している口座へ ' + nf.format(r.shortfallTotal) + '円 入金してください。' : '銀行で、余っている口座から不足している口座へ入金したうえで、あと ' + nf.format(-net) + '円 の入金が必要です。') + '</span>' +
+        '</div>';
     }
     return '<div id="shortbox"><div class="tots">' + short + plus + '</div>' + both + detail + miss + '</div>';
   }
 
   function bindSurBrk() {
     const box = main.querySelector('#shortbox'); if (!box) return;
-    box.querySelectorAll('[data-act="xfer-any"]').forEach(b => { if (b._x) return; b._x = 1; b.addEventListener('click', () => { if (accountCatalog().length < 2) { toast('口座が2つ以上必要です'); return; } openTransfer('', ''); }); });
     box.querySelectorAll('[data-sb]').forEach(b => b.addEventListener('click', () => {
       const cur = box.querySelector('.tot.sel'); const curKey = cur ? cur.dataset.sb : null;
       meta.sbSel = curKey === b.dataset.sb ? 'none' : b.dataset.sb; saveMeta();
