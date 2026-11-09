@@ -682,7 +682,8 @@
   }
   let flowSide = 'out'; // 下の明細：'in'=収入、'out'=支出
   let flowSel = 0; // 0=今回の締め期間、-1=前回…
-  const FLOW_FROM = -5, FLOW_TO = 1;
+  const FLOW_TO = 1;
+  const flowFrom = () => proActive() ? -5 : -2; // 無料は直近3期間まで（それより前はプレミアム）
   /** 1つの締め期間の収支。過ぎた日は「記録」、今日以降は登録内容から */
   function flowData(off) {
     const T = today(), tIso = isoOf(T);
@@ -718,7 +719,8 @@
     return { off, from: cy.from, to: cy.to, income, incomeMissing, expense, unentered, items, incItems, diff: income - expense, noRecord: pastOnly && !recorded, noIncRecord: pastOnly && !incRecorded };
   }
   function flowHTML() {
-    const data = []; for (let o = FLOW_FROM; o <= FLOW_TO; o++) data.push(flowData(o));
+    const FROM = flowFrom(); if (flowSel < FROM) flowSel = 0;
+    const data = []; for (let o = FROM; o <= FLOW_TO; o++) data.push(flowData(o));
     const max = Math.max(1, ...data.map(d => Math.max(d.income, d.expense)));
     const step = niceStep(max / 3), top = Math.ceil(max / step) * step;
     const W = 340, H = 190, L = 34, Rr = 6, T0 = 14, B = 34, ch = H - T0 - B, gw = (W - L - Rr) / data.length, bw = Math.min(14, gw / 2 - 4);
@@ -736,7 +738,7 @@
     });
     g += '<text x="' + (L - 2) + '" y="' + (H - B + 15) + '" class="fg-ax fg-axlab" text-anchor="end">始期日</text>';
     const svg = '<svg class="flowchart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="始期日ごとの収入と支出">' + g + '</svg>';
-    const d = data.find(x => x.off === flowSel) || data[-FLOW_FROM];
+    const d = data.find(x => x.off === flowSel) || data.find(x => x.off === 0);
     const neg = d.diff < 0;
     const side = flowSide === 'in' ? 'in' : 'out';
     const tIso = isoToday();
@@ -751,8 +753,9 @@
       (d.noRecord || d.noIncRecord ? '<p class="sub" style="margin:0">この期間は' + (d.noRecord && d.noIncRecord ? '引き落としと収入' : d.noRecord ? '引き落とし' : '収入') + 'の記録がないため、0円になっています。</p>' : '') +
       '<div class="fd-lh"><span><b>' + (side === 'in' ? '収入' : '支出') + 'の明細</b><span class="sub">' + lst.length + '件' + (lst.some(x => x.past) ? '・済みの行は押すと直せます' : '') + '</span></span><button class="small primary" data-act="frec-add">＋ 記録を追加</button></div>' +
       (rowsH ? '<div class="fd-list">' + rowsH + '</div>' : '<p class="sub" style="margin:0">この期間の' + (side === 'in' ? '収入' : '支出') + 'はありません。</p>') +
-      '<div class="fd-tools"><button class="small" data-act="frec-back">' + (side === 'in' ? '登録している収入を記録にまとめて反映' : '固定費を記録にまとめて反映') + '</button><button class="small" data-act="frec-csv">この期間をCSVで書き出す</button></div></div>';
+      '<div class="fd-tools"><button class="small" data-act="frec-back">' + proMark() + (side === 'in' ? '登録している収入を記録にまとめて反映' : '固定費を記録にまとめて反映') + '</button><button class="small" data-act="frec-csv">' + proMark() + 'この期間をCSVで書き出す</button></div></div>';
     return '<section class="flowcard"><div class="fg-legend"><span><i class="sw in"></i>収入</span><span><i class="sw out"></i>支出</span><span class="sub">棒を押すと内訳</span></div>' + svg + detail +
+      (proActive() ? '' : '<p class="note" style="margin:0"><span class="probadge">プレミアム</span> それより前の期間の収支は、プレミアムで見られます。<button class="linkbtn" data-act="pro-info" data-what="過去の収支記録">くわしく</button></p>') +
       '<p class="note" style="margin:0">過ぎた日は「記録」（引き落とし・収入）、今日からあとは登録している金額で計算しています。</p></section>';
   }
   /* ---------- 締め期間ごとの引落予定 ---------- */
@@ -784,6 +787,7 @@
     main.querySelectorAll('[data-fside]').forEach(b => b.addEventListener('click', () => { flowSide = b.dataset.fside; redraw(); }));
     const fd = flowData(flowSel); const tI = isoToday();
     const baseMonth = () => { histMonth = ymOf(isoOf(fd.to) < tI ? isoOf(fd.to) : tI); flowRange = { from: fd.from, to: fd.to, off: flowSel }; };
+    main.querySelectorAll('#flowBox [data-act="pro-info"]').forEach(b => b.addEventListener('click', () => openProSheet(b.dataset.what)));
     main.querySelectorAll('[data-act="frec-add"]').forEach(b => b.addEventListener('click', () => { baseMonth(); flowSide === 'in' ? openIncEdit(null) : openHistEdit(null); }));
     main.querySelectorAll('[data-act="frec-back"]').forEach(b => b.addEventListener('click', () => { baseMonth(); flowSide === 'in' ? openIncBack() : openFixBack(); }));
     main.querySelectorAll('[data-act="frec-csv"]').forEach(b => b.addEventListener('click', () => exportFlowCSV(flowSide === 'in' ? 'in' : 'out', fd)));
@@ -1142,10 +1146,11 @@
     return '<div class="card"><div class="pad"><div class="section-head"><h2>帳簿</h2><span class="sub">' + books.list.length + '冊</span></div>' +
       '<p class="sub" style="margin:0">人ごとに別の帳簿で管理できます。口座・支出・収入・残高・期限は帳簿ごとに別々です。画面上の名前をタップすると切り替わります。</p></div>' +
       rows +
-      '<div class="srow add-row"><input class="text" id="booknew" placeholder="新しい帳簿の名前（例：母）" aria-label="新しい帳簿の名前"><button class="small" data-act="book-add-do">追加</button></div></div>';
+      '<div class="srow add-row"><input class="text" id="booknew" placeholder="新しい帳簿の名前（例：母）" aria-label="新しい帳簿の名前"><button class="small" data-act="book-add-do">' + (books && books.list && books.list.length >= 1 ? proMark() : '') + '追加</button></div></div>';
   }
   function addBook(name) {
     ensureBooks();
+    if (books.list.length >= 1 && needPro('帳簿の追加')) return false;
     if (books.list.some(b => b.name === name)) { toast('同じ名前の帳簿があります'); return false; }
     save(); // 今の帳簿を確実に保存
     const id = uid('b');
@@ -1199,9 +1204,45 @@
     if (!(N.isNative && N.proStatus)) return '<p class="note"><span class="probadge">プレミアム</span> ' + esc(what) + 'は、<b>iPhoneアプリ版（App Store）のプレミアム</b>で使えます。' + (what === '引落前のお知らせ' ? '' : '<button class="linkbtn" data-act="owner-code">コードをお持ちの方</button>') + '</p>';
     if (pro.owned) return '<p class="proline ok">✓ プレミアムをご利用中です。ありがとうございます。</p>';
     return '<div class="procard"><div class="protitle"><span class="probadge">プレミアム</span>' + esc(what) + 'はプレミアムの機能です</div>' +
-      '<p class="sub">一度購入すれば、ずっと使えます（買い切り・月額料金なし）。プレミアムでは「引落前のお知らせ」と「アプリの色」が使えます。同じApple IDなら機種変更しても使えます。</p>' +
+      '<p class="sub">一度購入すれば、ずっと使えます（買い切り・月額料金なし）。プレミアムでは「引落前のお知らせ」「アプリの色・アイコン」「帳簿の追加（家族の分など）」「過去の収支記録」「CSVの書き出し」「まとめて反映」が使えます。同じApple IDなら機種変更しても使えます。</p>' +
       '<div class="btnrow"><button class="primary" data-act="pro-buy"' + (pro.busy || (pro.checked && !pro.available) ? ' disabled' : '') + '>' + (pro.busy ? '処理中…' : pro.price ? pro.price + 'で購入する' : pro.checked ? '現在購入できません' : '確認中…') + '</button>' +
       '<button data-act="pro-restore"' + (pro.busy ? ' disabled' : '') + '>購入を復元</button></div></div>';
+  }
+  const proMark = () => proActive() ? '' : '<span class="probadge sm">プレミアム</span>';
+  /** プレミアムでないときは案内を出して true を返す */
+  function needPro(what) { if (proActive()) return false; openProSheet(what); return true; }
+  /** プレミアムの案内（購入・復元・コード入力）をシートで出す */
+  function openProSheet(what) {
+    const m = $('#modal');
+    const draw = () => {
+      m.innerHTML = '<div class="sheet form prosheet" role="dialog" aria-modal="true" aria-labelledby="mt"><h2 id="mt"><span class="probadge">プレミアム</span> ' + esc(what) + '</h2>' +
+        proHTML(what) + (N.isNative && N.proStatus ? '' : '<p class="sub" style="margin:0">プレミアムでできること：引落前のお知らせ、アプリの色・アイコン、帳簿の追加（家族の分など）、過去の収支記録、CSVの書き出し、まとめて反映</p>') +
+        '<div class="btnrow"><button id="mCancel">閉じる</button></div></div>';
+      m.hidden = false;
+      $('#mCancel').onclick = close; m.onclick = e => { if (e.target === m) close(); };
+      const buy = m.querySelector('[data-act="pro-buy"]');
+      if (buy) buy.addEventListener('click', async () => {
+        pro.busy = true; draw();
+        const r = await N.proPurchase(); pro.busy = false;
+        if (r.owned) { pro.owned = true; toast('プレミアムを購入しました。ありがとうございます'); }
+        else if (r.reason === 'pending') toast('購入の承認待ちです（ファミリー共有の承認など）');
+        else if (r.reason === 'notfound') toast('現在購入できません。時間をおいてお試しください');
+        else if (r.reason && r.reason !== 'cancelled') toast('購入できませんでした');
+        cachePro(); applyTheme(); applyNotify();
+        if (pro.owned) { close(); renderKeep(); } else draw();
+      });
+      const rs = m.querySelector('[data-act="pro-restore"]');
+      if (rs) rs.addEventListener('click', async () => {
+        pro.busy = true; draw();
+        const r = await N.proRestore(); pro.busy = false; pro.owned = !!r.owned;
+        toast(r.owned ? '購入を復元しました' : 'このApple IDでの購入は見つかりませんでした');
+        cachePro(); applyTheme(); applyNotify();
+        if (pro.owned) { close(); renderKeep(); } else draw();
+      });
+      const oc = m.querySelector('[data-act="owner-code"]'); if (oc) oc.addEventListener('click', () => { close(); openOwnerCode(); });
+    };
+    const close = () => { m.hidden = true; m.innerHTML = ''; };
+    draw();
   }
   /** 起動直後に色がちらつかないよう、確認できた購入状態を覚えておく（確認のたびに上書き） */
   function cachePro() { meta.proSeen = !!pro.owned; saveMeta(); }
@@ -2154,6 +2195,7 @@
     return out.sort((a, b) => a.date < b.date ? -1 : 1);
   }
   function openIncBack() {
+    if (needPro('まとめて反映')) return;
     const ym = histMonth || isoToday().slice(0, 7); const [yy, mm] = ym.split('-').map(Number);
     const m = $('#modal'); const opts = backOpts(ym); void yy; void mm;
     m.innerHTML = '<div class="sheet form" role="dialog" aria-modal="true" aria-labelledby="mt"><h2 id="mt">収入を記録に反映</h2>' +
@@ -2301,6 +2343,7 @@
     return out.sort((a, b) => a.date < b.date ? -1 : 1);
   }
   function openFixBack() {
+    if (needPro('まとめて反映')) return;
     const ym = histMonth || isoToday().slice(0, 7); const [yy, mm] = ym.split('-').map(Number);
     const m = $('#modal');
     const opts = backOpts(ym); void yy; void mm;
@@ -2346,6 +2389,7 @@
   }
   /** 収支記録の、いま選んでいる期間の明細をCSVにする（済みは記録、これからは予定） */
   async function exportFlowCSV(side, d) {
+    if (needPro('CSVの書き出し')) return;
     const lst = (side === 'in' ? d.incItems : d.items).slice().sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
     if (!lst.length) { toast('書き出す明細がありません'); return; }
     const q = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
@@ -2360,6 +2404,7 @@
     const url = URL.createObjectURL(file); const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 4000);
   }
   async function exportCSV(scope) {
+    if (needPro('CSVの書き出し')) return;
     const rows = (state.history || []).filter(h => scope === 'all' || ymOf(h.date) === histMonth).slice().sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
     if (!rows.length) { toast('書き出す記録がありません'); return; }
     const q = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
@@ -2610,7 +2655,7 @@
   fabAdd.addEventListener('click', () => meta.page === 'income' ? openIncAddSheet(meta.incNewKind) : openAddSheet(meta.page === 'fixed' ? 'fixed' : 'variable'));
   $('#books').addEventListener('click', e => {
     const b = e.target.closest('[data-book]'); if (b) { switchBook(b.dataset.book); return; }
-    if (e.target.closest('[data-act="book-add"]')) { meta.page = 'settings'; meta.stab = 'books'; meta.reorder = null; saveMeta(); renderAll(); window.scrollTo(0, 0); const n = $('#booknew'); if (n) n.focus(); }
+    if (e.target.closest('[data-act="book-add"]')) { ensureBooks(); if (books.list.length >= 1 && needPro('帳簿の追加')) return; meta.page = 'settings'; meta.stab = 'books'; meta.reorder = null; saveMeta(); renderAll(); window.scrollTo(0, 0); const n = $('#booknew'); if (n) n.focus(); }
   });
 
   /* ---------- 起動 ---------- */
