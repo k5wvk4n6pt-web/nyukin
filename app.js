@@ -2081,18 +2081,39 @@
   function isoToday() { return isoOf(today()); }
   function isoToObj(iso) { const [y, m, d] = iso.split('-').map(Number); return { y, m, d }; }
   /** 引落日が来た分を自動で記録する（初めて使った日から。消した記録は作り直さない） */
+  /** 今日の引き落としは、その日に追加・変更したものも記録にそろえる（「引落完了」を押せるように） */
+  function syncToday(iso, hiddenAcc, kinds) {
+    const T = isoToObj(iso); let added = 0;
+    const live = new Set();
+    for (const [k, label] of kinds) {
+      for (const it of (state[k] || [])) {
+        if (it.hidden || hiddenAcc.has(it.account) || !state.accounts.includes(it.account)) continue;
+        for (const o of C.occurrencesIn(it, T, T, false)) {
+          const amt = C.amountFor(it, o); if (amt === 0) continue;
+          live.add(it.id);
+          const h = state.history.find(x => x.src === it.id && x.date === iso);
+          if (!h) { state.history.push({ id: uid('h'), date: iso, name: it.name, account: it.account, amount: amt, kind: label, src: it.id, auto: true, edited: false }); added++; }
+          else if (h.auto && !h.paid && !h.edited && (h.name !== it.name || h.account !== it.account || h.amount !== amt)) { Object.assign(h, { name: it.name, account: it.account, amount: amt, kind: label }); added++; }
+        }
+      }
+    }
+    // 今日の予定から外れたもの（削除・日付の変更など）で、まだ完了にしていない記録は消す
+    const before = state.history.length;
+    state.history = state.history.filter(h => !(h.date === iso && h.auto && !h.paid && !h.edited && h.src && !live.has(h.src)));
+    return added + (before - state.history.length);
+  }
   function recordPast() {
     if (!state) return;
     const T = today(), iso = isoOf(T);
     state.history = state.history || [];
     if (!state.historySince) { state.historySince = iso; }
     const startIso = state.historyUntil ? isoOf(C.addDays(isoToObj(state.historyUntil), 1)) : state.historySince;
-    if (startIso > iso) return;
+    const newDay = startIso <= iso;
     const from = isoToObj(startIso);
     const hiddenAcc = new Set(state.hiddenAccounts || []);
     const kinds = [['variable', '変動費'], ['fixed', '固定費'], ['once', '1回のみ']];
     let added = 0;
-    for (const [k, label] of kinds) {
+    if (newDay) for (const [k, label] of kinds) {
       for (const it of (state[k] || [])) {
         if (it.hidden || hiddenAcc.has(it.account) || !state.accounts.includes(it.account)) continue;
         for (const o of C.occurrencesIn(it, from, T, false)) {
@@ -2104,7 +2125,9 @@
       }
     }
     state.historyUntil = iso;
+    added += syncToday(iso, hiddenAcc, kinds);
     if (added) state.history.sort((a, b) => a.date < b.date ? 1 : a.date > b.date ? -1 : 0);
+    if (!newDay && !added) return; // 今日の分はもう記録済みで、変わったところもない
     deductPast(iso);
     recordIncome(iso);
     save();
