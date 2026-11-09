@@ -249,7 +249,9 @@
     const exclSurplus = new Set(data.excludeSurplus || []);
     // 今日の引き落としで、もう残高から引いたものは「これから必要な額」に入れない（二重に数えないため）
     const p2 = n => (n < 10 ? '0' : '') + n, isoS = d => d.y + '-' + p2(d.m) + '-' + p2(d.d), tIso = isoS(T);
-    const paidToday = new Set((data.history || []).filter(h => h && h.deducted && h.src && h.date === tIso).map(h => h.src));
+    // 引落日に残高を入れ直した口座は、引き落とし後の残高を入れたものとして扱う
+    const balToday = name => { const u = ((data.balances || {})[name] || {}).updatedAt; if (!u) return false; const d = new Date(u); return !isNaN(d) && isoS({ y: d.getFullYear(), m: d.getMonth() + 1, d: d.getDate() }) >= tIso; };
+    const paidToday = new Set((data.history || []).filter(h => h && h.src && h.date === tIso && h.amount != null && (h.deducted || balToday(h.account))).map(h => h.src));
     const items = []
       .concat((data.variable || []).filter(x => !x.hidden).map(x => Object.assign({ kind: '変動費' }, x)))
       .concat((data.fixed || []).filter(x => !x.hidden).map(x => Object.assign({ kind: '固定費' }, x)))
@@ -321,7 +323,7 @@
     };
   }
 
-  const api = { startOf, setCloseCtx, VERSION: '2026.11.10a', amountFor, cycle, onceDate, deadlineLabel, closeSettings, nextClosing, closingOf, holidays, holidayName, isBusinessDay, shiftDate, shiftMode, actual, addDays, WD, lastDay, serial, addMonth, weekday, fromDate, occurrence, activeIn, windows, occurrencesIn, nextDate, compute };
+  const api = { startOf, setCloseCtx, VERSION: '2026.11.10b', amountFor, cycle, onceDate, deadlineLabel, closeSettings, nextClosing, closingOf, holidays, holidayName, isBusinessDay, shiftDate, shiftMode, actual, addDays, WD, lastDay, serial, addMonth, weekday, fromDate, occurrence, activeIn, windows, occurrencesIn, nextDate, compute };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.KCalc = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

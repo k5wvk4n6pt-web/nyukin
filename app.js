@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   const C = window.KCalc;
-  const APP_VERSION = '2026.11.10a';
+  const APP_VERSION = '2026.11.10b';
   /** ファイルの一部だけが新しい（アップロード漏れ・古いキャッシュ）と計算が合わなくなるので知らせる */
   /** 古いままのファイル名（なければ空）。native.js は中身が変わったときだけ気にする */
   function staleFiles() {
@@ -1133,7 +1133,7 @@
         '<label class="check"><input type="checkbox" data-act="accsurplus"' + (exclSurplus().includes(a) ? '' : ' checked') + '>合計に含める（合計残高・余りの合計）</label>' +
         hideBtn(hiddenAcc().includes(a), 'acchide') +
         '<button class="danger small" data-act="accdel">削除</button></div>').join('');
-    const autoSw = '<div class="card form autodeduct"><label class="switchrow"><span><b>引落日に残高から引く</b><small>引落日になってアプリを開くと、その日の引き落とし額を口座の残高から自動で引きます（引落日以降に残高を入れ直した口座は引きません）</small></span><input type="checkbox" id="autoDeduct" role="switch"' + (state.autoDeduct !== false ? ' checked' : '') + '></label></div>';
+    const autoSw = '<div class="card form autodeduct"><label class="switchrow"><span><b>引落日に残高から引く</b><small>引落日になってアプリを開くと、その日の引き落とし額を口座の残高から自動で引きます（引落日に残高を入れ直した口座は、引き落とし後の残高を入れたものとして扱い、引きません）</small></span><input type="checkbox" id="autoDeduct" role="switch"' + (state.autoDeduct !== false ? ' checked' : '') + '></label></div>';
     return autoSw + '<div class="card">' + '<div class="pad">' + headHTML('口座', state.accounts.length + '口座', 'accounts') +
       '<p class="sub" style="margin:0">準備ページは引落の近い口座から並びます。同じ日の口座は、ここでの並び順になります。名前を変えると、その口座の引落もまとめて変わります。</p></div>' +
       list + (on ? '' : '<div class="srow add-row"><input class="text" id="accnew" placeholder="新しい口座名" aria-label="新しい口座名"><button class="small" data-act="accadd">追加</button></div>') + '</div>';
