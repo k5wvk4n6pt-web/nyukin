@@ -2669,7 +2669,13 @@
   window.addEventListener('scroll', () => { if (!pointerDown && document.body.classList.contains('typing')) syncTyping(); }, { passive: true });
   // キーボードが一度開いてから閉じたら、入力欄に印が残っていても下のタブを戻す（iPhoneで「完了」を押したときなど）
   const VV = window.visualViewport; let kbSeen = false;
-  const kbOpen = () => !VV || (window.innerHeight - VV.height * (VV.scale || 1) > 120);
+  // 画面のいちばん高いときの高さを覚えておき、見えている高さがそれより大きく減っていたら「キーボードが開いている」とみなす
+  // （Safari・Chromeは見える範囲だけが縮み、アプリ版は画面そのものが縮むので、どちらでも分かるようにする）
+  let fullH = window.innerHeight;
+  const visH = () => VV ? VV.height * (VV.scale || 1) : window.innerHeight;
+  window.addEventListener('orientationchange', () => { fullH = 0; setTimeout(() => { fullH = Math.max(window.innerHeight, visH()); syncTyping(); }, 400); });
+  window.addEventListener('resize', () => { if (!document.body.classList.contains('typing')) fullH = Math.max(fullH, window.innerHeight); syncTyping(); });
+  const kbOpen = () => { fullH = Math.max(fullH, window.innerHeight); return fullH - visH() > 120; };
   function syncTyping() {
     if (pointerDown) return;
     const a = document.activeElement;
