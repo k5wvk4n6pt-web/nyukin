@@ -973,6 +973,7 @@ body.pg-variable .fab.add, body.pg-fixed .fab.add, #sec-variable .section-head b
 body.pp-need #banksSec, body.pp-need #prepBottom, body.pp-need main > .note, body.pp-need .closecard,
 body.pp-money #banksSec, body.pp-money #prepBottom, body.pp-money main > .note,
 body.pp-flow #banksSec, body.pp-flow #prepBottom, body.pp-flow main > .note,
+body.pp-due #banksSec, body.pp-due #prepBottom, body.pp-due main > .note,
 body.pp-none-unused { display: none !important; }
 .ppanel[data-panel="sched"] { display: grid; gap: 12px; }
 .schedcard { display: grid; gap: 10px; padding: 14px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); box-shadow: var(--card-shadow); }
@@ -1044,6 +1045,21 @@ input[type="date"]::-webkit-date-and-time-value, input[type="month"]::-webkit-da
 .paidrow button { white-space: nowrap; }
 .paidbtns { flex-direction: column; align-items: stretch; }
 .paidbtns > button { flex: 0 0 auto; width: 100%; }
+.duecard { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--card-shadow); padding: 14px 16px; margin-bottom: 12px; display: grid; gap: 8px; }
+.duecard.bad { border-color: color-mix(in srgb, var(--short) 45%, var(--line)); }
+.dc-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.dc-head b { color: var(--navy); font-size: 16px; }
+.dc-head .pst { font-size: 12px; padding: 2px 10px; }
+.dc-list { display: grid; }
+.dc-row { display: grid; grid-template-columns: auto 22px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.dc-row .nname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); }
+.dc-row .ndate { font-size: 12px; color: var(--muted); }
+.dc-row .namt { font-weight: 800; color: var(--navy); }
+.dc-sum { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px 14px; font-size: 13px; color: var(--muted); }
+.dc-sum b { color: var(--navy); }
+.dc-sum .bad, .dc-sum .bad b { color: var(--short); }
+.dc-sum .ok, .dc-sum .ok b { color: var(--ok); }
+.herocard.on { outline: 3px solid color-mix(in srgb, var(--accent) 45%, transparent); outline-offset: 2px; }
 .fd-lh { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px; }
 .fd-lh b { color: var(--navy); font-size: 15px; }
 .fd-lh .sub { font-size: 12px; }

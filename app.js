@@ -513,12 +513,13 @@
     const per = r.windows.map((w, i) => '<div class="period' + (w.inClose ? '' : ' after') + '" data-tile><span class="lab">' + ICON.cal(w.inClose ? '--c-blue' : '--c-pink') + w.label + 'に必要' + (w.inClose ? '' : '<span class="tag">参考</span>') + (i === 0 ? '<button class="linkish" data-act="go-close" aria-label="期限を変更">変更</button>' : '') + '</span><span class="rng">' + md(w.from) + '〜' + md(w.to) + (w.nominal ? '<br>' + md(w.nominal) + 'が休日のため' + md(w.to) + 'まで' : '') + '</span><span class="val num" data-sum="' + w.key + '">' + yen(r.totals[w.key]) + '</span></div>').join('');
     const inc = r.income.map(i => '<div class="income-row"><span class="who">' + esc(i.name) + '</span><span class="when">' + (i.next ? '<span class="' + (isWeekend(i.next) ? 'wkend' : '') + '">' + mdw(i.next) + '</span> 予定' + shiftNote(i.next) : '') + '</span>' +
       '<input class="amount' + (i.amount == null ? ' empty' : '') + '" inputmode="numeric" enterkeyhint="done" autocomplete="off" id="inc-' + esc(i.id) + '" data-inc="' + esc(i.id) + '" value="' + yenTxt(i.amount) + '" placeholder="金額（任意）" aria-label="' + esc(i.name) + 'の収入予定額"></div>').join('');
-    if (!['sched', 'need', 'money', 'flow'].includes(meta.prepPanel)) meta.prepPanel = 'sched'; // トップは「引落予定」
+    if (!['sched', 'need', 'money', 'flow', 'due'].includes(meta.prepPanel)) meta.prepPanel = 'sched'; // トップは「引落予定」
     const P = (k, html) => '<div class="ppanel" data-panel="' + k + '"' + (meta.prepPanel === k ? '' : ' hidden') + '>' + html + '</div>';
     const pt = prepTopHTML(r);
     return '<div id="prepTop">' + pt.top + '</div>' +
       P('money', '<div class="pphead"><span>口座残高</span><button class="small xmove" data-act="xfer-any">残高移動</button><button class="pclose" data-panel-btn="money" aria-label="口座残高を閉じる">閉じる ✕</button></div>' + totalHTML(r) + '<div id="ballist">' + balListHTML(r) + '</div>') +
       P('need', '<section class="summary" id="sec-top" aria-label="過不足"><div class="acchead">' + QI.scale.replace('<svg ', '<svg class="pico" ') + '過不足<button class="pclose" data-panel-btn="need" aria-label="過不足を閉じる">閉じる ✕</button></div>' + shortboxHTML(r) + '</section>') +
+      P('due', dueHTML(r)) +
       P('sched', '<div id="schedNotice">' + prepNoticeHTML(r) + '</div><div class="pphead"><span>引落予定</span></div><div id="schedBox">' + schedHTML() + '</div>') +
       P('flow', '<div class="pphead"><span>収支記録<small class="sub">（始期日ごと）</small></span><button class="pclose" data-panel-btn="flow" aria-label="収支記録を閉じる">閉じる ✕</button></div><div id="flowBox">' + flowHTML() + '</div>') +
       '';
@@ -559,7 +560,7 @@
     const days = next ? Math.round((new Date(next.date.y, next.date.m - 1, next.date.d) - new Date(T.y, T.m - 1, T.d)) / 864e5) : null;
     const missing = r.banks.filter(b => b.dueActive && b.balance == null).length;
     const st = r.shortfallTotal > 0 ? '<span class="pst bad">不足あり</span>' : missing ? '<span class="pst warn">未入力</span>' : r.dueCount ? '<span class="pst ok">準備OK</span>' : '';
-    const hero = '<button class="herocard" data-panel-btn="need" aria-expanded="' + (meta.prepPanel === 'need') + '">' +
+    const hero = '<button class="herocard' + (meta.prepPanel === 'due' ? ' on' : '') + '" data-panel-btn="due" aria-expanded="' + (meta.prepPanel === 'due') + '">' +
       '<span class="hc-l"><span class="hc-lab">次の引落まで</span><span class="hc-days num">' + (days == null ? '—' : days === 0 ? '今日' : days + '<small>日</small>') + '</span></span>' +
       '<span class="hc-r"><span class="hc-lab">' + (w0 ? esc(w0.label) + 'に必要な金額' : '必要な金額') + st + '</span><span class="hc-amt num">¥' + nf.format(w0 ? (r.totals[w0.key] || 0) : 0) + '</span></span>' +
       '<span class="hc-chev" aria-hidden="true">›</span></button>';
@@ -569,6 +570,24 @@
     const near = '<section class="nearlist" aria-label="直近の引落予定"><div class="nhead"><h2>直近の引落予定</h2><button class="more" data-act="go-banks">すべて見る ›</button></div>' +
       '<div class="ncard">' + (rows || '<p class="sub" style="margin:0;padding:14px">これからの引き落としはありません。</p>') + '</div></section>';
     return { top: hero + quick, near };
+  }
+  /** 「○日までに必要な金額」を押したとき：期限までの引き落としを口座ごとに、準備OK／不足ありで表示 */
+  function dueHTML(r) {
+    const W = r.windows.filter(w => w.inClose); const w0 = W[W.length - 1] || r.windows[0];
+    const by = w0 ? md(w0.to) : '';
+    const rank = b => b.balance != null && b.shortfall > 0 ? 0 : b.balance == null ? 1 : 2; // 不足あり → 未入力 → 準備OK の順
+    const banks = r.banks.filter(b => b.dueActive).sort((x, y) => rank(x) - rank(y));
+    const cards = banks.map(b => {
+      const lines = W.flatMap(w => b.lines[w.key]).filter(l => l.amount !== 0).sort((x, y) => serial2(x.date) - serial2(y.date));
+      const st = b.balance == null ? '<span class="pst warn">残高未入力</span>' : b.shortfall > 0 ? '<span class="pst bad">不足あり</span>' : '<span class="pst ok">準備OK</span>';
+      return '<div class="duecard' + (b.balance != null && b.shortfall > 0 ? ' bad' : '') + '"><div class="dc-head"><b>' + esc(b.name) + '</b>' + st + '</div>' +
+        '<div class="dc-list">' + lines.map(l => '<div class="dc-row"><span class="ndate">' + mdw(l.date) + '</span><span class="nico">' + lineIcon(l.name) + '</span><span class="nname">' + esc(l.name.replace(/（\d+月分は未入力）$/, '')) + '</span><span class="namt num">' + (l.amount == null ? '<span class="flag">未入力</span>' : '¥' + nf.format(l.amount)) + '</span></div>').join('') + '</div>' +
+        '<div class="dc-sum"><span>引落 <b class="num">¥' + nf.format(b.due) + '</b></span><span>残高 <b class="num">' + (b.balance == null ? '未入力' : '¥' + nf.format(b.balance)) + '</b></span>' +
+        (b.balance == null ? '' : b.shortfall > 0 ? '<span class="bad">不足 <b class="num">¥' + nf.format(b.shortfall) + '</b></span>' : '<span class="ok">余り <b class="num">¥' + nf.format(b.surplus) + '</b></span>') + '</div></div>';
+    }).join('');
+    return '<div class="pphead"><span>' + by + 'までの引き落とし</span><button class="pclose" data-panel-btn="due" aria-label="閉じる">閉じる ✕</button></div>' +
+      (cards || '<p class="sub" style="margin:0;padding:8px 2px">' + by + 'までの引き落としはありません。</p>') +
+      (cards ? '<p class="note" style="margin:0">口座ごとに、' + by + 'までの引き落としと今の残高をくらべています。今日「引落完了」にした分は入りません。</p>' : '');
   }
   function prepNoticeHTML(r) {
     const w0 = r.windows.filter(w => w.inClose).pop() || r.windows[0];
@@ -613,7 +632,7 @@
       '</nav>';
   }
   /** 過不足を開いている間は、過不足だけのページにする（銀行別の入金準備などは隠す） */
-  function syncPanelPage() { const onPrep = meta.page === 'prep'; document.body.classList.toggle('pp-need', onPrep && meta.prepPanel === 'need'); document.body.classList.toggle('pp-money', onPrep && meta.prepPanel === 'money'); document.body.classList.toggle('pp-flow', onPrep && meta.prepPanel === 'flow');  }
+  function syncPanelPage() { const onPrep = meta.page === 'prep'; document.body.classList.toggle('pp-need', onPrep && meta.prepPanel === 'need'); document.body.classList.toggle('pp-money', onPrep && meta.prepPanel === 'money'); document.body.classList.toggle('pp-flow', onPrep && meta.prepPanel === 'flow'); document.body.classList.toggle('pp-due', onPrep && meta.prepPanel === 'due');  }
   function bindPanels() {
     main.querySelectorAll('[data-panel-btn]').forEach(b => { if (b._pb) return; b._pb = 1; b.addEventListener('click', () => {
       const k = b.dataset.panelBtn; const was = meta.prepPanel; meta.prepPanel = meta.prepPanel === k && k !== 'sched' ? 'sched' : k;
