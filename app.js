@@ -795,8 +795,10 @@
       if (!x.past && x.date === tIso && x.amount != null && x.src) { const h = todayRec(x.src);
         if (h && h.paid) act = '<div class="paidrow"><span class="paidok">✓ 引落完了' + (h.deducted ? '（残高から引きました）' : '') + '</span><button class="small" data-unpaid="' + esc(x.src) + '">取り消す</button></div>';
         else if (h) act = '<div class="paidrow"><span class="sub">今日の引き落とし</span><button class="small primary" data-paid="' + esc(x.src) + '">引落完了</button></div>'; }
-      return '<div class="srow2' + (done ? ' done' : '') + '"><span class="ndate">' + mdw(o) + '</span><span class="nico">' + lineIcon(x.name) + '</span><span class="nname">' + esc(x.name) + '<small>' + esc(x.account) + (done ? '・引落済み' : '') + '</small></span><span class="namt num">' + (x.amount == null ? '<span class="flag">未入力</span>' : '¥' + nf.format(x.amount)) + '</span>' + act + '</div>'; };
-    const rows = upList.map(rowOf).join('') + (doneList.length ? '<div class="sc-sep">引落済み ' + doneList.length + '件</div>' + doneList.map(rowOf).join('') : '');
+      return '<div class="srow2' + (done ? ' done' : '') + '"><span class="ndate">' + mdw(o) + '</span><span class="nico">' + lineIcon(x.name) + '</span><span class="nname">' + esc(x.name) + '<small>' + esc(x.account) + '</small></span><span class="namt num">' + (x.amount == null ? '<span class="flag">未入力</span>' : '¥' + nf.format(x.amount)) + '</span>' + act + '</div>'; };
+    const sumOf = l => l.reduce((a, x) => a + (x.amount || 0), 0);
+    const rows = (upList.length ? '<div class="sc-grp up"><div class="sc-gh"><span>これからの引き落とし</span><span class="num">' + upList.length + '件・¥' + nf.format(sumOf(upList)) + '</span></div>' + upList.map(rowOf).join('') + '</div>' : '') +
+      (doneList.length ? '<div class="sc-grp donegrp"><div class="sc-gh"><span>✓ 引落済み</span><span class="num">' + doneList.length + '件・¥' + nf.format(sumOf(doneList)) + '</span></div>' + doneList.map(rowOf).join('') + '</div>' : '');
     return '<section class="schedcard"><div class="sc-nav"><button class="small" data-sched="-1" aria-label="前の締め期間">‹</button><div class="sc-t"><b>' + label + '（' + md(d.to) + '締め）</b><span class="sub">' + md(d.from) + '〜' + md(d.to) + '</span></div><button class="small" data-sched="1" aria-label="次の締め期間">›</button></div>' +
       (rows ? '<div class="sc-list">' + rows + '</div>' : '<p class="sub" style="margin:0;padding:8px 2px">この期間の引き落としはありません。</p>') +
       '<div class="sc-total"><span>合計 ' + list.length + '件</span><b class="num">¥' + nf.format(d.expense) + '</b></div>' +
