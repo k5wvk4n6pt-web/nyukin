@@ -38,5 +38,5 @@ workflows:
     publishing:
       app_store_connect:
         auth: integration
-        submit_to_testflight: true
+        submit_to_testflight: false   # 外部テストの審査には出さない（内部テストのグループ「自分」に自動で届く）
         submit_to_app_store: false
