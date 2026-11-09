@@ -2659,15 +2659,25 @@
   const TYPING = 'input:not([type="file"]):not([type="button"]):not([type="checkbox"]):not([type="radio"]), select, textarea';
   // 指が触れている間は下のタブを出し入れしない（ボタンを押した瞬間にタブが重なるのを防ぐ）
   let pointerDown = false;
-  document.addEventListener('pointerdown', () => { pointerDown = true; }, true);
-  const pointerEnd = () => { pointerDown = false; setTimeout(syncTyping, 120); };
+  let pdTimer = 0;
+  const pointerEnd = () => { clearTimeout(pdTimer); pointerDown = false; setTimeout(syncTyping, 120); };
+  // 指を離した合図が届かないこともあるので、1.5秒たったら必ず戻す
+  document.addEventListener('pointerdown', () => { pointerDown = true; clearTimeout(pdTimer); pdTimer = setTimeout(pointerEnd, 1500); }, true);
   document.addEventListener('pointerup', pointerEnd, true);
   document.addEventListener('pointercancel', pointerEnd, true);
+  document.addEventListener('touchend', pointerEnd, true);
+  window.addEventListener('scroll', () => { if (!pointerDown && document.body.classList.contains('typing')) syncTyping(); }, { passive: true });
+  // キーボードが一度開いてから閉じたら、入力欄に印が残っていても下のタブを戻す（iPhoneで「完了」を押したときなど）
+  const VV = window.visualViewport; let kbSeen = false;
+  const kbOpen = () => !VV || (window.innerHeight - VV.height * (VV.scale || 1) > 120);
   function syncTyping() {
     if (pointerDown) return;
     const a = document.activeElement;
-    document.body.classList.toggle('typing', !!(a && a.isConnected && a !== document.body && a.matches(TYPING)));
+    const focused = !!(a && a.isConnected && a !== document.body && a.matches(TYPING));
+    if (!focused) kbSeen = false; else if (VV && kbOpen()) kbSeen = true;
+    document.body.classList.toggle('typing', focused && !(kbSeen && !kbOpen()));
   }
+  if (VV) VV.addEventListener('resize', () => syncTyping());
   const nav = $('#nav');
   nav.addEventListener('click', e => {
     const b = e.target.closest('[data-page]'); if (!b) return;
@@ -2675,7 +2685,7 @@
     meta.page = b.dataset.page; meta.reorder = null; saveMeta(); renderAll(); window.scrollTo(0, 0);
   });
   // 入力中はキーボードと重ならないよう隠す（ファイル選択は除く。描き直しで入力欄が消えた時も戻す）
-  document.addEventListener('focusin', () => syncTyping());
+  document.addEventListener('focusin', () => { kbSeen = false; syncTyping(); setTimeout(syncTyping, 700); });
   document.addEventListener('focusout', () => setTimeout(syncTyping, 120));
   window.addEventListener('focus', () => syncTyping());
   window.addEventListener('pageshow', () => syncTyping());
