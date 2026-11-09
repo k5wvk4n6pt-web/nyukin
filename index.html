@@ -1027,7 +1027,11 @@ body.pp-none-unused { display: none !important; }
 .updbar span { flex: 1; min-width: 0; }
 .updbar button { white-space: nowrap; }
 .updbar .updx { background: transparent; border-color: transparent; color: var(--muted); }
-.fd-lh { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-top: 4px; }
+.fd-lh > span { display: flex; align-items: baseline; gap: 8px; min-width: 0; flex-wrap: wrap; }
+.fd-lh button { white-space: nowrap; flex: 0 0 auto; }
+.fd-tools { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.fd-tools button { flex: 1 1 auto; }
+.fd-lh { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px; }
 .fd-lh b { color: var(--navy); font-size: 15px; }
 .fd-lh .sub { font-size: 12px; }
 .fd-list .fd-row { display: grid; grid-template-columns: 3.4em minmax(0, 1fr) auto; align-items: center; gap: 8px; width: 100%; font: inherit; text-align: left; background: transparent; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; box-shadow: none; min-height: 0; color: var(--ink); }

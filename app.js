@@ -664,6 +664,12 @@
 
   let cycleOffset = 0; // 0=今のサイクル（画面を開き直すと今に戻る）
   /* ---------- 締め期間ごとの収支（グラフ） ---------- */
+  let flowRange = null; // 収支記録から開いたときの期間 {from, to, off}
+  const inRangeDate = src => { // 期間の中で、その項目の日付（今日まで）
+    if (!flowRange) return null; const tI = isoToday();
+    const to = isoOf(flowRange.to) < tI ? flowRange.to : today();
+    const os = C.occurrencesIn(src, flowRange.from, to, false); return os.length ? isoOf(os[os.length - 1]) : null; };
+  const rangeDefault = () => { if (!flowRange) return null; const tI = isoToday(); const t = isoOf(flowRange.to); return t < tI ? t : tI; };
   let flowSide = 'out'; // 下の明細：'in'=収入、'out'=支出
   let flowSel = 0; // 0=今回の締め期間、-1=前回…
   const FLOW_FROM = -5, FLOW_TO = 1;
@@ -733,8 +739,9 @@
       '<div class="fd-grid">' + sideTab('in', '収入', d.income, d.incomeMissing) + sideTab('out', '支出', d.expense, d.unentered) +
       '<div class="' + (neg ? 'neg' : 'pos') + '"><span class="k">差し引き</span><span class="v num">' + (neg ? '−' : '＋') + nf.format(Math.abs(d.diff)) + '<small>円</small></span></div></div>' +
       (d.noRecord || d.noIncRecord ? '<p class="sub" style="margin:0">この期間は' + (d.noRecord && d.noIncRecord ? '引き落としと収入' : d.noRecord ? '引き落とし' : '収入') + 'の記録がないため、0円になっています。</p>' : '') +
-      '<div class="fd-lh"><b>' + (side === 'in' ? '収入' : '支出') + 'の明細</b><span class="sub">' + lst.length + '件' + (lst.some(x => x.past) ? '・済みの行は押すと直せます' : '') + '</span></div>' +
-      (rowsH ? '<div class="fd-list">' + rowsH + '</div>' : '<p class="sub" style="margin:0">この期間の' + (side === 'in' ? '収入' : '支出') + 'はありません。</p>') + '</div>';
+      '<div class="fd-lh"><span><b>' + (side === 'in' ? '収入' : '支出') + 'の明細</b><span class="sub">' + lst.length + '件' + (lst.some(x => x.past) ? '・済みの行は押すと直せます' : '') + '</span></span><button class="small primary" data-act="frec-add">＋ 記録を追加</button></div>' +
+      (rowsH ? '<div class="fd-list">' + rowsH + '</div>' : '<p class="sub" style="margin:0">この期間の' + (side === 'in' ? '収入' : '支出') + 'はありません。</p>') +
+      '<div class="fd-tools"><button class="small" data-act="frec-back">' + (side === 'in' ? '登録している収入を記録にまとめて反映' : '固定費を記録にまとめて反映') + '</button><button class="small" data-act="frec-csv">この期間をCSVで書き出す</button></div></div>';
     return '<section class="flowcard"><div class="fg-legend"><span><i class="sw in"></i>収入</span><span><i class="sw out"></i>支出</span><span class="sub">棒を押すと内訳</span></div>' + svg + detail +
       '<p class="note" style="margin:0">過ぎた日は「記録」（引き落とし・収入）、今日からあとは登録している金額で計算しています。</p></section>';
   }
@@ -765,6 +772,11 @@
     main.querySelectorAll('[data-act="go-history"]').forEach(b => { if (b._gh) return; b._gh = 1; b.addEventListener('click', () => { meta.page = 'history'; meta.prepPanel = 'sched'; saveMeta(); renderAll(); window.scrollTo(0, 0); }); });
     const redraw = () => { const fb = $('#flowBox'); if (fb) { fb.innerHTML = flowHTML(); bindFlow(); } };
     main.querySelectorAll('[data-fside]').forEach(b => b.addEventListener('click', () => { flowSide = b.dataset.fside; redraw(); }));
+    const fd = flowData(flowSel); const tI = isoToday();
+    const baseMonth = () => { histMonth = ymOf(isoOf(fd.to) < tI ? isoOf(fd.to) : tI); flowRange = { from: fd.from, to: fd.to, off: flowSel }; };
+    main.querySelectorAll('[data-act="frec-add"]').forEach(b => b.addEventListener('click', () => { baseMonth(); flowSide === 'in' ? openIncEdit(null) : openHistEdit(null); }));
+    main.querySelectorAll('[data-act="frec-back"]').forEach(b => b.addEventListener('click', () => { baseMonth(); flowSide === 'in' ? openIncBack() : openFixBack(); }));
+    main.querySelectorAll('[data-act="frec-csv"]').forEach(b => b.addEventListener('click', () => exportFlowCSV(flowSide === 'in' ? 'in' : 'out', fd)));
     main.querySelectorAll('#flowBox [data-rid]').forEach(b => b.addEventListener('click', () => openIncEdit(b.dataset.rid)));
     main.querySelectorAll('#flowBox [data-hid]').forEach(b => b.addEventListener('click', () => openHistEdit(b.dataset.hid)));
     main.querySelectorAll('[data-flow]').forEach(g => {
@@ -2082,7 +2094,7 @@
   function openIncEdit(id) {
     const h = id ? (state.incHistory || []).find(x => x.id === id) : null;
     const cur = isoToday().slice(0, 7);
-    const def = h || { date: histMonth && histMonth !== cur ? histMonth + '-01' : isoToday(), name: '', amount: null };
+    const def = h || { date: rangeDefault() || (histMonth && histMonth !== cur ? histMonth + '-01' : isoToday()), name: '', amount: null };
     const reg = state.income.filter(i => !i.hidden || (h && i.name === h.name));
     const known = reg.find(i => i.name === def.name);
     const sel = !def.name ? '' : known ? known.id : '__other';
@@ -2102,7 +2114,8 @@
       const i = state.income.find(x => x.id === v); if (!i) return;
       const amt = $('#ri-amt'); if (!amt.value && i.amount != null) { amt.value = yenTxt(i.amount); amt.dispatchEvent(new Event('input')); }
       const dIn = $('#ri-date'); const ym = dIn.value.slice(0, 7) || cur;
-      if (i.date) dIn.value = i.date; else if (i.day != null) { const [yy, mm] = ym.split('-').map(Number); dIn.value = isoOf(C.actual(i, yy, mm, true)); }
+      const rdi = !i.date && flowRange ? (() => { const tI = isoToday(); const to = isoOf(flowRange.to) < tI ? flowRange.to : today(); const os = C.occurrencesIn(i, flowRange.from, to, true); return os.length ? isoOf(os[os.length - 1]) : null; })() : null;
+      if (i.date) dIn.value = i.date; else if (rdi) dIn.value = rdi; else if (i.day != null) { const [yy, mm] = ym.split('-').map(Number); dIn.value = isoOf(C.actual(i, yy, mm, true)); }
     });
     if (h) $('#ri-del').onclick = () => { state.incHistory = state.incHistory.filter(x => x.id !== h.id); save(); close(); renderKeep(); toast('記録を削除しました'); };
     $('#mOk').onclick = () => {
@@ -2117,13 +2130,12 @@
     };
   }
   function incBackPlan(ym, months) {
-    const tIso = isoToday(); const [y0, m0] = ym.split('-').map(Number);
+    const tIso = isoToday();
     const have = new Set((state.incHistory || []).map(h => h.date + '|' + h.name)); const out = [];
-    for (let k = 0; k < months; k++) {
-      const p = C.addMonth(y0, m0, -k), nx = C.addMonth(p.y, p.m, 1);
+    for (const rg of backRanges(ym, months)) {
       for (const i of state.income || []) {
         if (i.hidden || i.amount == null || i.amount === 0) continue;
-        for (const o of C.occurrencesIn(i, { y: p.y, m: p.m, d: 1 }, C.addDays({ y: nx.y, m: nx.m, d: 1 }, -1), true)) {
+        for (const o of C.occurrencesIn(i, rg.from, rg.to, true)) {
           const iso = isoOf(o); if (iso >= tIso) continue; const key = iso + '|' + i.name; if (have.has(key)) continue;
           have.add(key); out.push({ date: iso, name: i.name, amount: Number(i.amount), src: i.id });
         }
@@ -2133,7 +2145,7 @@
   }
   function openIncBack() {
     const ym = histMonth || isoToday().slice(0, 7); const [yy, mm] = ym.split('-').map(Number);
-    const m = $('#modal'); const opts = [[1, yy + '年' + mm + '月だけ'], [3, '3か月分（' + mm + '月からさかのぼる）'], [6, '6か月分'], [12, '12か月分']];
+    const m = $('#modal'); const opts = backOpts(ym); void yy; void mm;
     m.innerHTML = '<div class="sheet form" role="dialog" aria-modal="true" aria-labelledby="mt"><h2 id="mt">収入を記録に反映</h2>' +
       '<p class="sub" style="margin:0">登録している収入を、今の金額で過去の記録にまとめて入れます。すでに同じ日・同じ項目の記録があるものは入れません。</p>' +
       '<label>どこまで入れるか<select id="fb-n">' + opts.map(o => '<option value="' + o[0] + '">' + o[1] + '</option>').join('') + '</select></label><div id="fb-prev" class="fbprev"></div>' +
@@ -2189,6 +2201,7 @@
     state.incUntil = todayIso;
   }
   function bindHistory() {
+    flowRange = null;
     main.querySelectorAll('[data-htype]').forEach(b => b.addEventListener('click', () => { meta.histType = b.dataset.htype; saveMeta(); renderKeep(); }));
     main.querySelectorAll('[data-rid]').forEach(b => b.addEventListener('click', () => openIncEdit(b.dataset.rid)));
     main.querySelectorAll('[data-act="inc-add"]').forEach(b => b.addEventListener('click', () => openIncEdit(null)));
@@ -2203,7 +2216,7 @@
     const h = id ? (state.history || []).find(x => x.id === id) : null;
     const accs = state.accounts.slice();
     const kinds = ['変動費', '固定費', '1回のみ', 'その他'];
-    const def = h || { date: (histMonth && histMonth !== isoToday().slice(0, 7) ? histMonth + '-01' : isoToday()), name: '', account: '', amount: null, kind: '変動費' };
+    const def = h || { date: rangeDefault() || (histMonth && histMonth !== isoToday().slice(0, 7) ? histMonth + '-01' : isoToday()), name: '', account: '', amount: null, kind: '変動費' };
     const m = $('#modal');
     m.innerHTML = '<div class="sheet form xsheet" role="dialog" aria-modal="true" aria-labelledby="mt"><h2 id="mt">' + (h ? '記録を直す' : '記録を追加') + '</h2>' +
       '<label>項目名<select id="hr-pick" aria-label="項目名を選ぶ">' + histPickOptions(def) + '</select></label>' +
@@ -2226,7 +2239,9 @@
       if (it.account) $('#hr-acc').value = it.account;
       // 日付：表示している月の、その項目の引落日（休日はずらした日）
       const dIn = $('#hr-date'); const ym = /^\d{4}-\d{2}/.test(dIn.value) ? dIn.value.slice(0, 7) : isoToday().slice(0, 7);
+      const rd = !it.src.date && inRangeDate(it.src);
       if (it.src.date) dIn.value = it.src.date;
+      else if (rd) dIn.value = rd;
       else if (it.src.day != null) { const [yy, mm] = ym.split('-').map(Number); const a = C.actual(it.src, yy, mm, false); dIn.value = isoOf(a); }
       $('#hr-kind').value = it.kind;
       const amt = $('#hr-amt'); if (!amt.value && it.amount != null) { amt.value = yenTxt(it.amount); amt.dispatchEvent(new Event('input')); }
@@ -2246,16 +2261,27 @@
     };
   }
   /** 固定費を、過去の月の記録にまとめて入れる（同じ日・同じ項目の記録があれば入れない。残高からは引かない） */
+  /** 入れる範囲：収支記録から開いたときは期間ごと、記録のページからは月ごと */
+  function backRanges(ym, n) {
+    const out = [];
+    if (flowRange) { for (let k = 0; k < n; k++) { const d = flowData(flowRange.off - k); out.push({ from: d.from, to: d.to }); } return out; }
+    const [y0, m0] = ym.split('-').map(Number);
+    for (let k = 0; k < n; k++) { const p = C.addMonth(y0, m0, -k), nx = C.addMonth(p.y, p.m, 1); out.push({ from: { y: p.y, m: p.m, d: 1 }, to: C.addDays({ y: nx.y, m: nx.m, d: 1 }, -1) }); }
+    return out;
+  }
+  function backOpts(ym) {
+    const [yy, mm] = ym.split('-').map(Number);
+    if (flowRange) return [[1, 'この期間だけ（' + md(flowRange.from) + '〜' + md(flowRange.to) + '）'], [3, 'この期間から3期間さかのぼる'], [6, '6期間分'], [12, '12期間分']];
+    return [[1, yy + '年' + mm + '月だけ'], [3, '3か月分（' + mm + '月からさかのぼる）'], [6, '6か月分'], [12, '12か月分']];
+  }
   function fixBackPlan(ym, months) {
-    const tIso = isoToday(); const [y0, m0] = ym.split('-').map(Number);
+    const tIso = isoToday();
     const hiddenAcc = new Set(state.hiddenAccounts || []); const have = new Set((state.history || []).map(h => h.date + '|' + h.name + '|' + h.account));
     const out = [];
-    for (let k = 0; k < months; k++) {
-      const p = C.addMonth(y0, m0, -k);
+    for (const rg of backRanges(ym, months)) {
       for (const it of state.fixed || []) {
         if (it.hidden || hiddenAcc.has(it.account) || !state.accounts.includes(it.account) || it.amount == null || it.amount === 0) continue;
-        const nx = C.addMonth(p.y, p.m, 1);
-        for (const o of C.occurrencesIn(it, { y: p.y, m: p.m, d: 1 }, C.addDays({ y: nx.y, m: nx.m, d: 1 }, -1), false)) {
+        for (const o of C.occurrencesIn(it, rg.from, rg.to, false)) {
           const iso = isoOf(o); if (iso >= tIso) continue;
           const key = iso + '|' + it.name + '|' + it.account; if (have.has(key)) continue;
           have.add(key); out.push({ date: iso, name: it.name, account: it.account, amount: it.amount, src: it.id });
@@ -2267,7 +2293,7 @@
   function openFixBack() {
     const ym = histMonth || isoToday().slice(0, 7); const [yy, mm] = ym.split('-').map(Number);
     const m = $('#modal');
-    const opts = [[1, yy + '年' + mm + '月だけ'], [3, '3か月分（' + mm + '月からさかのぼる）'], [6, '6か月分'], [12, '12か月分']];
+    const opts = backOpts(ym); void yy; void mm;
     m.innerHTML = '<div class="sheet form" role="dialog" aria-modal="true" aria-labelledby="mt"><h2 id="mt">固定費を記録に反映</h2>' +
       '<p class="sub" style="margin:0">登録している固定費を、今の金額で過去の記録にまとめて入れます。すでに同じ日・同じ項目の記録があるものは入れません。口座の残高からは引きません。</p>' +
       '<label>どこまで入れるか<select id="fb-n">' + opts.map(o => '<option value="' + o[0] + '">' + o[1] + '</option>').join('') + '</select></label>' +
@@ -2307,6 +2333,21 @@
       h += '<optgroup label="' + g + '">' + l.map(x => '<option value="' + esc(x.key) + '"' + (x.key === sel ? ' selected' : '') + '>' + esc(x.name) + (x.account ? '（' + esc(x.account) + '）' : '') + (x.hidden ? '・非表示' : '') + '</option>').join('') + '</optgroup>';
     }
     return h + '<optgroup label="その他"><option value="__other"' + (sel === '__other' ? ' selected' : '') + '>臨時・その他（自分で入力）</option></optgroup>';
+  }
+  /** 収支記録の、いま選んでいる期間の明細をCSVにする（済みは記録、これからは予定） */
+  async function exportFlowCSV(side, d) {
+    const lst = (side === 'in' ? d.incItems : d.items).slice().sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
+    if (!lst.length) { toast('書き出す明細がありません'); return; }
+    const q = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+    const book = curBook() ? curBook().name : '';
+    const head = side === 'in' ? '日付,項目,状態,金額,帳簿' : '日付,項目,口座,状態,金額,帳簿';
+    const rows = lst.map(x => (side === 'in' ? [x.date, x.name, x.past ? '入金済み' : '予定', x.amount, book] : [x.date, x.name, x.account, x.past ? '引落済み' : '予定', x.amount, book]).map(q).join(','));
+    const text = '\ufeff' + [head].concat(rows).join('\r\n');
+    const name = (side === 'in' ? '収入' : '支出') + '_' + book + '_' + isoOf(d.from) + '〜' + isoOf(d.to) + '.csv';
+    if (N.isNative) { try { await N.shareFile(name, text); } catch (e) { toast('書き出せませんでした'); } return; }
+    const file = new File([text], name, { type: 'text/csv' });
+    try { if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: name }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
+    const url = URL.createObjectURL(file); const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 4000);
   }
   async function exportCSV(scope) {
     const rows = (state.history || []).filter(h => scope === 'all' || ymOf(h.date) === histMonth).slice().sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
