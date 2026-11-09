@@ -1031,6 +1031,11 @@ body.pp-none-unused { display: none !important; }
 .fd-lh button { white-space: nowrap; flex: 0 0 auto; }
 .fd-tools { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
 .fd-tools button { flex: 1 1 auto; }
+.two { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.two > label, .two > * { min-width: 0; }
+input[type="date"], input[type="month"] { -webkit-appearance: none; appearance: none; display: block; width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; text-align: left; }
+input[type="date"]::-webkit-date-and-time-value, input[type="month"]::-webkit-date-and-time-value { text-align: left; }
+.recsw { margin-bottom: 0; }
 .fd-lh { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px; }
 .fd-lh b { color: var(--navy); font-size: 15px; }
 .fd-lh .sub { font-size: 12px; }

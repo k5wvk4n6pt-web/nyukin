@@ -670,6 +670,16 @@
     const to = isoOf(flowRange.to) < tI ? flowRange.to : today();
     const os = C.occurrencesIn(src, flowRange.from, to, false); return os.length ? isoOf(os[os.length - 1]) : null; };
   const rangeDefault = () => { if (!flowRange) return null; const tI = isoToday(); const t = isoOf(flowRange.to); return t < tI ? t : tI; };
+  /** 収支記録から追加するとき、支出と収入を切り替えるボタン */
+  function recSwitch(cur) {
+    return '<div class="seg askind recsw" role="tablist" aria-label="記録の種類">' + [['out', '支出（引き落とし）'], ['in', '収入']].map(k => '<button type="button" role="tab" data-recsw="' + k[0] + '" class="' + (k[0] === cur ? 'on' : '') + '" aria-selected="' + (k[0] === cur) + '">' + k[1] + '</button>').join('') + '</div>';
+  }
+  function bindRecSwitch() {
+    $('#modal').querySelectorAll('[data-recsw]').forEach(b => b.addEventListener('click', () => {
+      const k = b.dataset.recsw; if (b.classList.contains('on')) return;
+      flowSide = k; if (k === 'in') openIncEdit(null); else openHistEdit(null);
+    }));
+  }
   let flowSide = 'out'; // 下の明細：'in'=収入、'out'=支出
   let flowSel = 0; // 0=今回の締め期間、-1=前回…
   const FLOW_FROM = -5, FLOW_TO = 1;
@@ -2099,13 +2109,13 @@
     const known = reg.find(i => i.name === def.name);
     const sel = !def.name ? '' : known ? known.id : '__other';
     const m = $('#modal');
-    m.innerHTML = '<div class="sheet form xsheet" role="dialog" aria-modal="true" aria-labelledby="mt"><h2 id="mt">' + (h ? '収入の記録を直す' : '収入の記録を追加') + '</h2>' +
+    m.innerHTML = '<div class="sheet form xsheet" role="dialog" aria-modal="true" aria-labelledby="mt"><h2 id="mt">' + (h ? '収入の記録を直す' : '収入の記録を追加') + '</h2>' + (!h && flowRange ? recSwitch('in') : '') +
       '<label>項目名<select id="ri-pick"><option value=""' + (sel ? '' : ' selected') + '>選んでください</option>' + reg.map(i => '<option value="' + esc(i.id) + '"' + (i.id === sel ? ' selected' : '') + '>' + esc(i.name) + '</option>').join('') + '<option value="__other"' + (sel === '__other' ? ' selected' : '') + '>臨時・その他（自分で入力）</option></select></label>' +
       '<label id="ri-name-wrap"' + (sel === '__other' ? '' : ' hidden') + '>項目名（臨時など）<input class="text" id="ri-name" autocomplete="off" value="' + esc(sel === '__other' ? def.name : '') + '" placeholder="例：お祝い・還付金"></label>' +
       '<label>入金された金額<input class="amount wide" id="ri-amt" inputmode="numeric" enterkeyhint="done" autocomplete="off" value="' + yenTxt(def.amount) + '" placeholder="未入力"></label>' +
       '<label>日付<input class="text" type="date" id="ri-date" value="' + esc(def.date) + '"></label>' +
       '<div class="btnrow">' + (h ? '<button class="danger" id="ri-del">削除</button>' : '') + '<button id="mCancel">やめる</button><button id="mOk" class="primary">保存</button></div></div>';
-    m.hidden = false;
+    m.hidden = false; bindRecSwitch();
     const close = () => { m.hidden = true; m.innerHTML = ''; };
     $('#mCancel').onclick = close; m.onclick = e => { if (e.target === m) close(); };
     const pick = $('#ri-pick');
@@ -2218,7 +2228,7 @@
     const kinds = ['変動費', '固定費', '1回のみ', 'その他'];
     const def = h || { date: rangeDefault() || (histMonth && histMonth !== isoToday().slice(0, 7) ? histMonth + '-01' : isoToday()), name: '', account: '', amount: null, kind: '変動費' };
     const m = $('#modal');
-    m.innerHTML = '<div class="sheet form xsheet" role="dialog" aria-modal="true" aria-labelledby="mt"><h2 id="mt">' + (h ? '記録を直す' : '記録を追加') + '</h2>' +
+    m.innerHTML = '<div class="sheet form xsheet" role="dialog" aria-modal="true" aria-labelledby="mt"><h2 id="mt">' + (h ? '引き落としの記録を直す' : '引き落としの記録を追加') + '</h2>' + (!h && flowRange ? recSwitch('out') : '') +
       '<label>項目名<select id="hr-pick" aria-label="項目名を選ぶ">' + histPickOptions(def) + '</select></label>' +
       '<label id="hr-name-wrap"' + (histPickKey(def) === '__other' ? '' : ' hidden') + '>項目名（臨時など）<input class="text" id="hr-name" autocomplete="off" value="' + esc(histPickKey(def) === '__other' ? def.name : '') + '" placeholder="例：車検・修理代"></label>' +
       '<label>引き落とされた金額<input class="amount wide" id="hr-amt" inputmode="numeric" enterkeyhint="done" autocomplete="off" value="' + yenTxt(def.amount) + '" placeholder="未入力"></label>' +
@@ -2226,7 +2236,7 @@
       '<label>種類<select id="hr-kind">' + kinds.map(k => '<option' + (k === def.kind ? ' selected' : '') + '>' + k + '</option>').join('') + '</select></label></div>' +
       '<label>口座<select id="hr-acc">' + (def.account ? '' : '<option value="" selected>選ぶ</option>') + accs.concat(def.account && !accs.includes(def.account) ? [def.account] : []).map(a => '<option' + (a === def.account ? ' selected' : '') + '>' + esc(a) + '</option>').join('') + '</select></label>' +
       '<div class="btnrow">' + (h ? '<button class="danger" id="hr-del">削除</button>' : '') + '<button id="mCancel">やめる</button><button id="mOk" class="primary">保存</button></div></div>';
-    m.hidden = false;
+    m.hidden = false; bindRecSwitch();
     const close = () => { m.hidden = true; m.innerHTML = ''; };
     $('#mCancel').onclick = close; m.onclick = e => { if (e.target === m) close(); };
     const pick = $('#hr-pick'), wrap = $('#hr-name-wrap');
