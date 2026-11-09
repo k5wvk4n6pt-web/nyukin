@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   const C = window.KCalc;
-  const APP_VERSION = '2026.11.10c';
+  const APP_VERSION = '2026.11.10d';
   /** ファイルの一部だけが新しい（アップロード漏れ・古いキャッシュ）と計算が合わなくなるので知らせる */
   /** 古いままのファイル名（なければ空）。native.js は中身が変わったときだけ気にする */
   function staleFiles() {
@@ -784,14 +784,19 @@
     const d = flowData(schedOff);
     const label = schedOff === 0 ? '今回' : schedOff === -1 ? '前回' : schedOff === 1 ? '次回' : schedOff > 0 ? schedOff + '回あと' : -schedOff + '回前';
     const tIso = isoOf(today());
-    const list = d.items.slice().sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
     const todayRec = src => (state.history || []).find(h => h.src === src && h.date === tIso);
-    const rows = list.map(x => { const o = isoToObj(x.date); const done = x.date < tIso;
+    // これからの引き落とし（日付の早い順）を上に、済んだもの（新しい順）を下に
+    const isDone = x => x.past || x.date < tIso || (x.date === tIso && x.src && (todayRec(x.src) || {}).paid);
+    const byDate = (a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0;
+    const upList = d.items.filter(x => !isDone(x)).sort(byDate), doneList = d.items.filter(isDone).sort((a, b) => byDate(b, a));
+    const list = upList.concat(doneList);
+    const rowOf = x => { const o = isoToObj(x.date); const done = x.date < tIso;
       let act = '';
       if (!x.past && x.date === tIso && x.amount != null && x.src) { const h = todayRec(x.src);
         if (h && h.paid) act = '<div class="paidrow"><span class="paidok">✓ 引落完了' + (h.deducted ? '（残高から引きました）' : '') + '</span><button class="small" data-unpaid="' + esc(x.src) + '">取り消す</button></div>';
         else if (h) act = '<div class="paidrow"><span class="sub">今日の引き落とし</span><button class="small primary" data-paid="' + esc(x.src) + '">引落完了</button></div>'; }
-      return '<div class="srow2' + (done ? ' done' : '') + '"><span class="ndate">' + mdw(o) + '</span><span class="nico">' + lineIcon(x.name) + '</span><span class="nname">' + esc(x.name) + '<small>' + esc(x.account) + (done ? '・引落済み' : '') + '</small></span><span class="namt num">' + (x.amount == null ? '<span class="flag">未入力</span>' : '¥' + nf.format(x.amount)) + '</span>' + act + '</div>'; }).join('');
+      return '<div class="srow2' + (done ? ' done' : '') + '"><span class="ndate">' + mdw(o) + '</span><span class="nico">' + lineIcon(x.name) + '</span><span class="nname">' + esc(x.name) + '<small>' + esc(x.account) + (done ? '・引落済み' : '') + '</small></span><span class="namt num">' + (x.amount == null ? '<span class="flag">未入力</span>' : '¥' + nf.format(x.amount)) + '</span>' + act + '</div>'; };
+    const rows = upList.map(rowOf).join('') + (doneList.length ? '<div class="sc-sep">引落済み ' + doneList.length + '件</div>' + doneList.map(rowOf).join('') : '');
     return '<section class="schedcard"><div class="sc-nav"><button class="small" data-sched="-1" aria-label="前の締め期間">‹</button><div class="sc-t"><b>' + label + '（' + md(d.to) + '締め）</b><span class="sub">' + md(d.from) + '〜' + md(d.to) + '</span></div><button class="small" data-sched="1" aria-label="次の締め期間">›</button></div>' +
       (rows ? '<div class="sc-list">' + rows + '</div>' : '<p class="sub" style="margin:0;padding:8px 2px">この期間の引き落としはありません。</p>') +
       '<div class="sc-total"><span>合計 ' + list.length + '件</span><b class="num">¥' + nf.format(d.expense) + '</b></div>' +

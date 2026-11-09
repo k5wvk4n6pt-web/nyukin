@@ -318,11 +318,11 @@
       activeCount: banks.filter(b => b.active).length,
       balanceMissing: banks.filter(b => b.dueActive && b.balance == null).length,
       income: (data.income || []).filter(i => !i.hidden).map(i => Object.assign({}, i, { next: nextDate(i, T, true) }))
-        .sort((a, c) => serial(a.next) - serial(c.next))
+        .sort((a, c) => (a.next ? serial(a.next) : Infinity) - (c.next ? serial(c.next) : Infinity)) // 過ぎた1回だけの収入（次がない）は後ろに
     };
   }
 
-  const api = { startOf, setCloseCtx, VERSION: '2026.11.10c', amountFor, cycle, onceDate, deadlineLabel, closeSettings, nextClosing, closingOf, holidays, holidayName, isBusinessDay, shiftDate, shiftMode, actual, addDays, WD, lastDay, serial, addMonth, weekday, fromDate, occurrence, activeIn, windows, occurrencesIn, nextDate, compute };
+  const api = { startOf, setCloseCtx, VERSION: '2026.11.10d', amountFor, cycle, onceDate, deadlineLabel, closeSettings, nextClosing, closingOf, holidays, holidayName, isBusinessDay, shiftDate, shiftMode, actual, addDays, WD, lastDay, serial, addMonth, weekday, fromDate, occurrence, activeIn, windows, occurrencesIn, nextDate, compute };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.KCalc = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
