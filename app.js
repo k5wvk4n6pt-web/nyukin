@@ -64,6 +64,18 @@
     const y = t.getFullYear() !== new Date().getFullYear() ? t.getFullYear() + '/' : '';
     return '更新：' + y + (t.getMonth() + 1) + '/' + t.getDate() + ' ' + String(t.getHours()).padStart(2, '0') + ':' + String(t.getMinutes()).padStart(2, '0');
   }
+  /** 「保存済み 今日 8:15」のように、最後に保存した日時を出す */
+  let autoSaving = false;
+  function showSaved() {
+    const el = $('#saved'); if (!el) return;
+    if (!state) { el.textContent = ''; return; }
+    const t = state.savedAt ? new Date(state.savedAt) : null;
+    if (!t || isNaN(t)) { el.textContent = '保存済み'; return; }
+    const n = new Date(), y = new Date(n.getFullYear(), n.getMonth(), n.getDate() - 1);
+    const same = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+    const day = same(t, n) ? '今日' : same(t, y) ? '昨日' : (t.getFullYear() !== n.getFullYear() ? t.getFullYear() + '/' : '') + (t.getMonth() + 1) + '/' + t.getDate();
+    el.textContent = '保存済み（' + day + ' ' + timeText(t) + '）';
+  }
   function timeText(t) { return String(t.getHours()).padStart(2, '0') + ':' + String(t.getMinutes()).padStart(2, '0'); }
 
   function toast(msg) {
@@ -113,16 +125,17 @@
     state = readBook(id) || emptyState();
     if (!keepPage) meta.page = 'prep';
     meta.reorder = null; saveMeta();
-    renderAll(); window.scrollTo(0, 0); toast('「' + curBook().name + '」の帳簿を開きました');
+    renderAll(); showSaved(); window.scrollTo(0, 0); toast('「' + curBook().name + '」の帳簿を開きました');
   }
   function save() {
     try {
       ensureBooks();
+      if (!autoSaving) state.savedAt = new Date().toISOString(); // 日付が変わったときの自動処理では更新しない
       localStorage.setItem(dataKey(books.current), JSON.stringify(state));
       clearTimeout(save._h); save._h = setTimeout(snapshot, 1500);
       queueNotify();
       lastSavedAt = new Date();
-      $('#saved').textContent = '自動保存 ' + timeText(lastSavedAt);
+      showSaved();
     } catch (e) {
       $('#saved').textContent = '保存できませんでした';
       toast('保存できませんでした。バックアップを保存してください');
@@ -171,6 +184,7 @@
       history: Array.isArray(d.history) ? d.history.filter(h => h && /^\d{4}-\d{2}-\d{2}$/.test(String(h.date))).map(h => ({ id: h.id || uid('h'), date: String(h.date), name: String(h.name || ''), account: String(h.account || ''), amount: h.amount == null ? null : Number(h.amount), kind: String(h.kind || 'その他'), src: h.src || null, auto: !!h.auto, edited: !!h.edited, deductChecked: !!h.deductChecked, deducted: !!h.deducted })) : [],
       historySince: /^\d{4}-\d{2}-\d{2}$/.test(String(d.historySince || '')) ? d.historySince : null,
       deductSince: /^\d{4}-\d{2}-\d{2}$/.test(String(d.deductSince || '')) ? d.deductSince : null,
+      savedAt: typeof d.savedAt === 'string' ? d.savedAt : null,
       incHistory: Array.isArray(d.incHistory) ? d.incHistory.filter(h => h && /^\d{4}-\d{2}-\d{2}$/.test(String(h.date))).map(h => ({ id: h.id || uid('r'), date: String(h.date), name: String(h.name || ''), amount: h.amount == null ? null : Number(h.amount), src: h.src || null, auto: !!h.auto, edited: !!h.edited })) : [],
       incSince: /^\d{4}-\d{2}-\d{2}$/.test(String(d.incSince || '')) ? d.incSince : null,
       incUntil: /^\d{4}-\d{2}-\d{2}$/.test(String(d.incUntil || '')) ? d.incUntil : null,
@@ -203,8 +217,7 @@
       return;
     }
     C.setCloseCtx(state);
-    recordPast();
-    rollVariable();
+    autoSaving = true; try { recordPast(); rollVariable(); } finally { autoSaving = false; }
     const r = C.compute(state, T);
     const page = PAGES.includes(meta.page) ? meta.page : 'prep';
     main.innerHTML = page === 'variable' ? listHTML('variable', '変動費', '何月分の引落かを選んで、金額を入力します。引落が済むと次の月に進みます。1回のみの引落もここに並びます（日付が過ぎたら「済み」にまとまります）。')
@@ -2857,7 +2870,7 @@
   applyTheme();
   setTimeout(() => scanAmounts(), 0);
   renderAll();
-  if (state) $('#saved').textContent = '保存済み';
+  showSaved();
   // 日付が変わったら確認日と集計を更新（入力中は邪魔しない）
   const tick = () => { if (keyOf(today()) !== todayKey && !(document.activeElement && document.activeElement.matches('input,select'))) renderKeep(); };
   setInterval(tick, 30000);
