@@ -572,11 +572,24 @@
     const list = items.sort((a, b) => serial2(a.date) - serial2(b.date)).filter(x => { const k = x.bank + x.name + serial2(x.date); if (seen.has(k)) return false; seen.add(k); return true; });
     const next = list[0];
     const days = next ? Math.round((new Date(next.date.y, next.date.m - 1, next.date.d) - new Date(T.y, T.m - 1, T.d)) / 864e5) : null;
-    const missing = r.banks.filter(b => b.dueActive && b.balance == null).length;
-    const st = r.shortfallTotal > 0 ? '<span class="pst bad">不足あり</span>' : missing ? '<span class="pst warn">未入力</span>' : r.dueCount ? '<span class="pst ok">準備OK</span>' : '';
+    // 右側：直近の引落日までに必要な金額（その日までの引き落とし）と、その日までに残高が足りるか
+    let nearAmt = 0, nearShort = false, nearMiss = false;
+    if (next) {
+      const nd = serial2(next.date);
+      nearAmt = list.filter(x => serial2(x.date) <= nd).reduce((a, x) => a + (x.amount || 0), 0);
+      for (const b of r.banks) {
+        const sum = r.windows.flatMap(w => b.lines[w.key]).filter(l => l.amount && serial2(l.date) >= t0 && serial2(l.date) <= nd).reduce((a, l) => a + l.amount, 0);
+        if (!sum) continue;
+        if (b.balance == null) nearMiss = true; else if (sum > b.balance) nearShort = true;
+      }
+    }
+    const st = !next ? '' : nearShort ? '<span class="pst bad">不足あり</span>' : nearMiss ? '<span class="pst warn">未入力</span>' : '<span class="pst ok">準備OK</span>';
+    const nearLab = next ? (days === 0 ? '今日（' + md(next.date) + '）に必要な金額' : md(next.date) + 'までに必要な金額') : '必要な金額';
+    const closeSum = w0 ? (r.totals[w0.key] || 0) : 0;
     const hero = '<button class="herocard' + (meta.prepPanel === 'due' ? ' on' : '') + '" data-panel-btn="due" aria-expanded="' + (meta.prepPanel === 'due') + '">' +
       '<span class="hc-l"><span class="hc-lab">次の引落まで</span><span class="hc-days num">' + (days == null ? '—' : days === 0 ? '今日' : days + '<small>日</small>') + '</span></span>' +
-      '<span class="hc-r"><span class="hc-lab">' + (w0 ? esc(w0.label) + 'に必要な金額' : '必要な金額') + st + '</span><span class="hc-amt num">¥' + nf.format(w0 ? (r.totals[w0.key] || 0) : 0) + '</span></span>' +
+      '<span class="hc-r"><span class="hc-lab">' + nearLab + st + '</span><span class="hc-amt num">¥' + nf.format(nearAmt) + '</span>' +
+      (w0 ? '<span class="hc-sub">' + md(w0.to) + '締めまでの引落合計 <b class="num">¥' + nf.format(closeSum) + '</b></span>' : '') + '</span>' +
       '<span class="hc-chev" aria-hidden="true">›</span></button>';
     const q = (k, ico, lab) => '<button class="qbtn' + (meta.prepPanel === k ? ' on' : '') + '" ' + (k === 'manage' ? 'data-act="go-variable"' : 'data-panel-btn="' + k + '" aria-expanded="' + (meta.prepPanel === k) + '"') + '>' + ico + '<span>' + lab + '</span></button>';
     const quick = '<div class="quick4">' + q('sched', QI.sched, '引落予定') + q('need', QI.scale, '過不足') + q('money', QI.bank, '口座残高') + q('flow', QI.chart, '収支記録') + '</div>';
