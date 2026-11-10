@@ -884,17 +884,19 @@
     const h = (state.history || []).find(x => x.src === src && x.date === isoToday()); if (!h) return;
     const bal = state.balances[h.account]; const hasBal = bal && bal.amount != null;
     if (!hasBal) { toast('「' + h.account + '」の残高を入力してから、引落完了にしてください'); return; }
+    const lack = bal.amount < h.amount; // 残高が足りないときは「残高から引く」を使えない
     const m = $('#modal');
     m.innerHTML = '<div class="sheet form" role="dialog" aria-modal="true" aria-labelledby="mt"><h2 id="mt">引落完了にする</h2>' +
       '<p style="margin:0"><b>' + esc(h.name) + '</b>（' + esc(h.account) + '）<br><b class="num">¥' + nf.format(h.amount) + '</b> の引き落としが済みましたか？</p>' +
-      (hasBal ? '<p class="sub" style="margin:0">今の残高：¥' + nf.format(bal.amount) + ' → 引くと ¥' + nf.format(bal.amount - h.amount) + '</p>' : '<p class="sub" style="margin:0">この口座は残高が未入力です。</p>') +
+      (lack ? '<p class="sub" style="margin:0">今の残高：¥' + nf.format(bal.amount) + '<br><b style="color:var(--short)">残高が ¥' + nf.format(h.amount - bal.amount) + ' 足りないため、残高から引けません。</b><br>入金したら、口座残高を直してからもう一度押してください。</p>'
+        : '<p class="sub" style="margin:0">今の残高：¥' + nf.format(bal.amount) + ' → 引くと ¥' + nf.format(bal.amount - h.amount) + '</p>') +
       '<div class="btnrow paidbtns">' +
-      (hasBal ? '<button id="pd-sub" class="primary">残高から ¥' + nf.format(h.amount) + ' 引く</button>' : '') +
+      '<button id="pd-sub" class="primary"' + (lack ? ' disabled' : '') + '>残高から ¥' + nf.format(h.amount) + ' 引く</button>' +
       '<button id="pd-keep">' + (hasBal ? '残高はもう直した（引かない）' : '完了にする') + '</button><button id="mCancel">やめる</button></div></div>';
     m.hidden = false;
     const close = () => { m.hidden = true; m.innerHTML = ''; };
     $('#mCancel').onclick = close; m.onclick = e => { if (e.target === m) close(); };
-    const done = sub => { if (sub && hasBal) { bal.amount -= h.amount; h.deducted = true; } else h.deducted = false; h.paid = true; h.deductChecked = true; save(); close(); renderKeep(); toast('「' + h.name + '」を引落完了にしました' + (sub && hasBal ? '（残高から引きました）' : '')); };
+    const done = sub => { if (sub && lack) return; if (sub && hasBal) { bal.amount -= h.amount; h.deducted = true; } else h.deducted = false; h.paid = true; h.deductChecked = true; save(); close(); renderKeep(); toast('「' + h.name + '」を引落完了にしました' + (sub && hasBal ? '（残高から引きました）' : '')); };
     if (hasBal) $('#pd-sub').onclick = () => done(true);
     $('#pd-keep').onclick = () => done(false);
   }
