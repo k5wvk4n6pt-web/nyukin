@@ -849,7 +849,7 @@
       (rowsH ? '<div class="fd-list">' + rowsH + '</div>' : '<p class="sub" style="margin:0">この期間の' + (side === 'in' ? '収入' : '支出') + 'はありません。</p>') +
       '<div class="fd-tools"><button class="small" data-act="frec-back">' + proMark() + (side === 'in' ? '登録している収入を記録にまとめて反映' : '固定費を記録にまとめて反映') + '</button><button class="small" data-act="frec-csv">' + proMark() + 'この期間をCSVで書き出す</button></div></div>';
     return '<section class="flowcard"><div class="fg-legend"><span><i class="sw in"></i>収入</span><span><i class="sw out"></i>支出</span><span class="sub">棒を押すと内訳</span></div>' + svg + detail +
-      (proActive() ? '' : '<p class="note" style="margin:0"><span class="probadge">プレミアム</span> それより前の期間の収支は、プレミアムで見られます。<button class="linkbtn" data-act="pro-info" data-what="過去の収支記録">くわしく</button></p>') +
+      (proActive() ? '' : '<button class="fd-pronote" data-act="pro-info" data-what="過去の収支記録"><span class="probadge sm">プレミアム</span><span class="fd-pt">もっと前の期間の収支を見る</span><span class="fd-pc" aria-hidden="true">›</span></button>') +
       '<p class="note" style="margin:0">過ぎた日は「記録」（引き落とし・収入）、今日からあとは登録している金額で計算しています。</p></section>';
   }
   /* ---------- 締め期間ごとの引落予定 ---------- */
