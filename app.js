@@ -779,9 +779,9 @@
   const FLOW_TO = 1;
   const flowFrom = () => proActive() ? -5 : -2; // 無料は直近3期間まで（それより前はプレミアム）
   /** 1つの締め期間の収支。過ぎた日は「記録」、今日以降は登録内容から */
-  function flowData(off) {
+  function flowData(off, rng) {
     const T = today(), tIso = isoOf(T);
-    const cy = C.cycle(state, T, off);
+    const cy = rng ? { from: rng.from, to: rng.to } : C.cycle(state, T, off); // rng：期間を自分で決めるとき（CSV）
     const fIso = isoOf(cy.from), toIso = isoOf(cy.to);
     const items = []; let expense = 0, unentered = 0, recorded = false;
     for (const h of state.history || []) {
@@ -847,7 +847,7 @@
       (d.noRecord || d.noIncRecord ? '<p class="sub" style="margin:0">この期間は' + (d.noRecord && d.noIncRecord ? '引き落としと収入' : d.noRecord ? '引き落とし' : '収入') + 'の記録がないため、0円になっています。</p>' : '') +
       '<div class="fd-lh"><span><b>' + (side === 'in' ? '収入' : '支出') + 'の明細</b><span class="sub">' + lst.length + '件' + (lst.some(x => x.past) ? '・済みの行は押すと直せます' : '') + '</span></span><button class="small primary" data-act="frec-add">＋ 記録を追加</button></div>' +
       (rowsH ? '<div class="fd-list">' + rowsH + '</div>' : '<p class="sub" style="margin:0">この期間の' + (side === 'in' ? '収入' : '支出') + 'はありません。</p>') +
-      '<div class="fd-tools"><button class="small" data-act="frec-back">' + proMark() + (side === 'in' ? '登録している収入を記録にまとめて反映' : '固定費を記録にまとめて反映') + '</button><button class="small" data-act="frec-csv">' + proMark() + 'この期間をCSVで書き出す</button></div></div>';
+      '<div class="fd-tools"><button class="small" data-act="frec-back">' + proMark() + (side === 'in' ? '登録している収入を記録にまとめて反映' : '固定費を記録にまとめて反映') + '</button><button class="small" data-act="frec-csv">' + proMark() + 'CSVで書き出す</button></div></div>';
     return '<section class="flowcard"><div class="fg-legend"><span><i class="sw in"></i>収入</span><span><i class="sw out"></i>支出</span><span class="sub">棒を押すと内訳</span></div>' + svg + detail +
       (proActive() ? '' : '<button class="fd-pronote" data-act="pro-info" data-what="過去の収支記録"><span class="probadge sm">プレミアム</span><span class="fd-pt">もっと前の期間の収支を見る</span><span class="fd-pc" aria-hidden="true">›</span></button>') +
       '<p class="note" style="margin:0">過ぎた日は「記録」（引き落とし・収入）、今日からあとは登録している金額で計算しています。</p></section>';
@@ -926,7 +926,7 @@
     main.querySelectorAll('#flowBox [data-act="pro-info"]').forEach(b => b.addEventListener('click', () => openProSheet(b.dataset.what)));
     main.querySelectorAll('[data-act="frec-add"]').forEach(b => b.addEventListener('click', () => { baseMonth(); flowSide === 'in' ? openIncEdit(null) : openHistEdit(null); }));
     main.querySelectorAll('[data-act="frec-back"]').forEach(b => b.addEventListener('click', () => { baseMonth(); flowSide === 'in' ? openIncBack() : openFixBack(); }));
-    main.querySelectorAll('[data-act="frec-csv"]').forEach(b => b.addEventListener('click', () => exportFlowCSV(flowSide === 'in' ? 'in' : 'out', fd)));
+    main.querySelectorAll('[data-act="frec-csv"]').forEach(b => b.addEventListener('click', () => openCsvSheet(flowSide === 'in' ? 'in' : 'out', fd)));
     main.querySelectorAll('#flowBox [data-rid]').forEach(b => b.addEventListener('click', () => openIncEdit(b.dataset.rid)));
     main.querySelectorAll('#flowBox [data-hid]').forEach(b => b.addEventListener('click', () => openHistEdit(b.dataset.hid)));
     main.querySelectorAll('[data-flow]').forEach(g => {
@@ -2550,16 +2550,55 @@
     return h + '<optgroup label="その他"><option value="__other"' + (sel === '__other' ? ' selected' : '') + '>臨時・その他（自分で入力）</option></optgroup>';
   }
   /** 収支記録の、いま選んでいる期間の明細をCSVにする（済みは記録、これからは予定） */
+  /** CSVで書き出す期間と種類を選ぶシート */
+  function openCsvSheet(side, fd) {
+    if (needPro('CSVの書き出し')) return;
+    const T = today(), tIso = isoOf(T);
+    const p2 = n => String(n).padStart(2, '0');
+    const ymd = (y, m, d) => y + '-' + p2(m) + '-' + p2(d);
+    const lastD = (y, m) => new Date(y, m, 0).getDate();
+    const pm = T.m === 1 ? { y: T.y - 1, m: 12 } : { y: T.y, m: T.m - 1 };
+    const pre = {
+      cyc: [isoOf(fd.from), isoOf(fd.to), '表示中の期間'],
+      tm: [ymd(T.y, T.m, 1), ymd(T.y, T.m, lastD(T.y, T.m)), '今月'],
+      pm: [ymd(pm.y, pm.m, 1), ymd(pm.y, pm.m, lastD(pm.y, pm.m)), '先月'],
+      ty: [ymd(T.y, 1, 1), ymd(T.y, 12, 31), '今年']
+    };
+    let sd = side;
+    const m = $('#modal');
+    m.innerHTML = '<div class="sheet form csvsheet" role="dialog" aria-modal="true" aria-labelledby="mt"><h2 id="mt">CSVで書き出す</h2>' +
+      '<div class="seg" role="tablist" aria-label="書き出す明細">' + [['out', '支出'], ['in', '収入'], ['both', '両方']].map(k => '<button type="button" data-csvside="' + k[0] + '" class="' + (k[0] === sd ? 'on' : '') + '">' + k[1] + '</button>').join('') + '</div>' +
+      '<div class="csvpre">' + Object.keys(pre).map(k => '<button type="button" class="small' + (k === 'cyc' ? ' on' : '') + '" data-csvpre="' + k + '">' + pre[k][2] + '</button>').join('') + '</div>' +
+      '<div class="csvrange"><label>はじめ<input type="date" id="csvFrom" value="' + pre.cyc[0] + '"></label><span aria-hidden="true">〜</span><label>おわり<input type="date" id="csvTo" value="' + pre.cyc[1] + '"></label></div>' +
+      '<p class="sub" style="margin:0">過ぎた日は記録、今日からあとは予定として書き出します。</p>' +
+      '<div class="btnrow"><button id="csvGo" class="primary">書き出す</button><button id="mCancel">やめる</button></div></div>';
+    m.hidden = false;
+    const close = () => { m.hidden = true; m.innerHTML = ''; };
+    $('#mCancel').onclick = close; m.onclick = e => { if (e.target === m) close(); };
+    m.querySelectorAll('[data-csvside]').forEach(b => b.onclick = () => { sd = b.dataset.csvside; m.querySelectorAll('[data-csvside]').forEach(x => x.classList.toggle('on', x === b)); });
+    m.querySelectorAll('[data-csvpre]').forEach(b => b.onclick = () => { const p = pre[b.dataset.csvpre]; $('#csvFrom').value = p[0]; $('#csvTo').value = p[1]; m.querySelectorAll('[data-csvpre]').forEach(x => x.classList.toggle('on', x === b)); });
+    ['csvFrom', 'csvTo'].forEach(id => $('#' + id).addEventListener('input', () => m.querySelectorAll('[data-csvpre]').forEach(x => x.classList.remove('on'))));
+    $('#csvGo').onclick = () => {
+      const f = $('#csvFrom').value, t = $('#csvTo').value;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(f) || !/^\d{4}-\d{2}-\d{2}$/.test(t)) { toast('はじめとおわりの日付を入れてください'); return; }
+      if (f > t) { toast('おわりの日付は、はじめより後にしてください'); return; }
+      const d = flowData(0, { from: isoToObj(f), to: isoToObj(t) });
+      close(); exportFlowCSV(sd, d);
+    };
+  }
   async function exportFlowCSV(side, d) {
     if (needPro('CSVの書き出し')) return;
-    const lst = (side === 'in' ? d.incItems : d.items).slice().sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
+    const byD = (a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0;
+    const lst = side === 'both' ? d.incItems.map(x => Object.assign({ io: '収入' }, x)).concat(d.items.map(x => Object.assign({ io: '支出' }, x))).sort(byD)
+      : (side === 'in' ? d.incItems : d.items).slice().sort(byD);
     if (!lst.length) { toast('書き出す明細がありません'); return; }
     const q = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
     const book = curBook() ? curBook().name : '';
-    const head = side === 'in' ? '日付,項目,状態,金額,帳簿' : '日付,項目,口座,状態,金額,帳簿';
-    const rows = lst.map(x => (side === 'in' ? [x.date, x.name, x.past ? '入金済み' : '予定', x.amount, book] : [x.date, x.name, x.account, x.past ? '引落済み' : '予定', x.amount, book]).map(q).join(','));
+    const head = side === 'both' ? '日付,区分,項目,口座,状態,金額,帳簿' : side === 'in' ? '日付,項目,状態,金額,帳簿' : '日付,項目,口座,状態,金額,帳簿';
+    const rows = lst.map(x => (side === 'both' ? [x.date, x.io, x.name, x.account || '', x.past ? (x.io === '収入' ? '入金済み' : '引落済み') : '予定', x.amount, book]
+      : side === 'in' ? [x.date, x.name, x.past ? '入金済み' : '予定', x.amount, book] : [x.date, x.name, x.account, x.past ? '引落済み' : '予定', x.amount, book]).map(q).join(','));
     const text = '\ufeff' + [head].concat(rows).join('\r\n');
-    const name = (side === 'in' ? '収入' : '支出') + '_' + book + '_' + isoOf(d.from) + '〜' + isoOf(d.to) + '.csv';
+    const name = (side === 'both' ? '収支' : side === 'in' ? '収入' : '支出') + '_' + book + '_' + isoOf(d.from) + '〜' + isoOf(d.to) + '.csv';
     if (N.isNative) { try { await N.shareFile(name, text); } catch (e) { toast('書き出せませんでした'); } return; }
     const file = new File([text], name, { type: 'text/csv' });
     try { if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: name }); return; } } catch (e) { if (e && e.name === 'AbortError') return; }
