@@ -2230,7 +2230,7 @@
   function deductPast(todayIso) {
     if (!state.deductSince) state.deductSince = todayIso;
     if (state.autoDeduct === false) return;
-    const done = {};
+    const done = {}, skip = {};
     for (const h of state.history || []) {
       if (!h.auto || h.deductChecked || h.paid || h.date < state.deductSince || h.date >= todayIso) continue; // 当日は「引落完了」ボタンで。押さなかった分は翌日に引く
       h.deductChecked = true;
@@ -2238,11 +2238,14 @@
       const b = state.balances[h.account];
       if (!b || b.amount == null) continue;
       if (b.updatedAt && localIso(b.updatedAt) >= h.date) continue; // 引落日以降に残高を入れ直している
+      if (b.amount < h.amount) { h.lackSkip = true; skip[h.account] = (skip[h.account] || 0) + h.amount; continue; } // 残高不足：引き落とされていないはずなので引かない
       b.amount -= h.amount; h.deducted = true;
       done[h.account] = (done[h.account] || 0) + h.amount;
     }
-    const keys = Object.keys(done);
-    if (keys.length) setTimeout(() => toast('引落が済んだ分を残高から引きました：' + keys.map(k => k + ' −' + nf.format(done[k]) + '円').join('、')), 600);
+    const keys = Object.keys(done), sk = Object.keys(skip);
+    const msg = (keys.length ? '引落が済んだ分を残高から引きました：' + keys.map(k => k + ' −' + nf.format(done[k]) + '円').join('、') : '') +
+      (sk.length ? (keys.length ? '\n' : '') + '残高が足りないため引きませんでした：' + sk.map(k => k + ' ' + nf.format(skip[k]) + '円').join('、') + '（口座残高を確認してください）' : '');
+    if (msg) setTimeout(() => toast(msg), 600);
   }
   /**
    * 変動費は「○月分」で管理する。
