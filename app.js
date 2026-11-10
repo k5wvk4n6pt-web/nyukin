@@ -603,14 +603,27 @@
       (cards || '<p class="sub" style="margin:0;padding:8px 2px">' + by + 'までの引き落としはありません。</p>') +
       (cards ? '<p class="note" style="margin:0">口座ごとに、' + by + 'までの引き落としと今の残高をくらべています。今日「引落完了」にした分は入りません。</p>' : '');
   }
+  /** 不足が出る最初の引落日（期限までの引き落としを日付順に足して、残高を超えた日） */
+  function shortDate(r, b) {
+    if (b.balance == null || !(b.shortfall > 0)) return null;
+    const lines = r.windows.filter(w => w.inClose).flatMap(w => b.lines[w.key]).filter(l => l.amount).sort((x, y) => serial2(x.date) - serial2(y.date));
+    let sum = 0; for (const l of lines) { sum += l.amount; if (sum > b.balance) return l.date; }
+    return lines.length ? lines[lines.length - 1].date : null;
+  }
+  const byLabel = d => { const t = today(); return serial2(d) <= serial2(t) ? '今日（' + md(d) + '）' : md(d); };
   function prepNoticeHTML(r) {
     const w0 = r.windows.filter(w => w.inClose).pop() || r.windows[0];
     const missing = r.banks.filter(b => b.dueActive && b.balance == null).length;
     const by = w0 ? md(w0.to) : '';
     if (r.shortfallTotal > 0) {
-      const sl = r.banks.filter(b => b.balance != null && b.shortfall > 0).sort((a, b) => b.shortfall - a.shortfall);
-      return '<div class="pnotice warn"><span class="pn-i" aria-hidden="true">i</span><div class="pn-body"><span>' + by + 'までに、口座へ <b class="num">¥' + nf.format(r.shortfallTotal) + '</b> の入金が必要です</span>' +
-        '<div class="pn-list">' + sl.map(b => '<button class="pn-row" data-panel-btn="money"><span>' + esc(b.name) + '</span><b class="num">¥' + nf.format(b.shortfall) + ' 不足</b><span class="pn-chev" aria-hidden="true">›</span></button>').join('') + '</div></div></div>';
+      const sl = r.banks.filter(b => b.balance != null && b.shortfall > 0).map(b => ({ b, d: shortDate(r, b) }))
+        .sort((x, y) => (x.d ? serial2(x.d) : 9e9) - (y.d ? serial2(y.d) : 9e9) || y.b.shortfall - x.b.shortfall);
+      const ds = [...new Set(sl.filter(x => x.d).map(x => serial2(x.d)))];
+      const first = sl.find(x => x.d);
+      const head = ds.length === 1 && first ? byLabel(first.d) + 'までに、口座へ <b class="num">¥' + nf.format(r.shortfallTotal) + '</b> の入金が必要です'
+        : '口座へ <b class="num">¥' + nf.format(r.shortfallTotal) + '</b> の入金が必要です' + (first ? '。いちばん早いのは' + byLabel(first.d) + 'までです' : '');
+      return '<div class="pnotice warn"><span class="pn-i" aria-hidden="true">i</span><div class="pn-body"><span>' + head + '</span>' +
+        '<div class="pn-list">' + sl.map(({ b, d }) => '<button class="pn-row" data-panel-btn="money"><span>' + esc(b.name) + (d ? '<small>' + byLabel(d) + 'までに</small>' : '') + '</span><b class="num">¥' + nf.format(b.shortfall) + ' 不足</b><span class="pn-chev" aria-hidden="true">›</span></button>').join('') + '</div></div></div>';
     }
     if (missing) return '<button class="pnotice info" data-act="go-banks"><span class="pn-i" aria-hidden="true">i</span><span>残高を入れると、入金が必要か分かります（未入力 ' + missing + '口座）</span><span class="pn-chev" aria-hidden="true">›</span></button>';
     if (r.dueCount) return '<div class="pnotice ok"><span class="pn-i" aria-hidden="true">✓</span><span>' + by + 'までの引き落としに、残高は足りています</span></div>';
