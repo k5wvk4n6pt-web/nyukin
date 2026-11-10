@@ -426,7 +426,7 @@
     }
     // 不足があるときは、全体で足りるかどうかを添える
     let both = '';
-    if (r.shortfallTotal > 0) {
+    if (r.shortfallTotal > 0 && net < 0) { // 全体残高がプラスなら説明は出さない
       both = '<div class="sbnet ' + (net >= 0 ? 'ok' : 'bad') + '"><b>' + (net >= 0 ? '全体ではお金は足りています' : '全体でも ' + nf.format(-net) + '円 足りません') + '</b>' +
         '<span>引き落とされる口座にお金がないと引き落とせません。' +
         (net >= 0 ? '銀行で、余っている口座から不足している口座へ ' + nf.format(r.shortfallTotal) + '円 入金してください。' : (r.shortfallTotal + net > 0 ? '銀行で、ほかの口座から不足している口座へ ' + nf.format(r.shortfallTotal + net) + '円 入金したうえで、あと ' + nf.format(-net) + '円 の入金が必要です。' : 'ほかの口座にも余りがないので、' + nf.format(-net) + '円 の入金が必要です。')) + '</span></div>';
