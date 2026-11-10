@@ -623,20 +623,32 @@
     let sum = 0; for (const l of lines) { sum += l.amount; if (sum > b.balance) return l.date; }
     return lines.length ? lines[lines.length - 1].date : null;
   }
+  /** 不足を引落日ごとに分ける：[{date, add}]（その日までに追加で必要な額） */
+  function shortSteps(r, b) {
+    if (b.balance == null || !(b.shortfall > 0)) return [];
+    const lines = r.windows.filter(w => w.inClose).flatMap(w => b.lines[w.key]).filter(l => l.amount).sort((x, y) => serial2(x.date) - serial2(y.date));
+    const out = []; let sum = 0, need = 0;
+    for (const l of lines) { sum += l.amount; const n = Math.max(0, sum - b.balance); if (n > need) { const k = serial2(l.date); const last = out[out.length - 1];
+      if (last && serial2(last.date) === k) last.add += n - need; else out.push({ date: l.date, add: n - need }); need = n; } }
+    return out;
+  }
   const byLabel = d => { const t = today(); return serial2(d) <= serial2(t) ? '今日（' + md(d) + '）' : md(d); };
   function prepNoticeHTML(r) {
     const w0 = r.windows.filter(w => w.inClose).pop() || r.windows[0];
     const missing = r.banks.filter(b => b.dueActive && b.balance == null).length;
     const by = w0 ? md(w0.to) : '';
     if (r.shortfallTotal > 0) {
-      const sl = r.banks.filter(b => b.balance != null && b.shortfall > 0).map(b => ({ b, d: shortDate(r, b) }))
+      const sl = r.banks.filter(b => b.balance != null && b.shortfall > 0).map(b => { const st = shortSteps(r, b); return { b, st, d: st.length ? st[0].date : null }; })
         .sort((x, y) => (x.d ? serial2(x.d) : 9e9) - (y.d ? serial2(y.d) : 9e9) || y.b.shortfall - x.b.shortfall);
-      const ds = [...new Set(sl.filter(x => x.d).map(x => serial2(x.d)))];
-      const first = sl.find(x => x.d);
-      const head = ds.length === 1 && first ? byLabel(first.d) + 'までに、口座へ <b class="num">¥' + nf.format(r.shortfallTotal) + '</b> の入金が必要です'
-        : '口座へ <b class="num">¥' + nf.format(r.shortfallTotal) + '</b> の入金が必要です' + (first ? '。いちばん早いのは' + byLabel(first.d) + 'までです' : '');
+      // 日付ごとにまとめる（いつまでに、いくら）
+      const byD = new Map(); for (const x of sl) for (const s2 of x.st) { const k = serial2(s2.date); const v = byD.get(k) || { date: s2.date, amt: 0 }; v.amt += s2.add; byD.set(k, v); }
+      const steps = [...byD.values()].sort((a2, b2) => serial2(a2.date) - serial2(b2.date));
+      const head = steps.length ? byLabel(steps[0].date) + 'までに、口座へ <b class="num">¥' + nf.format(steps[0].amt) + '</b> の入金が必要です' +
+          (steps.length > 1 ? '<small class="pn-more">' + steps.slice(1).map(x => md(x.date) + 'までに あと ¥' + nf.format(x.amt)).join('、') + '（合計 ¥' + nf.format(r.shortfallTotal) + '）</small>' : '')
+        : '口座へ <b class="num">¥' + nf.format(r.shortfallTotal) + '</b> の入金が必要です';
+      const stepTxt = st => st.map((x, i) => '<small>' + byLabel(x.date) + 'までに' + (i ? ' あと' : '') + ' ¥' + nf.format(x.add) + '</small>').join('');
       return '<div class="pnotice warn"><span class="pn-i" aria-hidden="true">i</span><div class="pn-body"><span>' + head + '</span>' +
-        '<div class="pn-list">' + sl.map(({ b, d }) => '<button class="pn-row" data-panel-btn="money"><span>' + esc(b.name) + (d ? '<small>' + byLabel(d) + 'までに</small>' : '') + '</span><b class="num">¥' + nf.format(b.shortfall) + ' 不足</b><span class="pn-chev" aria-hidden="true">›</span></button>').join('') + '</div></div></div>';
+        '<div class="pn-list">' + sl.map(({ b, st }) => '<button class="pn-row" data-panel-btn="money"><span>' + esc(b.name) + stepTxt(st) + '</span><b class="num">¥' + nf.format(b.shortfall) + ' 不足</b><span class="pn-chev" aria-hidden="true">›</span></button>').join('') + '</div></div></div>';
     }
     if (missing) return '<button class="pnotice info" data-act="go-banks"><span class="pn-i" aria-hidden="true">i</span><span>残高を入れると、入金が必要か分かります（未入力 ' + missing + '口座）</span><span class="pn-chev" aria-hidden="true">›</span></button>';
     if (r.dueCount) return '<div class="pnotice ok"><span class="pn-i" aria-hidden="true">✓</span><span>' + by + 'までの引き落としに、残高は足りています</span></div>';
