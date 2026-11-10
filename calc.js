@@ -243,7 +243,7 @@
   function compute(data, T) {
     setCloseCtx(data);
     const cs = closeSettings(data);
-    const W = windows(T, cs);
+    let W = windows(T, cs);
     // 非表示の項目・口座・収入は計算に含めない
     const hiddenAcc = new Set(data.hiddenAccounts || []);
     const exclSurplus = new Set(data.excludeSurplus || []);
@@ -255,6 +255,13 @@
       .concat((data.variable || []).filter(x => !x.hidden).map(x => Object.assign({ kind: '変動費' }, x)))
       .concat((data.fixed || []).filter(x => !x.hidden).map(x => Object.assign({ kind: '固定費' }, x)))
       .concat((data.once || []).filter(x => !x.hidden).map(x => Object.assign({ kind: '1回のみ' }, x)));
+    // 今回の締め日までに、これからの引き落としが1件も残っていなければ、次の締め日までを見る
+    {
+      const accs = new Set((data.accounts || []).filter(a => !hiddenAcc.has(a)));
+      const last = W[W.length - 1].to;
+      const left = items.some(it => accs.has(it.account) && it.amount !== 0 && occurrencesIn(it, T, last).some(o => !(paidToday.has(it.id) && isoS(o) === tIso)));
+      if (!left) { const W2 = windows(addDays(last, 1), cs); W2[0].from = T; W = W2; }
+    }
     const banks = (data.accounts || []).filter(a => !hiddenAcc.has(a)).map(name => {
       const bal = (data.balances || {})[name] || {};
       const b = { name, sums: {}, lines: {}, unentered: 0, unenteredDue: 0, next: null, balance: bal.amount == null ? null : Number(bal.amount), balanceUpdatedAt: bal.updatedAt || null };
@@ -322,7 +329,7 @@
     };
   }
 
-  const api = { startOf, setCloseCtx, VERSION: '2026.11.10d', amountFor, cycle, onceDate, deadlineLabel, closeSettings, nextClosing, closingOf, holidays, holidayName, isBusinessDay, shiftDate, shiftMode, actual, addDays, WD, lastDay, serial, addMonth, weekday, fromDate, occurrence, activeIn, windows, occurrencesIn, nextDate, compute };
+  const api = { startOf, setCloseCtx, VERSION: '2026.11.11a', amountFor, cycle, onceDate, deadlineLabel, closeSettings, nextClosing, closingOf, holidays, holidayName, isBusinessDay, shiftDate, shiftMode, actual, addDays, WD, lastDay, serial, addMonth, weekday, fromDate, occurrence, activeIn, windows, occurrencesIn, nextDate, compute };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.KCalc = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
