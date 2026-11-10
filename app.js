@@ -413,8 +413,8 @@
     const net = dueLeft + idleBal;
     const plusSub = '引落口座の引落後 ' + (dueLeft < 0 ? '−' : '') + nf.format(Math.abs(dueLeft)) + '円 ＋ 引落のない口座 ' + nf.format(idleBal) + '円';
     // 全体の残高：プラスなら残高合計、マイナスなら全体の不足額
-    const plus = net >= 0 ? box('plus', cl + '引落後の全体残高', 0, net, plusSub, 'plus')
-      : '<div class="tot short"><span class="tl">' + cl + '引落後の全体残高</span><span class="big num"><span class="yen pre">不足</span>' + nf.format(-net) + '<span class="yen">円</span></span><small>' + plusSub + '</small></div>';
+    const plus = net >= 0 ? box('plus', cl + '締日後の残高合計', 0, net, plusSub, 'plus')
+      : '<div class="tot short"><span class="tl">' + cl + '締日後の残高合計</span><span class="big num"><span class="yen pre">不足</span>' + nf.format(-net) + '<span class="yen">円</span></span><small>' + plusSub + '</small></div>';
     const showAll = serial2(r.endAll) > serial2(r.closing);
     const allLine = showAll ? '<div class="allline"><span>' + md(r.endAll) + 'まで見ると</span><span class="num">不足 <b>' + nf.format(r.shortTotalAll) + '円</b></span><span class="num">余り <b>' + nf.format(r.surplusTotalAll) + '円</b></span></div>' : '';
     const miss = r.balanceMissing > 0 ? '<div class="flag">残高未入力：' + r.balanceMissing + '口座（どちらの合計にも含みません）</div>' : '';
