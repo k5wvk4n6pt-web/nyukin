@@ -391,7 +391,7 @@
     const box = (cls, title, count, amount, sub, key) => '<div class="tot ' + cls + '"><span class="tl">' + title + '</span>' +
       '<span class="big num">' + nf.format(amount) + '<span class="yen">円</span></span><small>' + sub + '</small></div>';
     const cl = md(r.closing);
-    const short = box(r.shortfallTotal > 0 ? 'short' : 'zero', cl + 'までの不足', r.shortCount, r.shortfallTotal,
+    const short = box(r.shortfallTotal > 0 ? 'short' : 'zero', cl + 'までに入金が必要', r.shortCount, r.shortfallTotal,
       r.shortCount ? r.shortCount + '口座・入金が必要' : '不足の口座はありません', 'short');
     // 余り＝引落口座の引落後の残り（足りない口座はマイナス）＋引落のない口座の残高。マイナスなら「余りなし」
     const inc = r.banks.filter(b => b.balance != null && !b.excluded);
@@ -399,8 +399,9 @@
     const idleBal = inc.filter(b => !b.dueActive).reduce((a, b) => a + b.balance, 0);
     const net = dueLeft + idleBal;
     const plusSub = '引落口座の引落後 ' + (dueLeft < 0 ? '−' : '') + nf.format(Math.abs(dueLeft)) + '円 ＋ 引落のない口座 ' + nf.format(idleBal) + '円';
-    const plus = net > 0 ? box('plus', cl + 'までの余り', 0, net, plusSub, 'plus')
-      : '<div class="tot zero"><span class="tl">' + cl + 'までの余り</span><span class="big">余りなし</span><small>' + plusSub + '</small></div>';
+    // 全体の残高：プラスなら残高合計、マイナスなら全体の不足額
+    const plus = net >= 0 ? box('plus', cl + '引落後の全体残高', 0, net, plusSub, 'plus')
+      : '<div class="tot short"><span class="tl">' + cl + '引落後の全体残高</span><span class="big num"><span class="yen pre">不足</span>' + nf.format(-net) + '<span class="yen">円</span></span><small>' + plusSub + '</small></div>';
     const showAll = serial2(r.endAll) > serial2(r.closing);
     const allLine = showAll ? '<div class="allline"><span>' + md(r.endAll) + 'まで見ると</span><span class="num">不足 <b>' + nf.format(r.shortTotalAll) + '円</b></span><span class="num">余り <b>' + nf.format(r.surplusTotalAll) + '円</b></span></div>' : '';
     const miss = r.balanceMissing > 0 ? '<div class="flag">残高未入力：' + r.balanceMissing + '口座（どちらの合計にも含みません）</div>' : '';
@@ -417,10 +418,10 @@
     {
       const list = r.banks.filter(b => b.balance != null && !b.excluded && b.surplus > 0).sort((a, b) => b.surplus - a.surplus);
       const exc = r.banks.filter(b => b.balance != null && b.excluded && b.surplus > 0);
-      detail += '<div class="sbdetail plus"><div class="sbd-h">' + cl + 'までの引落後にお金が残る口座</div>' +
+      detail += '<div class="sbdetail plus"><div class="sbd-h">' + cl + 'の引落後に残高が残る口座</div>' +
         (list.length ? '<div class="surlist">' + list.map(b => row(b, '残高 ' + nf.format(b.balance) + ' − 引落 ' + nf.format(b.due), nf.format(b.surplus), 'pos')).join('') +
-          '<div class="surrow total"><span class="sn">残る口座の合計</span><span class="sc"></span><span class="sv num">' + nf.format(r.surplusTotal) + '<small>円</small></span></div></div>'
-          : '<p class="sub" style="margin:0">お金が残る口座はありません。</p>') +
+          '<div class="surrow total"><span class="sn">合計</span><span class="sc"></span><span class="sv num">' + nf.format(r.surplusTotal) + '<small>円</small></span></div></div>'
+          : '<p class="sub" style="margin:0">残高が残る口座はありません。</p>') +
         (exc.length ? '<p class="sub" style="margin:6px 0 0">余りに含めない口座：' + exc.map(b => esc(b.name) + '（' + nf.format(b.surplus) + '円）').join('、') + '</p>' : '') + '</div>';
     }
     // 不足があるときは、全体で足りるかどうかを添える
