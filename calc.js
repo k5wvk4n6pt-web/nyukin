@@ -258,8 +258,8 @@
     // 今回の締め日までに、これからの引き落としが1件も残っていなければ、次の締め日までを見る
     {
       const accs = new Set((data.accounts || []).filter(a => !hiddenAcc.has(a)));
-      const last = W[W.length - 1].to;
-      const left = items.some(it => accs.has(it.account) && it.amount !== 0 && occurrencesIn(it, T, last).some(o => !(paidToday.has(it.id) && isoS(o) === tIso)));
+      const last = (W.filter(w => w.inClose).pop() || W[0]).to; // 締め日（期限1）まで
+      const left = items.some(it => accs.has(it.account) && occurrencesIn(it, T, last).some(o => !(paidToday.has(it.id) && isoS(o) === tIso) && amountFor(it, o) !== 0));
       if (!left) { const W2 = windows(addDays(last, 1), cs); W2[0].from = T; W = W2; }
     }
     const banks = (data.accounts || []).filter(a => !hiddenAcc.has(a)).map(name => {
@@ -329,7 +329,7 @@
     };
   }
 
-  const api = { startOf, setCloseCtx, VERSION: '2026.11.11a', amountFor, cycle, onceDate, deadlineLabel, closeSettings, nextClosing, closingOf, holidays, holidayName, isBusinessDay, shiftDate, shiftMode, actual, addDays, WD, lastDay, serial, addMonth, weekday, fromDate, occurrence, activeIn, windows, occurrencesIn, nextDate, compute };
+  const api = { startOf, setCloseCtx, VERSION: '2026.11.11b', amountFor, cycle, onceDate, deadlineLabel, closeSettings, nextClosing, closingOf, holidays, holidayName, isBusinessDay, shiftDate, shiftMode, actual, addDays, WD, lastDay, serial, addMonth, weekday, fromDate, occurrence, activeIn, windows, occurrencesIn, nextDate, compute };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.KCalc = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

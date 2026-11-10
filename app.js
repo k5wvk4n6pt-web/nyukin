@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   const C = window.KCalc;
-  const APP_VERSION = '2026.11.11a';
+  const APP_VERSION = '2026.11.11b';
   /** ファイルの一部だけが新しい（アップロード漏れ・古いキャッシュ）と計算が合わなくなるので知らせる */
   /** 古いままのファイル名（なければ空）。native.js は中身が変わったときだけ気にする */
   function staleFiles() {
@@ -181,7 +181,7 @@
           Array.isArray(i.months) && i.months.length ? { months: i.months.map(Number).filter(m => m >= 1 && m <= 12).sort((a, b) => a - b) } : {}))
         : [],
       transfers: Array.isArray(d.transfers) ? d.transfers.filter(t => t && t.from && t.to && Number(t.amount) > 0).map(t => ({ id: t.id || uid('t'), at: t.at || null, fromBook: t.fromBook || null, from: String(t.from), toBook: t.toBook || null, to: String(t.to), amount: Number(t.amount), fee: Number(t.fee) || 0, feeFrom: t.feeFrom === 'amount' ? 'amount' : 'source', undone: !!t.undone })).slice(0, 30) : [],
-      history: Array.isArray(d.history) ? d.history.filter(h => h && /^\d{4}-\d{2}-\d{2}$/.test(String(h.date))).map(h => ({ id: h.id || uid('h'), date: String(h.date), name: String(h.name || ''), account: String(h.account || ''), amount: h.amount == null ? null : Number(h.amount), kind: String(h.kind || 'その他'), src: h.src || null, auto: !!h.auto, edited: !!h.edited, deductChecked: !!h.deductChecked, deducted: !!h.deducted })) : [],
+      history: Array.isArray(d.history) ? d.history.filter(h => h && /^\d{4}-\d{2}-\d{2}$/.test(String(h.date))).map(h => ({ id: h.id || uid('h'), date: String(h.date), name: String(h.name || ''), account: String(h.account || ''), amount: h.amount == null ? null : Number(h.amount), kind: String(h.kind || 'その他'), src: h.src || null, auto: !!h.auto, edited: !!h.edited, deductChecked: !!h.deductChecked, deducted: !!h.deducted, paid: !!h.paid, lackSkip: !!h.lackSkip })) : [],
       historySince: /^\d{4}-\d{2}-\d{2}$/.test(String(d.historySince || '')) ? d.historySince : null,
       deductSince: /^\d{4}-\d{2}-\d{2}$/.test(String(d.deductSince || '')) ? d.deductSince : null,
       savedAt: typeof d.savedAt === 'string' ? d.savedAt : null,

@@ -1,5 +1,5 @@
 /* オフライン用：アプリ本体だけを保存する（家計データはここに含まれない） */
-const CACHE = 'kakeibo-app-v155';
+const CACHE = 'kakeibo-app-v156';
 const FILES = ['./', 'index.html', 'native.js', 'calc.js', 'app.js', 'manifest.webmanifest', 'hero.png', 'logo-text.png', 'logo-wave.png', 'logo-outline.png', 'icon-blue-180.png', 'icon-pink-180.png', 'icon-green-180.png', 'icon-purple-180.png', 'icon-orange-180.png', 'icon-192-v3.png', 'icon-512-v3.png', 'apple-touch-icon-v3.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES.map(f => new Request(f, { cache: 'reload' })))).then(() => self.skipWaiting()));
