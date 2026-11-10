@@ -393,8 +393,14 @@
     const cl = md(r.closing);
     const short = box(r.shortfallTotal > 0 ? 'short' : 'zero', cl + 'までの不足', r.shortCount, r.shortfallTotal,
       r.shortCount ? r.shortCount + '口座・入金が必要' : '不足の口座はありません', 'short');
-    const plus = box(r.surplusTotal > 0 ? 'plus' : 'zero', cl + 'までの余り', r.surplusCount, r.surplusTotal,
-      r.surplusCount ? r.surplusCount + '口座' : '余りの口座はありません', 'plus');
+    // 余り＝引落口座の引落後の残り（足りない口座はマイナス）＋引落のない口座の残高。マイナスなら「余りなし」
+    const inc = r.banks.filter(b => b.balance != null && !b.excluded);
+    const dueLeft = inc.filter(b => b.dueActive).reduce((a, b) => a + (b.balance - b.due), 0);
+    const idleBal = inc.filter(b => !b.dueActive).reduce((a, b) => a + b.balance, 0);
+    const net = dueLeft + idleBal;
+    const plusSub = '引落口座の引落後 ' + (dueLeft < 0 ? '−' : '') + nf.format(Math.abs(dueLeft)) + '円 ＋ 引落のない口座 ' + nf.format(idleBal) + '円';
+    const plus = net > 0 ? box('plus', cl + 'までの余り', 0, net, plusSub, 'plus')
+      : '<div class="tot zero"><span class="tl">' + cl + 'までの余り</span><span class="big">余りなし</span><small>' + plusSub + '</small></div>';
     const showAll = serial2(r.endAll) > serial2(r.closing);
     const allLine = showAll ? '<div class="allline"><span>' + md(r.endAll) + 'まで見ると</span><span class="num">不足 <b>' + nf.format(r.shortTotalAll) + '円</b></span><span class="num">余り <b>' + nf.format(r.surplusTotalAll) + '円</b></span></div>' : '';
     const miss = r.balanceMissing > 0 ? '<div class="flag">残高未入力：' + r.balanceMissing + '口座（どちらの合計にも含みません）</div>' : '';
@@ -411,20 +417,18 @@
     {
       const list = r.banks.filter(b => b.balance != null && !b.excluded && b.surplus > 0).sort((a, b) => b.surplus - a.surplus);
       const exc = r.banks.filter(b => b.balance != null && b.excluded && b.surplus > 0);
-      detail += '<div class="sbdetail plus"><div class="sbd-h">' + cl + 'までの引落後に余る口座</div>' +
+      detail += '<div class="sbdetail plus"><div class="sbd-h">' + cl + 'までの引落後にお金が残る口座</div>' +
         (list.length ? '<div class="surlist">' + list.map(b => row(b, '残高 ' + nf.format(b.balance) + ' − 引落 ' + nf.format(b.due), nf.format(b.surplus), 'pos')).join('') +
-          '<div class="surrow total"><span class="sn">合計</span><span class="sc"></span><span class="sv num">' + nf.format(r.surplusTotal) + '<small>円</small></span></div></div>'
-          : '<p class="sub" style="margin:0">余りのある口座はありません。</p>') +
+          '<div class="surrow total"><span class="sn">残る口座の合計</span><span class="sc"></span><span class="sv num">' + nf.format(r.surplusTotal) + '<small>円</small></span></div></div>'
+          : '<p class="sub" style="margin:0">お金が残る口座はありません。</p>') +
         (exc.length ? '<p class="sub" style="margin:6px 0 0">余りに含めない口座：' + exc.map(b => esc(b.name) + '（' + nf.format(b.surplus) + '円）').join('、') + '</p>' : '') + '</div>';
     }
-    // 不足と余りが両方あるときは、口座ごとの見方であることと、全体で足りるかを添える
+    // 不足があるときは、全体で足りるかどうかを添える
     let both = '';
-    if (r.shortfallTotal > 0 && r.surplusTotal > 0) {
-      const net = r.surplusTotal - r.shortfallTotal;
+    if (r.shortfallTotal > 0) {
       both = '<div class="sbnet ' + (net >= 0 ? 'ok' : 'bad') + '"><b>' + (net >= 0 ? '全体ではお金は足りています' : '全体でも ' + nf.format(-net) + '円 足りません') + '</b>' +
-        '<span>不足と余りは口座ごとに見ています。引き落とされる口座にお金がないと引き落とせないので、' +
-        (net >= 0 ? '銀行で、余っている口座から不足している口座へ ' + nf.format(r.shortfallTotal) + '円 入金してください。' : '銀行で、余っている口座から不足している口座へ入金したうえで、あと ' + nf.format(-net) + '円 の入金が必要です。') + '</span>' +
-        '</div>';
+        '<span>引き落とされる口座にお金がないと引き落とせません。' +
+        (net >= 0 ? '銀行で、余っている口座から不足している口座へ ' + nf.format(r.shortfallTotal) + '円 入金してください。' : (r.shortfallTotal + net > 0 ? '銀行で、ほかの口座から不足している口座へ ' + nf.format(r.shortfallTotal + net) + '円 入金したうえで、あと ' + nf.format(-net) + '円 の入金が必要です。' : 'ほかの口座にも余りがないので、' + nf.format(-net) + '円 の入金が必要です。')) + '</span></div>';
     }
     return '<div id="shortbox"><div class="tots">' + short + plus + '</div>' + both + detail + miss + '</div>';
   }
@@ -803,7 +807,9 @@
       let act = '';
       if (!x.past && x.date === tIso && x.amount != null && x.src) { const h = todayRec(x.src);
         if (h && h.paid) act = '<div class="paidrow"><span class="paidok">✓ 引落完了' + (h.deducted ? '（残高から引きました）' : '') + '</span><button class="small" data-unpaid="' + esc(x.src) + '">取り消す</button></div>';
-        else if (h) act = '<div class="paidrow"><span class="sub">今日の引き落とし</span><button class="small primary" data-paid="' + esc(x.src) + '">引落完了</button></div>'; }
+        else if (h) { const bb = state.balances[x.account]; const hasB = bb && bb.amount != null;
+          act = hasB ? '<div class="paidrow"><span class="sub">今日の引き落とし</span><button class="small primary" data-paid="' + esc(x.src) + '">引落完了</button></div>'
+            : '<div class="paidrow"><span class="sub">口座残高を入力すると「引落完了」にできます</span><button class="small" disabled>引落完了</button></div>'; } }
       return '<div class="srow2' + (done ? ' done' : '') + '"><span class="ndate">' + mdw(o) + '</span><span class="nico">' + lineIcon(x.name) + '</span><span class="nname">' + esc(x.name) + '<small>' + esc(x.account) + '</small></span><span class="namt num">' + (x.amount == null ? '<span class="flag">未入力</span>' : '¥' + nf.format(x.amount)) + '</span>' + act + '</div>'; };
     const sumOf = l => l.reduce((a, x) => a + (x.amount || 0), 0);
     const rows = (upList.length ? '<div class="sc-grp up"><div class="sc-gh"><span>これからの引き落とし</span><span class="num">' + upList.length + '件・¥' + nf.format(sumOf(upList)) + '</span></div>' + upList.map(rowOf).join('') + '</div>' : '') +
@@ -828,6 +834,7 @@
   function openPaid(src) {
     const h = (state.history || []).find(x => x.src === src && x.date === isoToday()); if (!h) return;
     const bal = state.balances[h.account]; const hasBal = bal && bal.amount != null;
+    if (!hasBal) { toast('「' + h.account + '」の残高を入力してから、引落完了にしてください'); return; }
     const m = $('#modal');
     m.innerHTML = '<div class="sheet form" role="dialog" aria-modal="true" aria-labelledby="mt"><h2 id="mt">引落完了にする</h2>' +
       '<p style="margin:0"><b>' + esc(h.name) + '</b>（' + esc(h.account) + '）<br><b class="num">¥' + nf.format(h.amount) + '</b> の引き落としが済みましたか？</p>' +
