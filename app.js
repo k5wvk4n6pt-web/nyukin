@@ -649,13 +649,15 @@
       if (nearTot > 0) {
         const ndd = sl.length && nd != null ? (() => { for (const b of r.banks) for (const w of r.windows) for (const l of b.lines[w.key]) if (serial2(l.date) === nd) return l.date; })() : null;
         head = byLabel(ndd) + 'までに、口座へ <b class="num">¥' + nf.format(nearTot) + '</b> の入金が必要です';
-        rows = sl.filter(x => x.near > 0).sort((x, y) => y.near - x.near).map(x => ({ b: x.b, amt: x.near }));
+        rows = sl.slice().sort((x, y) => (y.near > 0) - (x.near > 0) || (y.near || y.b.shortfall) - (x.near || x.b.shortfall))
+          .map(x => x.near > 0 ? { b: x.b, amt: x.near, sub: x.near < x.b.shortfall ? '締めまでの不足 ¥' + nf.format(x.b.shortfall) : '' } : { b: x.b, amt: x.b.shortfall, sub: by + '締めまでに' });
       } else {
         head = by + '締めまでに、口座へ <b class="num">¥' + nf.format(r.shortfallTotal) + '</b> の入金が必要です';
         rows = sl.sort((x, y) => y.b.shortfall - x.b.shortfall).map(x => ({ b: x.b, amt: x.b.shortfall }));
       }
+      const miss = r.banks.filter(b => b.dueActive && b.balance == null).map(b => '<button class="pn-row" data-panel-btn="money"><span>' + esc(b.name) + '</span><b class="num pn-miss">残高未入力</b><span class="pn-chev" aria-hidden="true">›</span></button>').join('');
       return '<div class="pnotice warn"><span class="pn-i" aria-hidden="true">i</span><div class="pn-body"><span>' + head + '</span>' +
-        '<div class="pn-list">' + rows.map(({ b, amt }) => '<button class="pn-row" data-panel-btn="money"><span>' + esc(b.name) + '</span><b class="num">¥' + nf.format(amt) + ' 不足</b><span class="pn-chev" aria-hidden="true">›</span></button>').join('') + '</div></div></div>';
+        '<div class="pn-list">' + rows.map(({ b, amt, sub }) => '<button class="pn-row" data-panel-btn="money"><span>' + esc(b.name) + (sub ? '<small>' + sub + '</small>' : '') + '</span><b class="num">¥' + nf.format(amt) + ' 不足</b><span class="pn-chev" aria-hidden="true">›</span></button>').join('') + miss + '</div></div></div>';
     }
     if (missing) return '<button class="pnotice info" data-act="go-banks"><span class="pn-i" aria-hidden="true">i</span><span>残高を入れると、入金が必要か分かります（未入力 ' + missing + '口座）</span><span class="pn-chev" aria-hidden="true">›</span></button>';
     if (r.dueCount) return '<div class="pnotice ok"><span class="pn-i" aria-hidden="true">✓</span><span>' + by + '締めまでに必要な金額 <b class="num">¥' + nf.format(w0 ? (r.totals[w0.key] || 0) : 0) + '</b><small class="pn-ok2">残高は足りています</small></span></div>';
@@ -852,9 +854,10 @@
     const rowOf = x => { const o = isoToObj(x.date); const done = x.date < tIso;
       let act = '';
       if (!x.past && x.date === tIso && x.amount != null && x.src) { const h = todayRec(x.src);
-        if (h && h.paid) act = '<div class="paidrow"><span class="paidok">✓ 引落完了' + (h.deducted ? '（残高から引きました）' : '') + '</span><button class="small" data-unpaid="' + esc(x.src) + '">取り消す</button></div>';
+        const bb0 = state.balances[x.account]; const balTxt = bb0 && bb0.amount != null ? '<span class="pr-bal">口座残高 <b class="num">' + (bb0.amount < 0 ? '−' : '') + '¥' + nf.format(Math.abs(bb0.amount)) + '</b></span>' : '';
+        if (h && h.paid) act = '<div class="paidrow"><span class="paidok">✓ 引落完了' + (h.deducted ? '（残高から引きました）' : '') + balTxt + '</span><button class="small" data-unpaid="' + esc(x.src) + '">取り消す</button></div>';
         else if (h) { const bb = state.balances[x.account]; const hasB = bb && bb.amount != null;
-          act = hasB ? '<div class="paidrow"><span class="sub">今日の引き落とし</span><button class="small primary" data-paid="' + esc(x.src) + '">引落完了</button></div>'
+          act = hasB ? '<div class="paidrow"><span class="sub">' + balTxt + '</span><button class="small primary" data-paid="' + esc(x.src) + '">引落完了</button></div>'
             : '<div class="paidrow"><span class="sub">口座残高を入力すると「引落完了」にできます</span><button class="small" disabled>引落完了</button></div>'; } }
       return '<div class="srow2' + (done ? ' done' : '') + '"><span class="ndate">' + mdw(o) + '</span><span class="nico">' + lineIcon(x.name) + '</span><span class="nname">' + esc(x.name) + '<small>' + esc(x.account) + '</small></span><span class="namt num">' + (x.amount == null ? '<span class="flag">未入力</span>' : '¥' + nf.format(x.amount)) + '</span>' + act + '</div>'; };
     const sumOf = l => l.reduce((a, x) => a + (x.amount || 0), 0);
