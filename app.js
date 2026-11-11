@@ -176,7 +176,8 @@
         return { startDay: sd, startShift: cs.d1.shift, closeDay: sd === 1 ? 'end' : sd - 1, closeShift: cs.d1.shift, close2On: !!cs.d2, close2Day: cs.d2saved.day, close2Shift: cs.d2saved.shift }; })(),
       excludeSurplus: Array.isArray(d.excludeSurplus) ? d.excludeSurplus.map(String).filter(a => d.accounts.map(String).includes(a)) : [],
       hiddenAccounts: Array.isArray(d.hiddenAccounts) ? d.hiddenAccounts.map(String).filter(a => d.accounts.map(String).includes(a)) : [],
-      income: Array.isArray(d.income) && d.income.length ? d.income.map(i => Object.assign({ id: i.id || uid('i'), name: String(i.name), day: i.day, amount: i.amount == null ? null : Number(i.amount), hidden: !!i.hidden, shift: validShift(i.shift, 'before') },
+      income: Array.isArray(d.income) && d.income.length ? d.income.map(i => Object.assign({ id: i.id || uid('i'), name: String(i.name), day: i.day, amount: i.amount == null ? null : Number(i.amount), hidden: !!i.hidden, shift: validShift(i.shift, 'before'),
+          account: i.account && d.accounts.map(String).includes(String(i.account)) ? String(i.account) : '', vary: !!i.vary },
           /^\d{4}-\d{2}-\d{2}$/.test(String(i.date || '')) ? { date: i.date } : {},
           Array.isArray(i.months) && i.months.length ? { months: i.months.map(Number).filter(m => m >= 1 && m <= 12).sort((a, b) => a - b) } : {}))
         : [],
@@ -185,7 +186,8 @@
       historySince: /^\d{4}-\d{2}-\d{2}$/.test(String(d.historySince || '')) ? d.historySince : null,
       deductSince: /^\d{4}-\d{2}-\d{2}$/.test(String(d.deductSince || '')) ? d.deductSince : null,
       savedAt: typeof d.savedAt === 'string' ? d.savedAt : null,
-      incHistory: Array.isArray(d.incHistory) ? d.incHistory.filter(h => h && /^\d{4}-\d{2}-\d{2}$/.test(String(h.date))).map(h => ({ id: h.id || uid('r'), date: String(h.date), name: String(h.name || ''), amount: h.amount == null ? null : Number(h.amount), src: h.src || null, auto: !!h.auto, edited: !!h.edited })) : [],
+      incHistory: Array.isArray(d.incHistory) ? d.incHistory.filter(h => h && /^\d{4}-\d{2}-\d{2}$/.test(String(h.date))).map(h => ({ id: h.id || uid('r'), date: String(h.date), name: String(h.name || ''), amount: h.amount == null ? null : Number(h.amount), src: h.src || null, auto: !!h.auto, edited: !!h.edited, account: String(h.account || ''), dep: h.dep == null ? null : Number(h.dep), est: !!h.est })) : [],
+      incDepSince: /^\d{4}-\d{2}-\d{2}$/.test(String(d.incDepSince || '')) ? d.incDepSince : null,
       incSince: /^\d{4}-\d{2}-\d{2}$/.test(String(d.incSince || '')) ? d.incSince : null,
       incUntil: /^\d{4}-\d{2}-\d{2}$/.test(String(d.incUntil || '')) ? d.incUntil : null,
       autoDeduct: d.autoDeduct !== false,
@@ -299,7 +301,7 @@
     const d = { app: 'kakeibo', version: 1, source: 'サンプル', sample: true, accounts: [A, B, L, M], hiddenAccounts: [],
       variable: [v('クレジットカードA', 27, B, 48000), v('クレジットカードB', 10, B, 23500), v('電気代', 26, A, 9800), v('ガス代', 26, A, 5200), v('水道代', 'end', A, 0)],
       fixed: [f('家族のこづかい', 25, M, 30000), f('住宅ローン', 27, L, 85000, '2045-03'), f('携帯電話', 26, A, 6800), f('生命保険', 27, A, 12000), f('習い事', 5, A, 8000), f('家電の分割払い', 1, B, 4500, '2027-06')],
-      balances: {}, income: [{ id: uid('i'), name: '給料', day: 25, amount: 280000, hidden: false, shift: 'before' }, { id: uid('i'), name: '児童手当', day: 15, amount: 20000, months: [2, 4, 6, 8, 10, 12], hidden: false, shift: 'before' }, { id: uid('i'), name: '臨時収入（例）', day: 20, date: isoOf(C.addDays(today(), 12)), amount: 30000, hidden: false, shift: 'before' }] };
+      balances: {}, income: [{ id: uid('i'), name: '給料', day: 25, amount: 280000, hidden: false, shift: 'before', account: '生活費口座', vary: true }, { id: uid('i'), name: '児童手当', day: 15, amount: 20000, months: [2, 4, 6, 8, 10, 12], hidden: false, shift: 'before' }, { id: uid('i'), name: '臨時収入（例）', day: 20, date: isoOf(C.addDays(today(), 12)), amount: 30000, hidden: false, shift: 'before' }] };
     d.balances[A] = { amount: 40000, updatedAt: now }; d.balances[B] = { amount: 60000, updatedAt: now }; d.balances[L] = { amount: 90000, updatedAt: now }; d.balances[M] = { amount: null, updatedAt: null };
     return d;
   }
@@ -1192,6 +1194,8 @@
       '<label>金額（わからなければ空欄）<input class="amount wide" id="ia-amt" inputmode="numeric" enterkeyhint="done" autocomplete="off" placeholder="未入力" value="' + esc(keep.amt || '') + '"></label>' +
       (kind === 'once' ? '<label>入金日<input type="date" class="text" id="ia-date" value="' + isoOf(T) + '"></label>'
         : (kind === 'months' ? '<div class="flabel">入金がある月（複数選べます）</div>' + monthsPick('ia-months', [6, 12]) : '') + '<label>入金日' + daySelect('ia-day', kind === 'months' ? 10 : 25) + '</label>') +
+      (kind === 'once' ? '' : '<label>金額は毎月<select id="ia-vary"><option value="0">毎月同じ（固定）</option><option value="1">月によって変わる（変動・見込みで計算）</option></select></label>') +
+      '<label>入金口座<select id="ia-acc"><option value="">選ばない（残高に足さない）</option>' + visibleAccounts().map(a => '<option' + (a === meta.qincacc ? ' selected' : '') + '>' + esc(a) + '</option>').join('') + '</select></label>' +
       '<label>入金日が休日のとき' + shiftSelect('ia-shift', 'before') + '</label>' +
       '<p class="note" id="ia-last" style="margin:0"></p>' +
       '<div class="btnrow"><button id="mCancel">閉じる</button><button id="ia-more">追加して続ける</button><button id="mOk" class="primary">追加</button></div></div>';
@@ -1207,7 +1211,8 @@
       const n = $('#ia-name').value.trim(); const v = parseAmount(amt.value);
       if (!n) { toast('名前を入力してください'); $('#ia-name').focus(); return false; }
       if (Number.isNaN(v)) { toast('金額は数字で入力してください'); amt.focus(); return false; }
-      const it = { id: uid('i'), name: n, day: 25, amount: v, hidden: false, shift: validShift($('#ia-shift').value, 'before') };
+      const it = { id: uid('i'), name: n, day: 25, amount: v, hidden: false, shift: validShift($('#ia-shift').value, 'before'), account: $('#ia-acc').value || '', vary: !!($('#ia-vary') && $('#ia-vary').value === '1') };
+      meta.qincacc = it.account; saveMeta();
       if (kind === 'once') { const dt = $('#ia-date').value; if (!/^\d{4}-\d{2}-\d{2}$/.test(dt)) { toast('入金日を選んでください'); return false; } it.date = dt; it.day = Number(dt.slice(8)); }
       else { const dv = $('#ia-day').value; it.day = dv === 'end' ? 'end' : Number(dv); }
       if (kind === 'months') { const ms = [...m.querySelectorAll('#ia-months .chip.on')].map(b => Number(b.dataset.m)); if (!ms.length) { toast('入金がある月を選んでください'); return false; } it.months = ms; }
@@ -1230,8 +1235,15 @@
     if (k === 'months') return i.months.join('・') + '月の' + dayLabel(i.day);
     return '毎月' + dayLabel(i.day);
   }
+  /** 変動の収入で、入金日が来たのにまだ見込みのままの記録 */
+  function latestEst(i) {
+    if (!i.vary) return null; const tI = isoToday();
+    const os = C.occurrencesIn(i, C.addDays(today(), -70), today(), true); if (!os.length) return null;
+    const last = isoOf(os[os.length - 1]); // いちばん最近の入金日の分だけ
+    return (state.incHistory || []).find(h => h.src === i.id && h.est && h.date === last && h.date <= tI) || null;
+  }
   function inHTML() {
-    const lead = '毎月の収入のほか、ボーナスのように年に何回かの収入や、1回だけの臨時収入も登録できます。未入金の収入は口座残高に足しません。';
+    const lead = '毎月の収入のほか、ボーナスのように年に何回かの収入や、1回だけの臨時収入も登録できます。入金口座を選んだ収入は、入金日に口座残高へ足します。月によって金額が変わる収入は、前の月の金額を見込みとして使います。';
     const visible = state.income.filter(i => !i.hidden), hiddenItems = state.income.filter(i => i.hidden);
     if (meta.reorder === 'income') return '<section id="sec-income" aria-label="収入">' + headHTML('収入', '登録' + visible.length + '件', 'income') +
       '<p class="sub" style="margin:-4px 0 10px">↑↓で順番を変えます。終わったら「完了」を押してください。</p>' +
@@ -1241,12 +1253,16 @@
       return '<div class="row irow2" data-inc-id="' + id + '">' +
         '<div class="row-main"><span class="row-name">' + esc(i.name) + '</span>' +
         '<input class="amount' + (i.amount == null ? ' empty' : '') + '" inputmode="numeric" enterkeyhint="done" autocomplete="off" id="incamt-' + id + '" data-inc="' + id + '" value="' + yenTxt(i.amount) + '" placeholder="未入力" aria-label="' + esc(i.name) + 'の金額"></div>' +
-        '<div class="row-sub"><span class="ikchip k-' + k + '">' + KL[k] + '</span>' +
+        '<div class="row-sub"><span class="ikchip k-' + k + '">' + KL[k] + '</span>' + (i.vary ? '<span class="ikchip est">変動・見込み</span>' : '') +
         (k === 'once' ? '<input class="text datein" type="date" id="incdate-' + id + '" value="' + esc(i.date) + '" aria-label="入金日">'
           : (k === 'months' ? '<span class="imons">' + i.months.join('・') + '月</span>' : '') + daySelect('incday-' + id, i.day)) + '</div>' +
-        '<div class="row-acts"><button class="ghost small" data-act="incedit">詳細（名前・休日・削除）</button><button class="ghost small" data-act="inchide">非表示にする</button></div>' +
+        (i.account ? '<div class="inc-acc sub">入金口座：' + esc(i.account) + '（入金日に残高へ足します）</div>' : '') +
+        (() => { const h = latestEst(i); return h ? '<div class="inc-est">' + md(isoToObj(h.date)) + 'の入金は見込みの ' + nf.format(h.amount || 0) + '円で' + (h.dep != null ? '残高に足しています' : '記録しています') + '。実際の金額を上に入れると' + (h.dep != null ? '、口座残高も直ります' : '確定します') + '。</div>' : ''; })() +
+        '<div class="row-acts"><button class="ghost small" data-act="incedit">詳細（名前・口座・休日・削除）</button><button class="ghost small" data-act="inchide">非表示にする</button></div>' +
         '<div class="edit" hidden data-ieditor>' +
         '<label>名前<input class="text" id="incname-' + id + '" value="' + esc(i.name) + '"></label>' +
+        (k === 'once' ? '' : '<label>金額は毎月<select id="incvary-' + id + '"><option value="0"' + (i.vary ? '' : ' selected') + '>毎月同じ（固定）</option><option value="1"' + (i.vary ? ' selected' : '') + '>月によって変わる（変動・見込み）</option></select></label>') +
+        '<label>入金口座<select id="incacc-' + id + '"><option value="">選ばない（残高に足さない）</option>' + visibleAccounts().concat(i.account && !visibleAccounts().includes(i.account) ? [i.account] : []).map(a => '<option' + (a === i.account ? ' selected' : '') + '>' + esc(a) + '</option>').join('') + '</select></label>' +
         (k === 'months' ? '<div class="flabel">入金がある月（複数選べます）</div>' + monthsPick('incmon-' + id, i.months) : '') +
         '<label>入金日が休日のとき' + shiftSelect('incshift-' + id, i.shift || 'before') + '</label>' +
         '<div class="btns"><button class="danger small" data-act="incdel">この収入を削除</button><button class="small" data-act="incclose">閉じる</button></div></div></div>'; }).join('');
@@ -1615,6 +1631,8 @@
       const dsel = row.querySelector('select[id^="incday-"]'); if (dsel) dsel.addEventListener('change', e => { inc.day = e.target.value === 'end' ? 'end' : Number(e.target.value); save(); renderKeep(); });
       const dt = row.querySelector('input[id^="incdate-"]'); if (dt) dt.addEventListener('change', e => { if (/^\d{4}-\d{2}-\d{2}$/.test(e.target.value)) { inc.date = e.target.value; inc.day = Number(e.target.value.slice(8)); save(); renderKeep(); } });
       row.querySelectorAll('.mpick [data-m]').forEach(b => b.addEventListener('click', () => { const m = Number(b.dataset.m); let ms = (inc.months || []).slice(); ms = ms.includes(m) ? ms.filter(x => x !== m) : ms.concat(m).sort((a, c) => a - c); if (!ms.length) { toast('少なくとも1つの月を選んでください'); return; } inc.months = ms; save(); renderKeep(); const r2 = main.querySelector('[data-inc-id="' + inc.id + '"] [data-ieditor]'); if (r2) r2.hidden = false; }));
+      const vs = row.querySelector('select[id^="incvary-"]'); if (vs) vs.addEventListener('change', e => { inc.vary = e.target.value === '1'; save(); renderKeep(); toast('「' + inc.name + '」：' + (inc.vary ? '月によって変わる（見込み）' : '毎月同じ')); });
+      row.querySelector('select[id^="incacc-"]').addEventListener('change', e => { inc.account = e.target.value || ''; save(); renderKeep(); toast('「' + inc.name + '」の入金口座：' + (inc.account || 'なし')); });
       row.querySelector('select[id^="incshift-"]').addEventListener('change', e => { inc.shift = validShift(e.target.value, 'before'); save(); renderKeep(); toast('「' + inc.name + '」：' + SHIFT_LABEL[inc.shift]); });
       row.querySelector('[data-act="inchide"]').addEventListener('click', () => { inc.hidden = true; save(); renderKeep(); toast('「' + inc.name + '」を非表示にしました（計算に含みません）'); });
       row.querySelector('[data-act="incdel"]').addEventListener('click', () => confirmSheet('収入「' + inc.name + '」を削除しますか？', '', '削除する', () => {
@@ -1780,6 +1798,11 @@
     main.querySelectorAll('[data-inc]').forEach(el => {
       const inc = state.income.find(i => i.id === el.dataset.inc);
       el.addEventListener('input', () => onAmountInput(el, () => inc.amount, v => { inc.amount = v; }));
+      el.addEventListener('change', () => { // 変動の収入：入金日のあとに金額を入れたら、見込みの記録を確定し、残高も差額だけ直す
+        const h = latestEst(inc); const v = parseAmount(el.value); if (!h || Number.isNaN(v) || v == null) return;
+        const d = incAdjust(h, v); h.amount = v; h.est = false; h.edited = true; save(); renderKeep();
+        toast(md(isoToObj(h.date)) + 'の「' + inc.name + '」を ' + nf.format(v) + '円で確定しました' + (d ? '（' + h.account + ' 残高 ' + (d > 0 ? '＋' : '−') + nf.format(Math.abs(d)) + '円）' : ''));
+      });
       el.addEventListener('blur', () => { const v = parseAmount(el.value); if (!Number.isNaN(v)) el.value = yenTxt(v); });
     });
     main.querySelectorAll('[data-act="add"]').forEach(btn => btn.addEventListener('click', () => btn.dataset.kind === 'income' ? openIncAddSheet(meta.incNewKind) : openAddSheet(btn.dataset.kind)));
@@ -2295,7 +2318,7 @@
     const sum = l => l.reduce((s2, h) => s2 + (h.amount || 0), 0);
     const total = sum(list), prevTotal = sum(all.filter(h => ymOf(h.date) === ymShift(histMonth, -1)));
     const missing = list.filter(h => h.amount == null).length, diff = total - prevTotal;
-    const rows = list.map(h => '<button class="hrec" data-rid="' + esc(h.id) + '"><span class="hd">' + dateLabel(h.date) + '</span><span class="hn"><b>' + esc(h.name) + '</b><small>' + (h.edited ? '修正済み' : h.auto ? '自動で記録' : '手入力') + '</small></span><span class="ha num">' + (h.amount == null ? '<span class="flag">未入力</span>' : nf.format(h.amount) + '<small>円</small>') + '</span></button>').join('');
+    const rows = list.map(h => '<button class="hrec" data-rid="' + esc(h.id) + '"><span class="hd">' + dateLabel(h.date) + '</span><span class="hn"><b>' + esc(h.name) + '</b><small>' + (h.est ? '<span class="flag est">見込み</span>' : h.edited ? '修正済み' : h.auto ? '自動で記録' : '手入力') + (h.account ? '・' + esc(h.account) + (h.dep != null ? 'に入金済み' : '') : '') + '</small></span><span class="ha num">' + (h.amount == null ? '<span class="flag">未入力</span>' : nf.format(h.amount) + '<small>円</small>') + '</span></button>').join('');
     return histTabs() + '<section id="sec-history" aria-label="収入の記録"><div class="section-head"><h2>収入の記録</h2><span class="head-right"><button class="small primary" data-act="inc-add">＋ 追加</button></span></div>' +
       '<div class="cycle hsum"><div class="cyc-head"><button class="small" data-hm="-1" aria-label="前の月">‹</button><div class="cyc-title"><b>' + ymLabel(histMonth) + '</b><span class="sub">' + list.length + '件の収入</span></div><button class="small" data-hm="1" aria-label="次の月"' + (histMonth >= cur ? ' disabled' : '') + '>›</button></div>' +
       '<div class="cyc-grid two-col"><div><span class="k">収入の合計</span><span class="v num">' + nf.format(total) + '<span class="yen">円</span></span>' + (missing ? '<span class="flag">金額未入力 ' + missing + '件</span>' : '') + '</div>' +
@@ -2330,16 +2353,17 @@
       const rdi = !i.date && flowRange ? (() => { const tI = isoToday(); const to = isoOf(flowRange.to) < tI ? flowRange.to : today(); const os = C.occurrencesIn(i, flowRange.from, to, true); return os.length ? isoOf(os[os.length - 1]) : null; })() : null;
       if (i.date) dIn.value = i.date; else if (rdi) dIn.value = rdi; else if (i.day != null) { const [yy, mm] = ym.split('-').map(Number); dIn.value = isoOf(C.actual(i, yy, mm, true)); }
     });
-    if (h) $('#ri-del').onclick = () => { state.incHistory = state.incHistory.filter(x => x.id !== h.id); save(); close(); renderKeep(); toast('記録を削除しました'); };
+    if (h) $('#ri-del').onclick = () => { const d = incAdjust(h, 0); state.incHistory = state.incHistory.filter(x => x.id !== h.id); save(); close(); renderKeep(); toast('記録を削除しました' + (d ? '（' + h.account + ' 残高 −' + nf.format(Math.abs(d)) + '円）' : '')); };
     $('#mOk').onclick = () => {
       const pv = pick.value; const pi = state.income.find(x => x.id === pv);
       const name = (pv === '__other' ? $('#ri-name').value : pi ? pi.name : '').trim(), v = parseAmount($('#ri-amt').value), date = $('#ri-date').value;
       if (!name) { toast(pv === '__other' ? '項目名を入力してください' : '項目を選んでください'); return; }
       if (Number.isNaN(v)) { toast('金額は数字で入力してください'); return; }
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { toast('日付を選んでください'); return; }
-      if (h) Object.assign(h, { name, amount: v, date, edited: true });
+      let adj = 0;
+      if (h) { if (v !== h.amount) { adj = incAdjust(h, v); h.est = false; } Object.assign(h, { name, amount: v, date, edited: true }); }
       else (state.incHistory = state.incHistory || []).push({ id: uid('r'), date, name, amount: v, src: pi ? pi.id : null, auto: false, edited: false });
-      histMonth = ymOf(date); save(); close(); renderKeep(); toast(h ? '記録を直しました' : '記録を追加しました');
+      histMonth = ymOf(date); save(); close(); renderKeep(); toast(h ? '記録を直しました' + (adj ? '（' + h.account + ' 残高 ' + (adj > 0 ? '＋' : '−') + nf.format(Math.abs(adj)) + '円）' : '') : '記録を追加しました');
     };
   }
   function incBackPlan(ym, months) {
@@ -2399,8 +2423,17 @@
       '<p class="note">引落日が来た分を、そのときの金額で自動で記録します（' + since + 'から）。実際の金額と違うときは、記録を押して直せます。それより前の分は「＋ 追加」で入れられます。</p></section>';
   }
   /** 入金日が来た収入を、そのときの金額で記録する（使い始めた日から） */
+  /** 残高に足した入金を、新しい金額に合わせて直す（差額だけ残高を動かす） */
+  function incAdjust(h, amt) {
+    if (h.dep == null) return 0;
+    const b = state.balances[h.account];
+    if (!b || b.amount == null) { h.dep = null; return 0; }
+    const d = (amt || 0) - h.dep; if (d) b.amount += d; h.dep = amt || 0; return d;
+  }
   function recordIncome(todayIso) {
     if (!state.incSince) state.incSince = todayIso;
+    if (!state.incDepSince) state.incDepSince = todayIso; // この日以降の入金を残高に足す
+    const dep = {};
     state.incHistory = state.incHistory || [];
     const start = state.incUntil ? isoOf(C.addDays(isoToObj(state.incUntil), 1)) : state.incSince;
     if (start > todayIso) return;
@@ -2409,10 +2442,18 @@
       if (i.hidden) continue;
       for (const o of C.occurrencesIn(i, isoToObj(start), isoToObj(todayIso), true)) {
         const d = isoOf(o), k = d + '|' + i.name; if (have.has(k)) continue; have.add(k);
-        state.incHistory.push({ id: uid('r'), date: d, name: i.name, amount: i.amount == null ? null : Number(i.amount), src: i.id, auto: true, edited: false });
+        const h = { id: uid('r'), date: d, name: i.name, amount: i.amount == null ? null : Number(i.amount), src: i.id, auto: true, edited: false, account: i.account || '', dep: null, est: !!i.vary };
+        state.incHistory.push(h);
+        // 入金口座があれば、入金日に残高へ足す（入金日以降に残高を入れ直していれば足さない）
+        const b = h.account ? state.balances[h.account] : null;
+        if (b && b.amount != null && h.amount != null && h.amount !== 0 && d >= state.incDepSince && !(b.updatedAt && localIso(b.updatedAt) >= d)) {
+          b.amount += h.amount; h.dep = h.amount; dep[h.account] = (dep[h.account] || 0) + h.amount;
+        }
       }
     }
     state.incUntil = todayIso;
+    const ks = Object.keys(dep);
+    if (ks.length) setTimeout(() => toast('入金日の収入を残高に足しました：' + ks.map(k => k + ' ＋' + nf.format(dep[k]) + '円').join('、')), 900);
   }
   function bindHistory() {
     flowRange = null;
