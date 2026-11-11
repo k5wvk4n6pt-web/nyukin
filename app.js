@@ -221,7 +221,7 @@
     const r = C.compute(state, T);
     const page = PAGES.includes(meta.page) ? meta.page : 'prep';
     main.innerHTML = page === 'variable' ? listHTML('variable', '変動費', '何月分の引落かを選んで、金額を入力します。引落が済むと次の月に進みます。1回のみの引落もここに並びます（日付が過ぎたら「済み」にまとまります）。')
-      : page === 'fixed' ? listHTML('fixed', '固定費', '金額・引落日・口座が変わった時だけ変更します。')
+      : page === 'fixed' ? listHTML('fixed', '固定費', '金額・引落日・口座が変わった時だけ変更します。') + ((state.fixed || []).length ? '<div class="fixbackw"><button class="small" data-act="fix-back-list">' + proMark() + '固定費を過去の記録にまとめて反映</button></div>' : '')
       : page === 'settings' ? settingsHTML()
       : page === 'history' ? historyHTML()
       : page === 'income' ? inHTML()
@@ -847,7 +847,7 @@
       (d.noRecord || d.noIncRecord ? '<p class="sub" style="margin:0">この期間は' + (d.noRecord && d.noIncRecord ? '引き落としと収入' : d.noRecord ? '引き落とし' : '収入') + 'の記録がないため、0円になっています。</p>' : '') +
       '<div class="fd-lh"><span><b>' + (side === 'in' ? '収入' : '支出') + 'の明細</b><span class="sub">' + lst.length + '件' + (lst.some(x => x.past) ? '・済みの行は押すと直せます' : '') + '</span></span><button class="small primary" data-act="frec-add">＋ 記録を追加</button></div>' +
       (rowsH ? '<div class="fd-list">' + rowsH + '</div>' : '<p class="sub" style="margin:0">この期間の' + (side === 'in' ? '収入' : '支出') + 'はありません。</p>') +
-      '<div class="fd-tools"><button class="small" data-act="frec-back">' + proMark() + (side === 'in' ? '登録している収入を記録にまとめて反映' : '固定費を記録にまとめて反映') + '</button><button class="small" data-act="frec-csv">' + proMark() + 'CSVで書き出す</button></div></div>';
+      '<div class="fd-tools">' + (side === 'in' ? '<button class="small" data-act="frec-back">' + proMark() + '登録している収入を記録にまとめて反映</button>' : '') + '<button class="small" data-act="frec-csv">' + proMark() + 'CSVで書き出す</button></div></div>';
     return '<section class="flowcard"><div class="fg-legend"><span><i class="sw in"></i>収入</span><span><i class="sw out"></i>支出</span><span class="sub">棒を押すと内訳</span></div>' + svg + detail +
       (proActive() ? '' : '<button class="fd-pronote" data-act="pro-info" data-what="過去の収支記録"><span class="probadge sm">プレミアム</span><span class="fd-pt">もっと前の期間の収支を見る</span><span class="fd-pc" aria-hidden="true">›</span></button>') +
       '<p class="note" style="margin:0">過ぎた日は「記録」（引き落とし・収入）、今日からあとは登録している金額で計算しています。</p></section>';
@@ -2870,6 +2870,7 @@
   $('#bookPill').addEventListener('click', openBookSwitch);
   fabTop.addEventListener('click', () => window.scrollTo({ top: 0, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }));
   fabAdd.addEventListener('click', () => meta.page === 'income' ? openIncAddSheet(meta.incNewKind) : openAddSheet(meta.page === 'fixed' ? 'fixed' : 'variable'));
+  main.addEventListener('click', e => { if (e.target.closest('[data-act="fix-back-list"]')) { flowRange = null; histMonth = isoToday().slice(0, 7); openFixBack(); } });
   $('#books').addEventListener('click', e => {
     const b = e.target.closest('[data-book]'); if (b) { switchBook(b.dataset.book); return; }
     if (e.target.closest('[data-act="book-add"]')) { ensureBooks(); if (books.list.length >= 1 && needPro('帳簿の追加')) return; meta.page = 'settings'; meta.stab = 'books'; meta.reorder = null; saveMeta(); renderAll(); window.scrollTo(0, 0); const n = $('#booknew'); if (n) n.focus(); }
