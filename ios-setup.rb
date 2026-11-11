@@ -20,11 +20,13 @@ else
   group.files.find { |f| f.path == 'App.entitlements' } || group.new_reference('App.entitlements')
 end
 
+project.build_configurations.each { |c| c.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0' }
 target.build_configurations.each do |config|
   s = config.build_settings
   s['CODE_SIGN_ENTITLEMENTS'] = 'App/App.entitlements'
   s['TARGETED_DEVICE_FAMILY'] = '1'           # iPhoneのみ
   s['MARKETING_VERSION'] = '1.0.0'
+  s['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'     # 2027年4月からiOS 15以上が必須
   s['ASSETCATALOG_COMPILER_APPICON_NAME'] = 'AppIcon'
   alt = %w[Pink Green Purple Orange].select { |c| File.exist?("AppIcon-#{c.downcase}-1024.png") }.map { |c| "AppIcon#{c}" }
   unless alt.empty?
