@@ -1160,7 +1160,7 @@
       '<div class="sshift"><span class="k">始期日が土日・祝日のとき</span><input type="hidden" id="close-shift" value="' + cs.d1.shift + '"><div class="seg">' + [['before', '前の平日'], ['after', '後ろの平日'], ['none', 'ずらさない']].map(x => '<button type="button" data-sshift="' + x[0] + '" class="' + (cs.d1.shift === x[0] ? 'on' : '') + '" aria-pressed="' + (cs.d1.shift === x[0]) + '">' + x[1] + '</button>').join('') + '</div></div>' +
       '<span class="sub">次の締め日：' + md(nc) + '（' + C.WD[C.weekday(nc)] + '）／次の始期日：' + md(ns) + '（' + C.WD[C.weekday(ns)] + '）</span></div>' +
       (cs.d2
-        ? '<div class="dl"><div class="dlhead"><b>もう一つの期限（参考）</b><button class="small danger" data-act="close2-off">外す</button></div><span class="sub">準備ページに、この期限までの必要額も参考として並びます</span><div class="two"><label>日付<select id="close2-day">' + dayOpts(cs.d2.day) + '</select></label><label>休日のとき' + sh('close2-shift', cs.d2.shift) + '</label></div></div>'
+        ? '<div class="dl"><div class="dlhead"><b>もう一つの期限</b><button class="small danger" data-act="close2-off">外す</button></div><span class="sub">締め日とこの期限のうち、近いほうまでで過不足を判定します</span><div class="two"><label>日付<select id="close2-day">' + dayOpts(cs.d2.day) + '</select></label><label>休日のとき' + sh('close2-shift', cs.d2.shift) + '</label></div></div>'
         : '<div class="dl"><button class="small" data-act="close2-on">＋ もう一つの期限を追加</button><span class="sub">例：締め日が10日で、月末までの分も見ておきたいとき</span></div>') + '</div>';
     if (st === 'books') body = body + closeCard;
     return '<section id="sec-settings" aria-label="設定"><div class="section-head"><h2>設定</h2></div>' + seg + '<div class="stab-body">' + body + '</div></section>';
