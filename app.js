@@ -1692,7 +1692,11 @@
         state.hiddenAccounts = hiddenAcc().map(a => a === old ? n : a);
         state.excludeSurplus = exclSurplus().map(a => a === old ? n : a);
         (state.transfers || []).forEach(t => { if (t.from === old) t.from = n; if (t.to === old) t.to = n; });
+        (state.income || []).forEach(x => { if (x.account === old) x.account = n; }); // 収入の入金口座
+        (state.history || []).forEach(h => { if (h.account === old) h.account = n; }); // 過去の記録も新しい名前に
+        (state.incHistory || []).forEach(h => { if (h.account === old) h.account = n; });
         if (meta.qacc === old) { meta.qacc = n; saveMeta(); }
+        if (meta.qincacc === old) { meta.qincacc = n; saveMeta(); }
         save(); renderKeep(); toast('「' + n + '」に変更しました（引落' + cnt + '件）');
       });
       row.querySelector('[data-act="acchide"]').addEventListener('click', () => {
