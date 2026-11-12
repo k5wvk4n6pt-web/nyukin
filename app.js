@@ -278,7 +278,7 @@
   function welcomeHTML() {
     return '<section class="welcome">' +
       '<h2>はじめに</h2>' +
-      '<p>口座ごとに「次の締め日（初期設定は毎月10日。変更できます）までに、いくら入れておけばよいか」を計算するアプリです。給料日や引落日が休日に当たる場合のずれも計算します。</p>' +
+      '<p>口座ごとに「次の締め日（初期設定は給料日の25日始まりで、締め日は毎月24日。変更できます）までに、いくら入れておけばよいか」を計算するアプリです。給料日や引落日が休日に当たる場合のずれも計算します。</p>' +
       '<p class="sub" style="margin:0">入力した内容はこの端末の中だけに保存され、外部には送信しません。ログインも不要です。</p>' +
       '<div class="btnrow col"><button class="primary" data-act="start-empty">空の状態ではじめる</button>' +
       '<button data-act="start-sample">サンプルデータで試してみる</button>' +
@@ -290,7 +290,7 @@
 
   function cloudWhen() { return cloud.data && cloud.data.exportedAt ? stampText(cloud.data.exportedAt).replace('更新：', '') : ''; }
 
-  function emptyState() { return { app: 'kakeibo', version: 1, source: '', settings: { startDay: 11, startShift: 'after', closeDay: 10, closeShift: 'after', close2On: false, close2Day: 'end', close2Shift: 'none' }, once: [], accounts: [], variable: [], fixed: [], balances: {}, hiddenAccounts: [], income: [] }; }
+  function emptyState() { return { app: 'kakeibo', version: 1, source: '', settings: { startDay: 25, startShift: 'before', closeDay: 24, closeShift: 'before', close2On: false, close2Day: 'end', close2Shift: 'none' }, once: [], accounts: [], variable: [], fixed: [], balances: {}, hiddenAccounts: [], income: [] }; }
 
   /** 架空のサンプル（人名・実在の口座名は使わない） */
   function sampleState() {
@@ -367,7 +367,7 @@
   function helpHTML() {
     return '<div class="help"><button class="fbopen" data-act="feedback">ご意見・ご要望を送る ›</button>' +
       '<h3>できること</h3><p>登録した毎月の引落をもとに、口座ごとに「締め日までに必要な金額」を計算します。残高を入力すると、不足している口座と余っている口座がわかります。</p>' +
-      '<h3>締め日と期間</h3><p>初めは締め日（毎月10日）が1つで、確認日から次の締め日までの引落で不足と余りを判定します。月末までなど、もう一つの期限の分も見たいときは「設定 → 帳簿」で「＋ もう一つの期限を追加」を押すと、参考として並びます。「設定 → 帳簿」で、それぞれ1〜28日または月末と、休日に当たったときの扱い（後ろ・前・ずらさない）に変えられます。確認日（今日）から次の締め日までの引落で、不足と余りを判定します。</p>' +
+      '<h3>締め日と期間</h3><p>初めは25日始まり（締め日は毎月24日）で、確認日から次の締め日までの引落で不足と余りを判定します。月末までなど、もう一つの期限の分も見たいときは「設定 → 帳簿」で「＋ もう一つの期限を追加」を押すと、参考として並びます。「設定 → 帳簿」で、それぞれ1〜28日または月末と、休日に当たったときの扱い（後ろ・前・ずらさない）に変えられます。確認日（今日）から次の締め日までの引落で、不足と余りを判定します。</p>' +
       '<h3>休日のずれ</h3><p>土日・祝日・年末年始（12/31〜1/3）に当たる日は、項目ごとに「後ろにずらす／前にずらす／ずらさない」を選べます。初期値は、支出が後ろ（翌営業日）、収入が前（前営業日）です。</p>' +
       '<h3>表示モード</h3><p>標準はライトモード（明るい表示）です。「設定 → 表示」で、ライトモード・ダークモード・自動（iPhoneの設定に合わせる）を選べます。</p>' +
       '<h3>締め期間の収支</h3><p>準備ページの「締め期間の収支」に、締め日の翌日から次の締め日までの収入の合計・支出の合計・差し引きが出ます。‹ › で前後の期間も見られます。</p>' +
