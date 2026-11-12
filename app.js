@@ -1993,7 +1993,8 @@
     $('#mCancel').onclick = close;
     m.onclick = e => { if (e.target === m) close(); };
     if (okLabel) $('#mOk').onclick = () => { close(); onOk(); };
-    $('#mCancel').focus();
+    $('#mCancel').focus({ preventScroll: true }); // 下のボタンに合わせて画面が下へ動かないように
+    const sh = m.querySelector('.sheet'); if (sh) sh.scrollTop = 0; m.scrollTop = 0;
   }
 
   /* ---------- 口座間の移動（帳簿をまたいでも・非表示の口座も） ---------- */
