@@ -299,9 +299,12 @@
     const f = (name, day, account, amount, end) => ({ id: uid('f'), name, day, account, amount, end: end || null, memo: '', updatedAt: now, hidden: false, shift: 'after' });
     const A = '生活費口座', B = 'カード引落口座', L = 'ローン口座', M = '現金';
     const d = { app: 'kakeibo', version: 1, source: 'サンプル', sample: true, accounts: [A, B, L, M], hiddenAccounts: [],
+      settings: { startDay: 25, startShift: 'before', closeDay: 24, closeShift: 'before', close2On: false, close2Day: 'end', close2Shift: 'none' }, // 給料日（25日）始まり
       variable: [v('クレジットカードA', 27, B, 48000), v('クレジットカードB', 10, B, 23500), v('電気代', 26, A, 9800), v('ガス代', 26, A, 5200), v('水道代', 'end', A, 0)],
       fixed: [f('家族のこづかい', 25, M, 30000), f('住宅ローン', 27, L, 85000, '2045-03'), f('携帯電話', 26, A, 6800), f('生命保険', 27, A, 12000), f('習い事', 5, A, 8000), f('家電の分割払い', 1, B, 4500, '2027-06')],
       balances: {}, income: [{ id: uid('i'), name: '給料', day: 25, amount: 280000, hidden: false, shift: 'before', account: '生活費口座', vary: true }, { id: uid('i'), name: '児童手当', day: 15, amount: 20000, months: [2, 4, 6, 8, 10, 12], hidden: false, shift: 'before' }, { id: uid('i'), name: '臨時収入（例）', day: 20, date: isoOf(C.addDays(today(), 12)), amount: 30000, hidden: false, shift: 'before' }] };
+    // 今の期間の始まりから記録して、引落済みの分も見られるようにする（残高は今日入れた扱いなので引かない）
+    try { const st0 = isoOf(C.cycle(d, today(), 0).from); d.historySince = st0; d.incSince = st0; } catch (e) { /* 失敗しても今日から */ }
     d.balances[A] = { amount: 40000, updatedAt: now }; d.balances[B] = { amount: 60000, updatedAt: now }; d.balances[L] = { amount: 90000, updatedAt: now }; d.balances[M] = { amount: null, updatedAt: null };
     return d;
   }
@@ -585,6 +588,14 @@
     for (const b of r.banks) for (const w of r.windows) for (const l of b.lines[w.key]) if (l.amount !== 0 && serial2(l.date) >= t0) items.push({ date: l.date, name: l.name.replace(/（\d+月分は未入力）$/, ''), amount: l.amount, bank: b.name, short: b.shortfall > 0 });
     const seen = new Set();
     const list = items.sort((a, b) => serial2(a.date) - serial2(b.date)).filter(x => { const k = x.bank + x.name + serial2(x.date); if (seen.has(k)) return false; seen.add(k); return true; });
+    // 締め日までに引き落としが残っていなければ、次の期間の最初の引き落としを出す（足りるかは給料日などで変わるので判定しない）
+    let afterClose = false;
+    if (!list.length && w0) {
+      const r2 = C.compute(state, C.addDays(w0.to, 1));
+      for (const b of r2.banks) for (const w of r2.windows.filter(x => x.inClose)) for (const l of b.lines[w.key]) if (l.amount !== 0) list.push({ date: l.date, name: l.name.replace(/（\d+月分は未入力）$/, ''), amount: l.amount, bank: b.name, short: false });
+      list.sort((a2, b2) => serial2(a2.date) - serial2(b2.date));
+      afterClose = list.length > 0;
+    }
     const next = list[0];
     const days = next ? Math.round((new Date(next.date.y, next.date.m - 1, next.date.d) - new Date(T.y, T.m - 1, T.d)) / 864e5) : null;
     // 右側：直近の引落日までに必要な金額（その日までの引き落とし）と、その日までに残高が足りるか
@@ -592,14 +603,14 @@
     if (next) {
       const nd = serial2(next.date);
       nearAmt = list.filter(x => serial2(x.date) <= nd).reduce((a, x) => a + (x.amount || 0), 0);
-      for (const b of r.banks) {
+      if (!afterClose) for (const b of r.banks) {
         const sum = r.windows.flatMap(w => b.lines[w.key]).filter(l => l.amount && serial2(l.date) >= t0 && serial2(l.date) <= nd).reduce((a, l) => a + l.amount, 0);
         if (!sum) continue;
         if (b.balance == null) nearMiss = true; else if (sum > b.balance) nearShort = true;
       }
     }
-    const st = !next ? '' : nearShort ? '<span class="pst bad">不足あり</span>' : nearMiss ? '<span class="pst warn">未入力</span>' : '<span class="pst ok">準備OK</span>';
-    const nearLab = next ? (days === 0 ? '今日（' + md(next.date) + '）に必要な金額' : md(next.date) + 'までに必要な金額') : '必要な金額';
+    const st = !next || afterClose ? '' : nearShort ? '<span class="pst bad">不足あり</span>' : nearMiss ? '<span class="pst warn">未入力</span>' : '<span class="pst ok">準備OK</span>';
+    const nearLab = next && afterClose ? md(next.date) + '（次の期間）の引落' : next ? (days === 0 ? '今日（' + md(next.date) + '）に必要な金額' : md(next.date) + 'までに必要な金額') : '必要な金額';
     const closeSum = w0 ? (r.totals[w0.key] || 0) : 0;
     const hero = '<button class="herocard' + (meta.prepPanel === 'due' ? ' on' : '') + '" data-panel-btn="due" aria-expanded="' + (meta.prepPanel === 'due') + '">' +
       '<span class="hc-l"><span class="hc-lab">次の引落まで</span><span class="hc-days num">' + (days == null ? '—' : days === 0 ? '今日' : days + '<small>日</small>') + '</span></span>' +
