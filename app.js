@@ -1059,7 +1059,7 @@
         '<input class="amount' + (it.amount == null ? ' empty' : '') + '" inputmode="numeric" enterkeyhint="done" autocomplete="off" id="amt-' + esc(it.id) + '" data-f="amount" value="' + yenTxt(it.amount) + '" placeholder="未入力" aria-label="' + esc(it.name) + 'の金額">' +
         (kind !== 'fixed' ? '<button type="button" class="calcbtn" data-act="calc" aria-label="' + esc(it.name) + 'を電卓で計算">' + CALC_ICON + '</button>' : '') + '</div>' +
         '<div class="row-sub">' + (kind === 'once' ? '<span class="ikchip k-once">1回のみ</span><input class="text datein" type="date" id="date-' + esc(it.id) + '" data-f="date" value="' + esc(it.date) + '" aria-label="引落日">' : daySelect('day-' + esc(it.id), it.day, it.nm, true)) + (kind === 'variable' ? monthSelect('mon-' + esc(it.id), it) : '') + acctSelect('acc-' + esc(it.id), it.account) +
-        '<span class="stamp" data-stamp>' + stampText(it.updatedAt) + '</span></div>' +
+        '</div>' +
         ((it.memo || it.end) ? '<div class="memo">' + (it.end ? (ended ? '終了しました（' : '終了予定 ') + it.end.replace('-', '/') + (ended ? '）' : '') + (it.memo ? '　' : '') : '') + esc(it.memo) + '</div>' : '') +
         '<div class="row-acts"><button class="ghost small" data-act="edit">詳細（名前・休日・削除）</button><button class="ghost small" data-act="hide">非表示にする</button></div>' +
         '<div class="edit" hidden data-editor>' +
