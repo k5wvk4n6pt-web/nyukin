@@ -141,7 +141,7 @@
   /**
    * 集計期間（重複なし・確認日から連続）
    *  ①確認日〜次に来る期限  ②その翌日〜その次の期限
-   *  判定（inClose）は、期限1（締め日）の次の到来日までの期間
+   *  判定（inClose）は、直近の期限までの期間（①）
    */
   function windows(T, cs) {
     cs = cs && cs.d1 ? cs : { d1: cs || { day: 10, shift: 'after' }, d2: null };
@@ -162,7 +162,7 @@
       { key: 'w1', which: firstIs1 ? 1 : 2, label: deadlineLabel(firstDl, first, T), from: T, to: plain(first), nominal: first.nominal || null },
       { key: 'w2', which: secondIs1 ? 1 : 2, label: deadlineLabel(secondDl, second, T), from: s, to: plain(second), nominal: second.nominal || null }
     ];
-    for (const w of W) w.inClose = serial(w.to) <= serial(c1);
+    for (const w of W) w.inClose = w === W[0]; // 締め日が2つあるときは、直近の締め日までで過不足を判定
     if (W[0].label === W[1].label) W[1].label = '翌' + W[1].label.replace(/^翌/, '');
     return W;
   }
@@ -322,7 +322,7 @@
     };
   }
 
-  const api = { startOf, setCloseCtx, VERSION: '2026.11.11c', amountFor, cycle, onceDate, deadlineLabel, closeSettings, nextClosing, closingOf, holidays, holidayName, isBusinessDay, shiftDate, shiftMode, actual, addDays, WD, lastDay, serial, addMonth, weekday, fromDate, occurrence, activeIn, windows, occurrencesIn, nextDate, compute };
+  const api = { startOf, setCloseCtx, VERSION: '2026.11.13a', amountFor, cycle, onceDate, deadlineLabel, closeSettings, nextClosing, closingOf, holidays, holidayName, isBusinessDay, shiftDate, shiftMode, actual, addDays, WD, lastDay, serial, addMonth, weekday, fromDate, occurrence, activeIn, windows, occurrencesIn, nextDate, compute };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.KCalc = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
