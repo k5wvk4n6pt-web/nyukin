@@ -112,8 +112,12 @@
       ? { day: sd === 1 ? 'end' : sd - 1, shift: SHIFTS.includes(s.startShift) ? s.startShift : 'none', start: sd }
       : { day: validDayVal(s.closeDay, 10), shift: SHIFTS.includes(s.closeShift) ? s.closeShift : 'after' };
     // 期限2は「追加」したときだけ使う（初期は締め日1つ）
-    const d2 = s.close2On ? { day: validDayVal(s.close2Day, 'end'), shift: SHIFTS.includes(s.close2Shift) ? s.close2Shift : 'none' } : null;
-    const d2saved = { day: validDayVal(s.close2Day, 'end'), shift: SHIFTS.includes(s.close2Shift) ? s.close2Shift : 'none' };
+    // もう一つの始期日（その前日がもう一つの締め日）。古いデータは締め日の指定のまま
+    const s2 = Number(s.close2Start), sh2 = SHIFTS.includes(s.close2Shift) ? s.close2Shift : 'none';
+    const d2saved = Number.isInteger(s2) && s2 >= 1 && s2 <= 31
+      ? { day: s2 === 1 ? 'end' : s2 - 1, shift: sh2, start: s2 }
+      : { day: validDayVal(s.close2Day, 'end'), shift: sh2 };
+    const d2 = s.close2On ? d2saved : null;
     return { d1, d2, d2saved, day: d1.day, shift: d1.shift };
   }
   function nominalClosing(y, m, cs) { return { y, m, d: cs.day === 'end' ? lastDay(y, m) : cs.day }; }
@@ -322,7 +326,7 @@
     };
   }
 
-  const api = { startOf, setCloseCtx, VERSION: '2026.11.13a', amountFor, cycle, onceDate, deadlineLabel, closeSettings, nextClosing, closingOf, holidays, holidayName, isBusinessDay, shiftDate, shiftMode, actual, addDays, WD, lastDay, serial, addMonth, weekday, fromDate, occurrence, activeIn, windows, occurrencesIn, nextDate, compute };
+  const api = { startOf, setCloseCtx, VERSION: '2026.11.13b', amountFor, cycle, onceDate, deadlineLabel, closeSettings, nextClosing, closingOf, holidays, holidayName, isBusinessDay, shiftDate, shiftMode, actual, addDays, WD, lastDay, serial, addMonth, weekday, fromDate, occurrence, activeIn, windows, occurrencesIn, nextDate, compute };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.KCalc = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

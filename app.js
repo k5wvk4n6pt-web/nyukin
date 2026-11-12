@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   const C = window.KCalc;
-  const APP_VERSION = '2026.11.13a';
+  const APP_VERSION = '2026.11.13b';
   /** ファイルの一部だけが新しい（アップロード漏れ・古いキャッシュ）と計算が合わなくなるので知らせる */
   /** 古いままのファイル名（なければ空）。native.js は中身が変わったときだけ気にする */
   function staleFiles() {
@@ -173,7 +173,7 @@
       settings: (() => { const cs = C.closeSettings(d);
         // 始期日がまだなければ、締め日の翌日を始期日にする（休日の扱いもそのまま引き継ぐ）
         const sd = cs.d1.start || (cs.d1.day === 'end' ? 1 : cs.d1.day + 1);
-        return { startDay: sd, startShift: cs.d1.shift, closeDay: sd === 1 ? 'end' : sd - 1, closeShift: cs.d1.shift, close2On: !!cs.d2, close2Day: cs.d2saved.day, close2Shift: cs.d2saved.shift }; })(),
+        return { startDay: sd, startShift: cs.d1.shift, closeDay: sd === 1 ? 'end' : sd - 1, closeShift: cs.d1.shift, close2On: !!cs.d2, close2Day: cs.d2saved.day, close2Shift: cs.d2saved.shift, close2Start: cs.d2saved.start || null }; })(),
       excludeSurplus: Array.isArray(d.excludeSurplus) ? d.excludeSurplus.map(String).filter(a => d.accounts.map(String).includes(a)) : [],
       hiddenAccounts: Array.isArray(d.hiddenAccounts) ? d.hiddenAccounts.map(String).filter(a => d.accounts.map(String).includes(a)) : [],
       income: Array.isArray(d.income) && d.income.length ? d.income.map(i => Object.assign({ id: i.id || uid('i'), name: String(i.name), day: i.day, amount: i.amount == null ? null : Number(i.amount), hidden: !!i.hidden, shift: validShift(i.shift, 'before'),
@@ -367,7 +367,7 @@
   function helpHTML() {
     return '<div class="help"><button class="fbopen" data-act="feedback">ご意見・ご要望を送る ›</button>' +
       '<h3>できること</h3><p>登録した毎月の引落をもとに、口座ごとに「締め日までに必要な金額」を計算します。残高を入力すると、不足している口座と余っている口座がわかります。</p>' +
-      '<h3>締め日と期間</h3><p>初めは25日始まり（締め日は毎月24日）で、確認日から次の締め日までの引落で不足と余りを判定します。月末までなど、もう一つの期限の分も見たいときは「設定 → 帳簿」で「＋ もう一つの期限を追加」を押すと、締め日ともう一つの期限のうち、近いほうまでの引落で不足と余りを判定します。「設定 → 帳簿」で、それぞれ1〜28日または月末と、休日に当たったときの扱い（後ろ・前・ずらさない）に変えられます。確認日（今日）から次の締め日までの引落で、不足と余りを判定します。</p>' +
+      '<h3>締め日と期間</h3><p>初めは25日始まり（締め日は毎月24日）で、確認日から次の締め日までの引落で不足と余りを判定します。1日始まり（月末締め）など、もう一つの区切りも見たいときは「設定 → 帳簿」で「＋ もう一つの始期日を追加」を押すと、2つの締め日（それぞれの始期日の前日）のうち、近いほうまでの引落で不足と余りを判定します。始期日はどちらも1〜31日と、土日・祝日に当たったときの扱い（前の平日・後ろの平日・ずらさない）を選べます。確認日（今日）から次の締め日までの引落で、不足と余りを判定します。</p>' +
       '<h3>休日のずれ</h3><p>土日・祝日・年末年始（12/31〜1/3）に当たる日は、項目ごとに「後ろにずらす／前にずらす／ずらさない」を選べます。初期値は、支出が後ろ（翌営業日）、収入が前（前営業日）です。</p>' +
       '<h3>表示モード</h3><p>標準はライトモード（明るい表示）です。「設定 → 表示」で、ライトモード・ダークモード・自動（iPhoneの設定に合わせる）を選べます。</p>' +
       '<h3>締め期間の収支</h3><p>準備ページの「締め期間の収支」に、締め日の翌日から次の締め日までの収入の合計・支出の合計・差し引きが出ます。‹ › で前後の期間も見られます。</p>' +
@@ -1160,8 +1160,13 @@
       '<div class="sshift"><span class="k">始期日が土日・祝日のとき</span><input type="hidden" id="close-shift" value="' + cs.d1.shift + '"><div class="seg">' + [['before', '前の平日'], ['after', '後ろの平日'], ['none', 'ずらさない']].map(x => '<button type="button" data-sshift="' + x[0] + '" class="' + (cs.d1.shift === x[0] ? 'on' : '') + '" aria-pressed="' + (cs.d1.shift === x[0]) + '">' + x[1] + '</button>').join('') + '</div></div>' +
       '<span class="sub">次の締め日：' + md(nc) + '（' + C.WD[C.weekday(nc)] + '）／次の始期日：' + md(ns) + '（' + C.WD[C.weekday(ns)] + '）</span></div>' +
       (cs.d2
-        ? '<div class="dl"><div class="dlhead"><b>もう一つの期限</b><button class="small danger" data-act="close2-off">外す</button></div><span class="sub">締め日とこの期限のうち、近いほうまでで過不足を判定します</span><div class="two"><label>日付<select id="close2-day">' + dayOpts(cs.d2.day) + '</select></label><label>休日のとき' + sh('close2-shift', cs.d2.shift) + '</label></div></div>'
-        : '<div class="dl"><button class="small" data-act="close2-on">＋ もう一つの期限を追加</button><span class="sub">例：締め日が10日で、月末までの分も見ておきたいとき</span></div>') + '</div>';
+        ? (() => { const st2 = cs.d2.start || (cs.d2.day === 'end' ? 1 : Math.min(31, cs.d2.day + 1)); const nc2 = C.nextClosing(T0, cs.d2), ns2 = C.addDays({ y: nc2.y, m: nc2.m, d: nc2.d }, 1);
+            return '<div class="dl"><div class="dlhead"><b>もう一つの始期日</b><button class="small danger" data-act="close2-off">外す</button></div>' +
+              '<span class="sub">始期日の前日がもう一つの締め日です。2つの締め日のうち、近いほうまでで過不足を判定します</span>' +
+              '<label>日付<select id="close2-day">' + sOpts(st2) + '</select></label>' +
+              '<div class="sshift"><span class="k">始期日が土日・祝日のとき</span><input type="hidden" id="close2-shift" value="' + cs.d2.shift + '"><div class="seg">' + [['before', '前の平日'], ['after', '後ろの平日'], ['none', 'ずらさない']].map(x => '<button type="button" data-sshift2="' + x[0] + '" class="' + (cs.d2.shift === x[0] ? 'on' : '') + '" aria-pressed="' + (cs.d2.shift === x[0]) + '">' + x[1] + '</button>').join('') + '</div></div>' +
+              '<span class="sub">次の締め日：' + md(nc2) + '（' + C.WD[C.weekday(nc2)] + '）／次の始期日：' + md(ns2) + '（' + C.WD[C.weekday(ns2)] + '）</span></div>'; })()
+        : '<div class="dl"><button class="small" data-act="close2-on">＋ もう一つの始期日を追加</button><span class="sub">例：25日始まりのほかに、1日始まり（月末締め）の分も見ておきたいとき</span></div>') + '</div>';
     if (st === 'books') body = body + closeCard;
     return '<section id="sec-settings" aria-label="設定"><div class="section-head"><h2>設定</h2></div>' + seg + '<div class="stab-body">' + body + '</div></section>';
   }
@@ -1588,18 +1593,19 @@
       const dv = v => v === 'end' ? 'end' : Number(v);
       const lab = d => d === 'end' ? '月末' : d + '日';
       const cur = () => C.closeSettings(state);
-      const setS = (patch) => { const c0 = cur(); state.settings = Object.assign({ startDay: c0.d1.start, startShift: c0.d1.shift, closeDay: c0.d1.day, closeShift: c0.d1.shift, close2On: !!c0.d2, close2Day: c0.d2saved.day, close2Shift: c0.d2saved.shift }, patch); save(); renderKeep(); };
+      const setS = (patch) => { const c0 = cur(); state.settings = Object.assign({ startDay: c0.d1.start, startShift: c0.d1.shift, closeDay: c0.d1.day, closeShift: c0.d1.shift, close2On: !!c0.d2, close2Day: c0.d2saved.day, close2Shift: c0.d2saved.shift, close2Start: c0.d2saved.start || null }, patch); save(); renderKeep(); };
       const upd = () => {
         const sd = Number(cd.value), sh0 = validShift($('#close-shift').value, 'after');
         const p = { startDay: sd, startShift: sh0, closeDay: sd === 1 ? 'end' : sd - 1, closeShift: sh0 };
-        if ($('#close2-day')) { p.close2Day = dv($('#close2-day').value); p.close2Shift = validShift($('#close2-shift').value, 'none'); }
+        if ($('#close2-day')) { const s2 = Number($('#close2-day').value); p.close2Start = s2; p.close2Day = s2 === 1 ? 'end' : s2 - 1; p.close2Shift = validShift($('#close2-shift').value, 'none'); }
         setS(p);
-        toast('始期日：' + state.settings.startDay + '日・休みなら' + { before: '前の平日', after: '後ろの平日', none: 'ずらさない' }[state.settings.startShift] + '（締め日はその前日）' + (state.settings.close2On ? '／もう一つの期限：' + lab(state.settings.close2Day) : ''));
+        toast('始期日：' + state.settings.startDay + '日・休みなら' + { before: '前の平日', after: '後ろの平日', none: 'ずらさない' }[state.settings.startShift] + '（締め日はその前日）' + (state.settings.close2On ? '／もう一つの始期日：' + state.settings.close2Start + '日' : ''));
       };
       main.querySelectorAll('[data-sshift]').forEach(b => b.addEventListener('click', () => { $('#close-shift').value = b.dataset.sshift; upd(); }));
+      main.querySelectorAll('[data-sshift2]').forEach(b => b.addEventListener('click', () => { $('#close2-shift').value = b.dataset.sshift2; upd(); }));
       ['#close-day', '#close-shift', '#close2-day', '#close2-shift'].forEach(id => { const el = $(id); if (el) el.addEventListener('change', upd); });
-      const on = main.querySelector('[data-act="close2-on"]'); if (on) on.addEventListener('click', () => { setS({ close2On: true }); toast('もう一つの期限を追加しました（' + lab(state.settings.close2Day) + '）'); });
-      const off = main.querySelector('[data-act="close2-off"]'); if (off) off.addEventListener('click', () => { setS({ close2On: false }); toast('もう一つの期限を外しました'); });
+      const on = main.querySelector('[data-act="close2-on"]'); if (on) on.addEventListener('click', () => { const s2 = cur().d2saved.start || 1; setS({ close2On: true, close2Start: s2, close2Day: s2 === 1 ? 'end' : s2 - 1 }); toast('もう一つの始期日を追加しました（' + s2 + '日始まり）'); });
+      const off = main.querySelector('[data-act="close2-off"]'); if (off) off.addEventListener('click', () => { setS({ close2On: false }); toast('もう一つの始期日を外しました'); });
     }
     main.querySelectorAll('[data-stab]').forEach(b => b.addEventListener('click', () => { meta.stab = b.dataset.stab; meta.reorder = null; saveMeta(); renderAll(); window.scrollTo(0, 0); }));
     // 支出の追加
