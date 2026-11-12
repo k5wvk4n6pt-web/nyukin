@@ -2090,14 +2090,14 @@
     const m = $('#modal');
     m.innerHTML = '<div class="sheet form xsheet" role="dialog" aria-modal="true" aria-labelledby="mt"><h2 id="mt">口座間で移す</h2>' +
       (fromKey0 ? '<p class="sub" style="margin:0"><b>' + esc(fromName) + '</b> からほかの口座へ移します。' + (to ? 'いちばん引落の近い不足口座を移動先にしています。' : '') + '</p>' : '') +
-      '<p class="sub" style="margin:0">実際に振り込んだ・移した後に記録すると、両方の口座の残高が書きかわります。' + (many ? 'ほかの帳簿の口座や、非表示の口座も選べます。' : '非表示の口座も選べます。') + '</p>' +
+      '<p class="sub" style="margin:0">実際に振り込んだ・移した後に「移動する」を押すと、両方の口座の残高が書きかわります。' + (many ? 'ほかの帳簿の口座や、非表示の口座も選べます。' : '非表示の口座も選べます。') + '</p>' +
       '<label>移動元<select id="x-from">' + opts(srcs, from ? from.key : '') + '</select></label>' +
       '<label>移動先<select id="x-to">' + opts(cat, toKey) + '</select></label>' +
       '<label>移す金額' + (need ? '<span class="sub">（締めまでの不足 ' + nf.format(need) + '円）</span>' : '') + '<input class="amount wide" id="x-amt" inputmode="numeric" enterkeyhint="done" autocomplete="off" value="' + (need ? yenTxt(need) : '') + '" placeholder="0"></label>' +
       '<div class="two"><label>手数料<input class="amount wide" id="x-fee" inputmode="numeric" enterkeyhint="done" autocomplete="off" value="' + (fee0 ? yenTxt(fee0) : '') + '" placeholder="0"></label>' +
       '<label>手数料の引かれ方<select id="x-feefrom"><option value="source"' + (meta.feeFrom !== 'amount' ? ' selected' : '') + '>移動元から引く</option><option value="amount"' + (meta.feeFrom === 'amount' ? ' selected' : '') + '>移す額から引く</option></select></label></div>' +
       '<div class="xprev" id="x-prev"></div>' +
-      '<div class="btnrow"><button id="mCancel">やめる</button><button id="mOk" class="primary">移した残高を記録</button></div></div>';
+      '<div class="btnrow"><button id="mCancel">やめる</button><button id="mOk" class="primary">移動する</button></div></div>';
     m.hidden = false;
     const close = () => { m.hidden = true; m.innerHTML = ''; };
     $('#mCancel').onclick = close;
@@ -2133,7 +2133,7 @@
       const tr = { id: uid('t'), at: new Date().toISOString(), undone: false, fromBook: f.book, from: f.name, toBook: t.book, to: t.name, amount: x.amount, fee: x.fee, feeFrom: x.feeFrom };
       applyTransfer(tr, 1);
       meta.fees = Object.assign({}, meta.fees, { [feeKey(x.from, x.to)]: x.fee }); meta.feeFrom = x.feeFrom; saveMeta();
-      close(); renderKeep(); toast(accLabel(f, true) + ' → ' + accLabel(t, true) + '：' + nf.format(x.amount) + '円を記録しました');
+      close(); renderKeep(); toast(accLabel(f, true) + ' → ' + accLabel(t, true) + '：' + nf.format(x.amount) + '円を移しました');
     };
     (toKey ? $('#x-amt') : $('#x-to')).focus();
     if (fromKey0 && !toKey) toast('「' + fromName + '」から移します。移動先を選んでください');
@@ -2169,11 +2169,11 @@
       '<div class="two"><label>金額<input class="amount wide" inputmode="numeric" data-amt value="' + yenTxt(p.amount) + '"></label><label>手数料<input class="amount wide" inputmode="numeric" data-fee value="' + (p.fee ? yenTxt(p.fee) : '') + '" placeholder="0"></label></div></div></div>').join('');
     const m = $('#modal');
     m.innerHTML = '<div class="sheet form xsheet" role="dialog" aria-modal="true" aria-labelledby="mt"><h2 id="mt">不足をまとめて解消</h2>' +
-      '<p class="sub" style="margin:0">余りの多い口座から、引落の近い口座の順に移す案です。実際に振り込んだあとで「記録」を押すと、残高が書きかわります。手数料は口座の組み合わせごとに前回の金額が入ります（' + (feeFrom === 'source' ? '移動元から引く' : '移す額から引く') + '）。</p>' +
+      '<p class="sub" style="margin:0">余りの多い口座から、引落の近い口座の順に移す案です。実際に振り込んだあとで「チェックした移動を実行」を押すと、残高が書きかわります。手数料は口座の組み合わせごとに前回の金額が入ります（' + (feeFrom === 'source' ? '移動元から引く' : '移す額から引く') + '）。</p>' +
       (many ? '<label class="check"><input type="checkbox" id="b-others"' + (useOthers ? ' checked' : '') + '>ほかの帳簿の余りも使う</label>' : '') +
       (plan.length ? '<div class="blist">' + rows + '</div>' : '<p class="sub" style="margin:0">' + (short.length ? '移せる余りがありません。' : '不足している口座はありません。') + '</p>') +
       (uncovered > 0 ? '<p class="flag" style="margin:0">余りでまかなえない不足が ' + nf.format(uncovered) + '円 あります。</p>' : '') +
-      '<div class="btnrow"><button id="mCancel">やめる</button>' + (plan.length ? '<button id="mOk" class="primary">チェックした移動を記録</button>' : '') + '</div></div>';
+      '<div class="btnrow"><button id="mCancel">やめる</button>' + (plan.length ? '<button id="mOk" class="primary">チェックした移動を実行</button>' : '') + '</div></div>';
     m.hidden = false;
     const close = () => { m.hidden = true; m.innerHTML = ''; };
     $('#mCancel').onclick = close;
@@ -2190,13 +2190,13 @@
         if (feeFrom === 'amount' && fee >= amt) { toast('手数料が移す金額以上の行があります'); return; }
         picks.push({ p, amt, fee });
       }
-      if (!picks.length) { toast('記録する移動を選んでください'); return; }
+      if (!picks.length) { toast('実行する移動を選んでください'); return; }
       const at = new Date().toISOString();
       for (const k of picks) {
         applyTransfer({ id: uid('t'), at, undone: false, fromBook: k.p.from.book, from: k.p.from.name, toBook: k.p.to.book, to: k.p.to.name, amount: k.amt, fee: k.fee, feeFrom }, 1);
         meta.fees = Object.assign({}, meta.fees, { [feeKey(k.p.from.key, k.p.to.key)]: k.fee });
       }
-      saveMeta(); close(); renderKeep(); toast(picks.length + '件の移動を記録しました');
+      saveMeta(); close(); renderKeep(); toast(picks.length + '件の移動を実行しました');
     };
   }
 
