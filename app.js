@@ -612,7 +612,7 @@
       }
     }
     const st = !next || afterClose ? '' : nearShort ? '<span class="pst bad">不足あり</span>' : nearMiss ? '<span class="pst warn">未入力</span>' : '<span class="pst ok">準備OK</span>';
-    const nearLab = next && afterClose ? md(next.date) + '（次の期間）の引落' : next ? (days === 0 ? '今日（' + md(next.date) + '）に必要な金額' : md(next.date) + 'までに必要な金額') : '必要な金額';
+    const nearLab = next && afterClose ? '次の期間の引落' : '必要な金額'; // 日付は左に出ているので書かない
     const closeSum = w0 ? (r.totals[w0.key] || 0) : 0;
     const hero = '<button class="herocard' + (meta.prepPanel === 'due' ? ' on' : '') + '" data-panel-btn="due" aria-expanded="' + (meta.prepPanel === 'due') + '">' +
       '<span class="hc-l"><span class="hc-lab">次の引落日' + (next ? '<b class="hc-date num">' + md(next.date) + '</b>' : '') + '</span><span class="hc-days num">' + (days == null ? '—' : days === 0 ? '今日' : '<small class="pre">あと</small>' + days + '<small>日</small>') + '</span></span>' +
