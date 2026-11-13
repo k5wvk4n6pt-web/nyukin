@@ -1130,6 +1130,14 @@ input[type="date"]::-webkit-date-and-time-value, input[type="month"]::-webkit-da
 .grpset .grow-accs { display: flex; flex-wrap: wrap; gap: 4px 18px; }
 .grpset .grow-accs label.check { display: inline-flex; flex-direction: row; align-items: center; gap: 6px; flex: 0 0 auto; min-height: 36px; font-size: 14px; color: var(--ink); }
 .grpset .grow-accs label.check input { display: inline-block; width: 20px; height: 20px; margin: 0; }
+.grpcard .gc-plan { margin-top: 6px; padding: 10px 12px; border-radius: 14px; background: var(--short-bg, rgba(214, 69, 65, .07)); display: grid; gap: 6px; }
+.grpcard .gc-plan.ok { background: var(--ok-bg, rgba(46, 160, 90, .08)); }
+.grpcard .gc-plan.ok .gp-h { color: var(--ok, #2E8B57); }
+.grpcard .gp-h { font-size: 13px; font-weight: 800; color: var(--short); }
+.grpcard .gp-step { display: grid; grid-template-columns: 22px 1fr; gap: 8px; align-items: center; font-size: 14px; }
+.grpcard .gp-n { width: 22px; height: 22px; border-radius: 50%; background: var(--surface); border: 1px solid var(--line); display: grid; place-items: center; font-size: 12px; font-weight: 800; }
+.grpcard .gp-note { font-size: 12px; }
+.grpset .grow-hub { font-size: 13px; }
 .fd-lh { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px; }
 .fd-lh b { color: var(--navy); font-size: 15px; }
 .fd-lh .sub { font-size: 12px; }

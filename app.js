@@ -175,7 +175,7 @@
         const sd = cs.d1.start || (cs.d1.day === 'end' ? 1 : cs.d1.day + 1);
         return { startDay: sd, startShift: cs.d1.shift, closeDay: sd === 1 ? 'end' : sd - 1, closeShift: cs.d1.shift, close2On: !!cs.d2, close2Day: cs.d2saved.day, close2Shift: cs.d2saved.shift, close2Start: cs.d2saved.start || null }; })(),
       excludeSurplus: Array.isArray(d.excludeSurplus) ? d.excludeSurplus.map(String).filter(a => d.accounts.map(String).includes(a)) : [],
-      accGroups: Array.isArray(d.accGroups) ? d.accGroups.filter(g => g && g.name).map(g => ({ id: String(g.id || uid('g')), name: String(g.name), accounts: (Array.isArray(g.accounts) ? g.accounts : []).map(String).filter(a => d.accounts.map(String).includes(a)) })) : [],
+      accGroups: Array.isArray(d.accGroups) ? d.accGroups.filter(g => g && g.name).map(g => ({ id: String(g.id || uid('g')), name: String(g.name), accounts: (Array.isArray(g.accounts) ? g.accounts : []).map(String).filter(a => d.accounts.map(String).includes(a)), hub: g.hub && d.accounts.map(String).includes(String(g.hub)) ? String(g.hub) : '' })) : [],
       hiddenAccounts: Array.isArray(d.hiddenAccounts) ? d.hiddenAccounts.map(String).filter(a => d.accounts.map(String).includes(a)) : [],
       income: Array.isArray(d.income) && d.income.length ? d.income.map(i => Object.assign({ id: i.id || uid('i'), name: String(i.name), day: i.day, amount: i.amount == null ? null : Number(i.amount), hidden: !!i.hidden, shift: validShift(i.shift, 'before'),
           account: i.account && d.accounts.map(String).includes(String(i.account)) ? String(i.account) : '', vary: !!i.vary, forOff: [0, 1, 2].includes(Number(i.forOff)) ? Number(i.forOff) : 0 },
@@ -788,8 +788,29 @@
       return '<div class="grpcard"><div class="gc-head"><b>' + esc(g.name) + '</b><span class="sub">' + bs.length + '口座' + (miss ? '・残高未入力 ' + miss : '') + '</span></div>' +
         '<div class="gc-row"><span>合計残高</span><b class="num' + (hide ? ' masked' : '') + '">' + y(tot) + '</b></div>' +
         (due ? '<div class="gc-row sub"><span>' + by + '締めまでの引落</span><span class="num">' + y(due) + '</span></div><div class="gc-row"><span>引落後の合計</span><b class="num' + (tot - due < 0 && !hide ? ' bad' : '') + '">' + y(tot - due) + '</b></div>' : '') +
+        grpPlanHTML(g, withBal, hide) +
         '<div class="gc-names sub">' + bs.map(b => esc(b.name)).join('・') + '</div></div>';
     }).join('') + '</section>';
+  }
+  /** グループ内でまとめて入金して振り分ける手順（同じ銀行どうしは手数料がかからない前提） */
+  function grpPlanHTML(g, bs, hide) {
+    if (hide) return '';
+    const shorts = bs.filter(b => b.shortfall > 0).map(b => ({ name: b.name, need: b.shortfall }));
+    if (!shorts.length) return '';
+    const hub = g.hub && g.accounts.includes(g.hub) ? g.hub : (bs[0] ? bs[0].name : g.accounts[0]);
+    const net = bs.reduce((a, b) => a + (b.balance - (b.due || 0)), 0);
+    const ext = Math.max(0, -net);
+    // 出せるお金：余りのある口座（入金先の口座には外からの入金も入る）
+    const src = bs.map(b => ({ name: b.name, have: Math.max(0, b.balance - (b.due || 0)) + (b.name === hub ? ext : 0) })).filter(x => x.have > 0);
+    const hubShort = shorts.find(x => x.name === hub);
+    if (hubShort) { const h0 = src.find(x => x.name === hub); if (h0) { const use = Math.min(h0.have, hubShort.need); h0.have -= use; hubShort.need -= use; } }
+    src.sort((a, b) => (b.name === hub) - (a.name === hub) || b.have - a.have);
+    const moves = [];
+    for (const t of shorts) { for (const f of src) { if (t.need <= 0) break; if (f.name === t.name || f.have <= 0) continue; const m = Math.min(f.have, t.need); f.have -= m; t.need -= m; moves.push({ from: f.name, to: t.name, amt: m }); } }
+    return '<div class="gc-plan' + (ext > 0 ? '' : ' ok') + '"><div class="gp-h">' + (ext > 0 ? 'まとめて入金して振り分ける' : 'グループの中で振り分ける') + '</div>' +
+      (ext > 0 ? '<div class="gp-step"><span class="gp-n">1</span><span><b>' + esc(hub) + '</b> に <b class="num">¥' + nf.format(ext) + '</b> 入金する</span></div>' : '<div class="gp-step"><span class="gp-n">✓</span><span>グループの中のお金で足ります（外からの入金は不要）</span></div>') +
+      moves.map((m, k) => '<div class="gp-step"><span class="gp-n">' + (ext > 0 ? k + 2 : k + 1) + '</span><span>' + esc(m.from) + ' → <b>' + esc(m.to) + '</b> へ <b class="num">¥' + nf.format(m.amt) + '</b></span></div>').join('') +
+      '<div class="gp-note sub">' + g.accounts.length + '口座の中だけで動かすので、同じ銀行なら振込手数料はかかりません。入金先は設定で変えられます</div></div>';
   }
   function totalHTML(r) {
     return '<section class="totalcard" id="totalbal" aria-label="全口座の合計残高">' + ICON.coins.replace('<svg ', '<svg class="coins" ') + '<div class="tl-body" data-total>' + totalInner(r) + '</div></section>';
@@ -1355,6 +1376,7 @@
     const autoSw = '<div class="card form autodeduct"><label class="switchrow"><span><b>引落日が過ぎたら残高から引く</b><small>引落日の当日は、引落予定の「引落完了」を押すと残高から引けます。押さなかった分は、翌日にアプリを開いたときに自動で引きます（引落日以降に残高を入れ直した口座は引きません）</small></span><input type="checkbox" id="autoDeduct" role="switch"' + (state.autoDeduct !== false ? ' checked' : '') + '></label></div>';
     const grpCard = on ? '' : '<div class="card form grpset"><div class="shead">口座のグループ<span class="sub">いくつかの口座の合計残高をまとめて見られます（例：楽天の夫婦口座）。口座残高の画面に出ます</span></div>' +
       (state.accGroups || []).map(g => '<div class="grow" data-grp="' + esc(g.id) + '"><div class="grow-h"><input class="text" data-grpname value="' + esc(g.name) + '" aria-label="グループの名前"><button class="danger small" data-act="grpdel">削除</button></div>' +
+        (g.accounts.length > 1 ? '<label class="grow-hub">まとめて入金する口座<select data-grphub>' + g.accounts.map(a => '<option' + (a === (g.hub || g.accounts[0]) ? ' selected' : '') + '>' + esc(a) + '</option>').join('') + '</select></label>' : '') +
         '<div class="grow-accs">' + state.accounts.map(a => '<label class="check"><input type="checkbox" data-grpacc="' + esc(a) + '"' + (g.accounts.includes(a) ? ' checked' : '') + '>' + esc(a) + '</label>').join('') + '</div></div>').join('') +
       '<div class="srow add-row"><input class="text" id="grpnew" placeholder="新しいグループの名前（例：楽天 夫婦）" aria-label="新しいグループの名前"><button class="small" data-act="grpadd">追加</button></div></div>';
     return autoSw + '<div class="card">' + '<div class="pad">' + headHTML('口座', state.accounts.length + '口座', 'accounts') +
@@ -1756,7 +1778,7 @@
         state.excludeSurplus = exclSurplus().map(a => a === old ? n : a);
         (state.transfers || []).forEach(t => { if (t.from === old) t.from = n; if (t.to === old) t.to = n; });
         (state.income || []).forEach(x => { if (x.account === old) x.account = n; }); // 収入の入金口座
-        (state.accGroups || []).forEach(g => { g.accounts = g.accounts.map(a => a === old ? n : a); });
+        (state.accGroups || []).forEach(g => { g.accounts = g.accounts.map(a => a === old ? n : a); if (g.hub === old) g.hub = n; });
         (state.history || []).forEach(h => { if (h.account === old) h.account = n; }); // 過去の記録も新しい名前に
         (state.incHistory || []).forEach(h => { if (h.account === old) h.account = n; });
         if (meta.qacc === old) { meta.qacc = n; saveMeta(); }
@@ -1785,7 +1807,8 @@
     main.querySelectorAll('[data-grp]').forEach(el => {
       const g = (state.accGroups || []).find(x => x.id === el.dataset.grp); if (!g) return;
       el.querySelector('[data-grpname]').addEventListener('change', e => { const n = e.target.value.trim(); if (!n) { e.target.value = g.name; return; } g.name = n; save(); toast('グループの名前を「' + n + '」にしました'); });
-      el.querySelectorAll('[data-grpacc]').forEach(cb => cb.addEventListener('change', () => { const a = cb.dataset.grpacc; g.accounts = cb.checked ? state.accounts.filter(x => x === a || g.accounts.includes(x)) : g.accounts.filter(x => x !== a); save(); toast('「' + g.name + '」：' + (g.accounts.length ? g.accounts.join('・') : '口座なし')); }));
+      const hs = el.querySelector('[data-grphub]'); if (hs) hs.addEventListener('change', () => { g.hub = hs.value; save(); toast('「' + g.name + '」はまず「' + g.hub + '」に入金します'); });
+      el.querySelectorAll('[data-grpacc]').forEach(cb => cb.addEventListener('change', () => { const a = cb.dataset.grpacc; g.accounts = cb.checked ? state.accounts.filter(x => x === a || g.accounts.includes(x)) : g.accounts.filter(x => x !== a); if (!g.accounts.includes(g.hub)) g.hub = ''; save(); renderKeep(); toast('「' + g.name + '」：' + (g.accounts.length ? g.accounts.join('・') : '口座なし')); }));
       el.querySelector('[data-act="grpdel"]').addEventListener('click', () => confirmSheet('「' + g.name + '」を削除しますか？', '<p class="sub" style="margin:0">グループだけを消します。口座や残高はそのままです。</p>', '削除する', () => { state.accGroups = state.accGroups.filter(x => x.id !== g.id); save(); renderKeep(); toast('グループを削除しました'); }, true));
     });
     const accadd = main.querySelector('[data-act="accadd"]');
