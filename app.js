@@ -223,8 +223,10 @@
     autoSaving = true; try { recordPast(); rollVariable(); } finally { autoSaving = false; }
     const r = C.compute(state, T);
     const page = PAGES.includes(meta.page) ? meta.page : 'prep';
-    main.innerHTML = page === 'variable' ? listHTML('variable', '変動費', '何月分の引落かを選んで、金額を入力します。引落が済むと次の月に進みます。1回のみの引落もここに並びます（日付が過ぎたら「済み」にまとまります）。')
-      : page === 'fixed' ? listHTML('fixed', '固定費', '金額・引落日・口座が変わった時だけ変更します。') + ((state.fixed || []).length ? '<div class="fixbackw"><button class="small" data-act="fix-back-list">' + proMark() + '固定費を過去の記録にまとめて反映</button></div>' : '')
+    const outSeg = '<div class="seg outseg" role="tablist" aria-label="支出の種類">' + [['variable', '変動費'], ['fixed', '固定費']].map(x => '<button type="button" role="tab" data-outtab="' + x[0] + '" class="' + (page === x[0] ? 'on' : '') + '" aria-selected="' + (page === x[0]) + '">' + x[1] + '</button>').join('') + '</div>';
+    main.innerHTML = page === 'balance' ? balancePageHTML(r)
+      : page === 'variable' ? outSeg + listHTML('variable', '変動費', '何月分の引落かを選んで、金額を入力します。引落が済むと次の月に進みます。1回のみの引落もここに並びます（日付が過ぎたら「済み」にまとまります）。')
+      : page === 'fixed' ? outSeg + listHTML('fixed', '固定費', '金額・引落日・口座が変わった時だけ変更します。') + ((state.fixed || []).length ? '<div class="fixbackw"><button class="small" data-act="fix-back-list">' + proMark() + '固定費を過去の記録にまとめて反映</button></div>' : '')
       : page === 'settings' ? settingsHTML()
       : page === 'history' ? historyHTML()
       : page === 'income' ? inHTML()
@@ -232,7 +234,7 @@
         '<p class="note">表示される金額と日付は、登録した内容から計算した目安です。実際の引落日・金額は金融機関やカード会社の案内で確認してください。</p>';
     if (typeof syncFab === 'function') setTimeout(syncFab, 0);
     document.body.className = document.body.className.replace(/\bpg-\S+/g, '').trim() + ' pg-' + page;
-    $('#nav').querySelectorAll('[data-page]').forEach(b => { const on = b.dataset.page === page; b.classList.toggle('on', on); b.setAttribute('aria-current', on ? 'page' : 'false'); });
+    $('#nav').querySelectorAll('[data-page]').forEach(b => { const on = b.dataset.page === page || (b.dataset.page === 'variable' && page === 'fixed'); b.classList.toggle('on', on); b.setAttribute('aria-current', on ? 'page' : 'false'); });
     syncPanelPage();
     bindAll();
     if (typeof syncTyping === 'function') syncTyping();
@@ -372,7 +374,7 @@
       '<h3>休日のずれ</h3><p>土日・祝日・年末年始（12/31〜1/3）に当たる日は、項目ごとに「後ろにずらす／前にずらす／ずらさない」を選べます。初期値は、支出が後ろ（翌営業日）、収入が前（前営業日）です。</p>' +
       '<h3>表示モード</h3><p>標準はライトモード（明るい表示）です。「設定 → 表示」で、ライトモード・ダークモード・自動（iPhoneの設定に合わせる）を選べます。</p>' +
       '<h3>締め期間の収支</h3><p>準備ページの「締め期間の収支」に、締め日の翌日から次の締め日までの収入の合計・支出の合計・差し引きが出ます。‹ › で前後の期間も見られます。</p>' +
-      '<h3>移動と追加</h3><p>下のタブで今のページをもう一度押すか、右下の「↑」で一番上に戻れます。変動費・固定費のページでは、右下の「＋」や見出しの「＋ 追加」から、ページを移らずに追加できます。「追加して続ける」で何件も続けて入れられます。</p>' +
+      '<h3>移動と追加</h3><p>下のタブは「TOP・支出・口座残高・収入・設定」です。支出のページは上の「変動費｜固定費」で切り替えます。口座残高のページで残高を入れ直したり、口座間で移したりできます。下のタブで今のページをもう一度押すか、右下の「↑」で一番上に戻れます。支出のページでは、右下の「＋」や見出しの「＋ 追加」から、ページを移らずに追加できます。「追加して続ける」で何件も続けて入れられます。</p>' +
       '<h3>帳簿</h3><p>家族のお金なども、人ごとに別の帳簿で管理できます。画面上の名前をタップすると切り替わり、「＋ 帳簿」で追加できます。バックアップは全部の帳簿をまとめて保存します。</p>' +
       '<h3>口座間の移動</h3><p>不足している口座の「ほかの口座から移す」は、その口座へ入れる移動です。それ以外の口座の「ほかの口座へ移す」は、その口座から出す移動です。ほかの帳簿の口座（自分 → 母など）や、非表示の口座とも移動できます。準備ページの「ほかの口座から移す」「口座間で移す」で、実際に移したお金を記録すると、両方の残高が書きかわります。不足している口座から開くと、不足額が最初から入ります。手数料は「移動元から別に引く」か「移す金額から引く」を選べ、口座の組み合わせごとに前回の手数料を覚えます。間違えたときは、両方の口座の残高を入れ直してください。</p>' +
       '<h3>引き落としの記録</h3><p>下のタブの「記録」に、引落日が来た分がそのときの金額で自動で残ります。月ごとの合計・先月との差・口座ごとの合計が見られ、実際の金額と違うときは押して直せます。CSVで書き出すとExcelで開けます。</p>' +
@@ -546,11 +548,10 @@
     const per = r.windows.map((w, i) => '<div class="period' + (w.inClose ? '' : ' after') + '" data-tile><span class="lab">' + ICON.cal(w.inClose ? '--c-blue' : '--c-pink') + w.label + 'に必要' + (w.inClose ? '' : '<span class="tag">参考</span>') + (i === 0 ? '<button class="linkish" data-act="go-close" aria-label="期限を変更">変更</button>' : '') + '</span><span class="rng">' + md(w.from) + '〜' + md(w.to) + (w.nominal ? '<br>' + md(w.nominal) + 'が休日のため' + md(w.to) + 'まで' : '') + '</span><span class="val num" data-sum="' + w.key + '">' + yen(r.totals[w.key]) + '</span></div>').join('');
     const inc = r.income.map(i => '<div class="income-row"><span class="who">' + esc(i.name) + '</span><span class="when">' + (i.next ? '<span class="' + (isWeekend(i.next) ? 'wkend' : '') + '">' + mdw(i.next) + '</span> 予定' + shiftNote(i.next) : '') + '</span>' +
       '<input class="amount' + (i.amount == null ? ' empty' : '') + '" inputmode="numeric" enterkeyhint="done" autocomplete="off" id="inc-' + esc(i.id) + '" data-inc="' + esc(i.id) + '" value="' + yenTxt(i.amount) + '" placeholder="金額（任意）" aria-label="' + esc(i.name) + 'の収入予定額"></div>').join('');
-    if (!['sched', 'need', 'money', 'flow', 'due'].includes(meta.prepPanel)) meta.prepPanel = 'sched'; // トップは「引落予定」
+    if (!['sched', 'need', 'flow', 'due'].includes(meta.prepPanel)) meta.prepPanel = 'sched'; // トップは「引落予定」
     const P = (k, html) => '<div class="ppanel" data-panel="' + k + '"' + (meta.prepPanel === k ? '' : ' hidden') + '>' + html + '</div>';
     const pt = prepTopHTML(r);
     return '<div id="prepTop">' + pt.top + '</div>' +
-      P('money', '<div class="pphead"><span>口座残高</span><button class="small xmove" data-act="xfer-any">残高移動</button><button class="pclose" data-panel-btn="money" aria-label="口座残高を閉じる">閉じる ✕</button></div>' + totalHTML(r) + groupsHTML(r) + '<div id="ballist">' + balListHTML(r) + '</div>') +
       P('need', '<section class="summary" id="sec-top" aria-label="過不足"><div class="acchead">' + QI.scale.replace('<svg ', '<svg class="pico" ') + '過不足<button class="pclose" data-panel-btn="need" aria-label="過不足を閉じる">閉じる ✕</button></div>' + shortboxHTML(r) + '</section>') +
       P('due', dueHTML(r)) +
       P('sched', '<div id="schedNotice">' + prepNoticeHTML(r) + '</div><div class="pphead"><span>引落予定</span></div><div id="schedBox">' + schedHTML() + '</div>') +
@@ -619,7 +620,7 @@
       '</span>' +
       '<span class="hc-chev" aria-hidden="true">›</span></button>';
     const q = (k, ico, lab) => '<button class="qbtn' + (meta.prepPanel === k ? ' on' : '') + '" ' + (k === 'manage' ? 'data-act="go-variable"' : 'data-panel-btn="' + k + '" aria-expanded="' + (meta.prepPanel === k) + '"') + '>' + ico + '<span>' + lab + '</span></button>';
-    const quick = '<div class="quick4">' + q('sched', QI.sched, '引落予定') + q('need', QI.scale, '過不足') + q('money', QI.bank, '口座残高') + q('flow', QI.chart, '収支記録') + '</div>';
+    const quick = '<div class="quick4 q3">' + q('sched', QI.sched, '引落予定') + q('need', QI.scale, '過不足') + q('flow', QI.chart, '収支記録') + '</div>';
     const rows = list.slice(0, 3).map(x => '<div class="nrow"><span class="ndate' + (x.short ? ' bad' : '') + '">' + md(x.date) + '</span><span class="nico">' + lineIcon(x.name) + '</span><span class="nname">' + esc(x.name) + '<small>' + esc(x.bank) + '</small></span><span class="namt num">' + (x.amount == null ? '<span class="flag">未入力</span>' : '¥' + nf.format(x.amount)) + '</span></div>').join('');
     const near = '<section class="nearlist" aria-label="直近の引落予定"><div class="nhead"><h2>直近の引落予定</h2><button class="more" data-act="go-banks">すべて見る ›</button></div>' +
       '<div class="ncard">' + (rows || '<p class="sub" style="margin:0;padding:14px">これからの引き落としはありません。</p>') + '</div></section>';
@@ -710,11 +711,11 @@
         head = by + '締めまでに、口座へ <b class="num">¥' + nf.format(r.shortfallTotal) + '</b> の入金が必要です';
         rows = sl.sort((x, y) => y.b.shortfall - x.b.shortfall).map(x => ({ b: x.b, amt: x.b.shortfall }));
       }
-      const miss = r.banks.filter(b => b.dueActive && b.balance == null).map(b => '<button class="pn-row" data-panel-btn="money"><span>' + esc(b.name) + '</span><b class="num pn-miss">残高未入力</b><span class="pn-chev" aria-hidden="true">›</span></button>').join('');
+      const miss = r.banks.filter(b => b.dueActive && b.balance == null).map(b => '<button class="pn-row" data-goto="balance"><span>' + esc(b.name) + '</span><b class="num pn-miss">残高未入力</b><span class="pn-chev" aria-hidden="true">›</span></button>').join('');
       return '<div class="pnotice warn"><span class="pn-i" aria-hidden="true">i</span><div class="pn-body"><span>' + head + '</span>' +
-        '<div class="pn-list">' + rows.map(({ b, amt, sub }) => '<button class="pn-row" data-panel-btn="money"><span>' + esc(b.name) + (sub ? '<small>' + sub + '</small>' : '') + '</span><b class="num">¥' + nf.format(amt) + ' 不足</b><span class="pn-chev" aria-hidden="true">›</span></button>').join('') + miss + '</div></div></div>';
+        '<div class="pn-list">' + rows.map(({ b, amt, sub }) => '<button class="pn-row" data-goto="balance"><span>' + esc(b.name) + (sub ? '<small>' + sub + '</small>' : '') + '</span><b class="num">¥' + nf.format(amt) + ' 不足</b><span class="pn-chev" aria-hidden="true">›</span></button>').join('') + miss + '</div></div></div>';
     }
-    if (missing) return '<button class="pnotice info" data-act="go-banks"><span class="pn-i" aria-hidden="true">i</span><span>残高を入れると、入金が必要か分かります（未入力 ' + missing + '口座）</span><span class="pn-chev" aria-hidden="true">›</span></button>';
+    if (missing) return '<button class="pnotice info" data-goto="balance"><span class="pn-i" aria-hidden="true">i</span><span>残高を入れると、入金が必要か分かります（未入力 ' + missing + '口座）</span><span class="pn-chev" aria-hidden="true">›</span></button>';
     if (r.dueCount) return '<div class="pnotice ok"><span class="pn-i" aria-hidden="true">✓</span><span>' + by + '締めまでに必要な金額 <b class="num">¥' + nf.format(w0 ? (r.totals[w0.key] || 0) : 0) + '</b><small class="pn-ok2">残高は足りています</small></span></div>';
     return '';
   }
@@ -811,6 +812,11 @@
       (ext > 0 ? '<div class="gp-step"><span class="gp-n">1</span><span><b>' + esc(hub) + '</b> に <b class="num">¥' + nf.format(ext) + '</b> 入金する</span></div>' : '<div class="gp-step"><span class="gp-n">✓</span><span>グループの中のお金で足ります（外からの入金は不要）</span></div>') +
       moves.map((m, k) => '<div class="gp-step"><span class="gp-n">' + (ext > 0 ? k + 2 : k + 1) + '</span><span>' + esc(m.from) + ' → <b>' + esc(m.to) + '</b> へ <b class="num">¥' + nf.format(m.amt) + '</b></span></div>').join('') +
       '<div class="gp-note sub">' + g.accounts.length + '口座の中だけで動かすので、同じ銀行なら振込手数料はかかりません。入金先は設定で変えられます</div></div>';
+  }
+  /** 下のタブ「口座残高」のページ */
+  function balancePageHTML(r) {
+    return '<section id="sec-balance" aria-label="口座残高"><div class="section-head"><h2>口座残高</h2><span class="head-right"><button class="small xmove" data-act="xfer-any">残高移動</button></span></div>' +
+      totalHTML(r) + groupsHTML(r) + '<div id="ballist">' + balListHTML(r) + '</div></section>';
   }
   function totalHTML(r) {
     return '<section class="totalcard" id="totalbal" aria-label="全口座の合計残高">' + ICON.coins.replace('<svg ', '<svg class="coins" ') + '<div class="tl-body" data-total>' + totalInner(r) + '</div></section>';
@@ -1962,6 +1968,9 @@
     main.querySelectorAll('[data-act="go-out"]').forEach(b => b.addEventListener('click', () => { meta.page = 'variable'; meta.reorder = null; saveMeta(); renderAll(); window.scrollTo(0, 0); }));
     main.querySelectorAll('[data-act="go-in"]').forEach(b => b.addEventListener('click', () => { meta.page = 'income'; meta.reorder = null; saveMeta(); renderAll(); window.scrollTo(0, 0); }));
     bindTotal(); bindUpcoming(); bindPanels(); bindPrepTop(); bindFlow(); bindSched(); bindBack();
+    if ($('#ballist')) bindBalList();
+    main.querySelectorAll('[data-goto]').forEach(b => b.addEventListener('click', () => { meta.page = b.dataset.goto; meta.reorder = null; saveMeta(); renderAll(); window.scrollTo(0, 0); }));
+    main.querySelectorAll('[data-outtab]').forEach(b => b.addEventListener('click', () => { if (meta.page === b.dataset.outtab) return; meta.page = b.dataset.outtab; meta.reorder = null; saveMeta(); renderAll(); window.scrollTo(0, 0); }));
     main.querySelectorAll('[data-act="go-close"]').forEach(b => b.addEventListener('click', () => { go('books'); const c = $('#closecard'); if (c) c.scrollIntoView({ block: 'start' }); }));
     main.querySelectorAll('[data-act="sample-clear"]').forEach(b => b.addEventListener('click', () => confirmSheet('サンプルを消しますか？', '<p class="sub" style="margin:0">サンプルの口座・支出・収入をすべて消して、空の状態からはじめます。</p>', '消してはじめる', () => {
       state = emptyState(); meta.page = 'prep'; saveMeta(); save(); renderAll(); window.scrollTo(0, 0); toast('空の状態になりました');
@@ -2962,7 +2971,7 @@
   }
 
   /* ---------- 移動ボタン ---------- */
-  const PAGES = ['prep', 'variable', 'fixed', 'income', 'history', 'settings'];
+  const PAGES = ['prep', 'variable', 'fixed', 'balance', 'income', 'history', 'settings'];
   const TYPING = 'input:not([type="file"]):not([type="button"]):not([type="checkbox"]):not([type="radio"]), select, textarea';
   // 指が触れている間は下のタブを出し入れしない（ボタンを押した瞬間にタブが重なるのを防ぐ）
   let pointerDown = false;
@@ -2994,7 +3003,7 @@
   const nav = $('#nav');
   nav.addEventListener('click', e => {
     const b = e.target.closest('[data-page]'); if (!b) return;
-    if (meta.page === b.dataset.page) { window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
+    if (meta.page === b.dataset.page || (b.dataset.page === 'variable' && meta.page === 'fixed')) { window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
     meta.page = b.dataset.page; meta.reorder = null; saveMeta(); renderAll(); window.scrollTo(0, 0);
   });
   // 入力中はキーボードと重ならないよう隠す（ファイル選択は除く。描き直しで入力欄が消えた時も戻す）
