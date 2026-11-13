@@ -1362,6 +1362,8 @@
       '<div class="list">' + (rows || '<div class="emptyrow sub">収入はまだありません</div>') + '<div class="add"><button class="ghost" data-act="incadd-open">＋ 収入を追加</button></div></div>' + hid + '</section>';
   }
 
+  function grpForm(g, pre) { return '<label>グループの名前<input class="text" id="' + pre + 'name" value="' + esc(g ? g.name : '') + '" placeholder="例：楽天 夫婦" autocomplete="off"></label>' +
+      '<div class="flabel">入れる口座</div><div class="grow-accs">' + state.accounts.map(a => '<label class="check"><input type="checkbox" data-' + pre + 'acc="' + esc(a) + '"' + (g && g.accounts.includes(a) ? ' checked' : '') + '>' + esc(a) + '</label>').join('') + '</div>'; }
   function accHTML() {
     const on = meta.reorder === 'accounts';
     const used = name => allItems().filter(x => x.account === name).length;
@@ -1374,10 +1376,10 @@
         hideBtn(hiddenAcc().includes(a), 'acchide') +
         '<button class="danger small" data-act="accdel">削除</button></div>').join('');
     const autoSw = '<div class="card form autodeduct"><label class="switchrow"><span><b>引落日が過ぎたら残高から引く</b><small>引落日の当日は、引落予定の「引落完了」を押すと残高から引けます。押さなかった分は、翌日にアプリを開いたときに自動で引きます（引落日以降に残高を入れ直した口座は引きません）</small></span><input type="checkbox" id="autoDeduct" role="switch"' + (state.autoDeduct !== false ? ' checked' : '') + '></label></div>';
-    const grpCard = on ? '' : '<div class="card form grpset"><div class="shead">口座のグループ<span class="sub">いくつかの口座の合計残高をまとめて見られます（例：楽天の夫婦口座）。口座残高の画面に出ます</span></div>' +
-      (state.accGroups || []).map(g => '<div class="grow" data-grp="' + esc(g.id) + '"><div class="grow-h"><input class="text" data-grpname value="' + esc(g.name) + '" aria-label="グループの名前"><button class="danger small" data-act="grpdel">削除</button></div>' +
-        '<div class="grow-accs">' + state.accounts.map(a => '<label class="check"><input type="checkbox" data-grpacc="' + esc(a) + '"' + (g.accounts.includes(a) ? ' checked' : '') + '>' + esc(a) + '</label>').join('') + '</div></div>').join('') +
-      '<div class="srow add-row"><input class="text" id="grpnew" placeholder="新しいグループの名前（例：楽天 夫婦）" aria-label="新しいグループの名前"><button class="small" data-act="grpadd">追加</button></div></div>';
+    const grpCard = on ? '' : '<div class="card form grpset"><div class="shead">口座のグループ<span class="sub">いくつかの口座の必要額と残高合計をまとめて見られます（例：楽天の夫婦口座）。口座残高の画面に出ます</span></div>' +
+      ((state.accGroups || []).length ? '<div class="grplist">' + state.accGroups.map(g => '<div class="grpitem" data-grp="' + esc(g.id) + '"><div class="gi-main"><b>' + esc(g.name) + '</b><span class="sub">' + (g.accounts.length ? g.accounts.map(esc).join('・') : '口座なし') + '</span></div>' +
+        '<button class="small" data-act="grpedit">編集</button><button class="small danger" data-act="grpdel">削除</button></div>').join('') + '</div>' : '') +
+      '<div class="grpnew"><div class="gn-h">新しいグループ</div>' + grpForm(null, 'gn') + '<button class="primary" data-act="grpadd">登録</button></div></div>';
     return autoSw + '<div class="card">' + '<div class="pad">' + headHTML('口座', state.accounts.length + '口座', 'accounts') +
       '<p class="sub" style="margin:0">準備ページは引落の近い口座から並びます。同じ日の口座は、ここでの並び順になります。名前を変えると、その口座の引落もまとめて変わります。</p></div>' +
       list + (on ? '' : '<div class="srow add-row"><input class="text" id="accnew" placeholder="新しい口座名" aria-label="新しい口座名"><button class="small" data-act="accadd">追加</button></div>') + '</div>' + grpCard;
@@ -1800,14 +1802,26 @@
         }, true);
       });
     });
+    const pickAccs = (root, pre) => state.accounts.filter(a => { const cb = root.querySelector('[data-' + pre + 'acc="' + CSS.escape(a) + '"]'); return cb && cb.checked; });
     const grpadd = main.querySelector('[data-act="grpadd"]');
-    if (grpadd) grpadd.addEventListener('click', () => { const n = $('#grpnew').value.trim(); if (!n) { toast('グループの名前を入力してください'); return; }
-      state.accGroups = (state.accGroups || []).concat({ id: uid('g'), name: n, accounts: [] }); save(); renderKeep(); toast('「' + n + '」を追加しました。入れる口座にチェックを付けてください'); });
+    if (grpadd) grpadd.addEventListener('click', () => {
+      const n = $('#gnname').value.trim(); const accs = pickAccs(main, 'gn');
+      if (!n) { toast('グループの名前を入力してください'); return; }
+      if (!accs.length) { toast('入れる口座を選んでください'); return; }
+      state.accGroups = (state.accGroups || []).concat({ id: uid('g'), name: n, accounts: accs }); save(); renderKeep(); toast('「' + n + '」を登録しました（' + accs.join('・') + '）');
+    });
     main.querySelectorAll('[data-grp]').forEach(el => {
       const g = (state.accGroups || []).find(x => x.id === el.dataset.grp); if (!g) return;
-      el.querySelector('[data-grpname]').addEventListener('change', e => { const n = e.target.value.trim(); if (!n) { e.target.value = g.name; return; } g.name = n; save(); toast('グループの名前を「' + n + '」にしました'); });
-      const hs = el.querySelector('[data-grphub]'); if (hs) hs.addEventListener('change', () => { g.hub = hs.value; save(); toast('「' + g.name + '」はまず「' + g.hub + '」に入金します'); });
-      el.querySelectorAll('[data-grpacc]').forEach(cb => cb.addEventListener('change', () => { const a = cb.dataset.grpacc; g.accounts = cb.checked ? state.accounts.filter(x => x === a || g.accounts.includes(x)) : g.accounts.filter(x => x !== a); if (!g.accounts.includes(g.hub)) g.hub = ''; save(); renderKeep(); toast('「' + g.name + '」：' + (g.accounts.length ? g.accounts.join('・') : '口座なし')); }));
+      el.querySelector('[data-act="grpedit"]').addEventListener('click', () => {
+        const m = $('#modal');
+        m.innerHTML = '<div class="sheet form xsheet grpsheet" role="dialog" aria-modal="true" aria-labelledby="mt"><h2 id="mt">グループを編集</h2>' + grpForm(g, 'ge') +
+          '<div class="btnrow"><button id="mCancel">やめる</button><button id="mOk" class="primary">保存</button></div></div>';
+        m.hidden = false; const close = () => { m.hidden = true; m.innerHTML = ''; };
+        $('#mCancel').onclick = close; m.onclick = e => { if (e.target === m) close(); };
+        $('#mOk').onclick = () => { const n = $('#gename').value.trim(); const accs = pickAccs(m, 'ge');
+          if (!n) { toast('グループの名前を入力してください'); return; } if (!accs.length) { toast('入れる口座を選んでください'); return; }
+          g.name = n; g.accounts = accs; save(); close(); renderKeep(); toast('「' + n + '」を保存しました'); };
+      });
       el.querySelector('[data-act="grpdel"]').addEventListener('click', () => confirmSheet('「' + g.name + '」を削除しますか？', '<p class="sub" style="margin:0">グループだけを消します。口座や残高はそのままです。</p>', '削除する', () => { state.accGroups = state.accGroups.filter(x => x.id !== g.id); save(); renderKeep(); toast('グループを削除しました'); }, true));
     });
     const accadd = main.querySelector('[data-act="accadd"]');

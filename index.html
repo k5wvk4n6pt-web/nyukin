@@ -1138,6 +1138,16 @@ input[type="date"]::-webkit-date-and-time-value, input[type="month"]::-webkit-da
 .grpcard .gp-n { width: 22px; height: 22px; border-radius: 50%; background: var(--surface); border: 1px solid var(--line); display: grid; place-items: center; font-size: 12px; font-weight: 800; }
 .grpcard .gp-note { font-size: 12px; }
 .grpset .grow-hub { font-size: 13px; }
+.grpset .grplist { display: grid; }
+.grpset .grpitem { display: flex; align-items: center; gap: 8px; padding: 10px 0; border-top: 1px solid var(--line); }
+.grpset .gi-main { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.grpset .gi-main b { font-size: 15px; }
+.grpset .gi-main .sub { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.grpset .grpnew { display: grid; gap: 8px; padding-top: 12px; border-top: 1px dashed var(--line); }
+.grpset .gn-h { font-size: 14px; font-weight: 800; }
+.grpsheet .grow-accs, .grpset .grow-accs { display: flex; flex-wrap: wrap; gap: 4px 18px; }
+.grpsheet .grow-accs label.check { display: inline-flex; flex-direction: row; align-items: center; gap: 6px; flex: 0 0 auto; min-height: 36px; font-size: 14px; color: var(--ink); }
+.grpsheet .grow-accs label.check input { display: inline-block; width: 20px; height: 20px; margin: 0; }
 .fd-lh { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px; }
 .fd-lh b { color: var(--navy); font-size: 15px; }
 .fd-lh .sub { font-size: 12px; }
