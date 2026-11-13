@@ -625,9 +625,36 @@
     return { top: hero + quick, near };
   }
   /** 「○日までに必要な金額」を押したとき：期限までの引き落としを口座ごとに、準備OK／不足ありで表示 */
+  /** 直近の引落日の分を、口座ごとに（何がいくら引かれて、残高はいくらになるか） */
+  function nearDueHTML(r) {
+    const t0 = serial2(today()); let src = r, after = false;
+    const pick = rr => { let nd = null; for (const b of rr.banks) for (const w of rr.windows.filter(x => x.inClose)) for (const l of b.lines[w.key]) if (l.amount !== 0 && serial2(l.date) >= t0 && (nd == null || serial2(l.date) < nd)) nd = serial2(l.date); return nd; };
+    let nd = pick(r);
+    if (nd == null && r.windows[0]) { const w0 = r.windows.filter(w => w.inClose).pop() || r.windows[0]; src = C.compute(state, C.addDays(w0.to, 1)); nd = pick(src); after = nd != null; }
+    if (nd == null) return '';
+    let ndDate = null, total = 0;
+    const cards = src.banks.map(b => {
+      const lines = src.windows.filter(w => w.inClose).flatMap(w => b.lines[w.key]).filter(l => l.amount !== 0 && serial2(l.date) === nd);
+      if (!lines.length) return null; ndDate = lines[0].date;
+      const sum = lines.reduce((a2, l) => a2 + (l.amount || 0), 0); total += sum;
+      const bal = (state.balances[b.name] || {}).amount; const has = bal != null; const rest = has ? bal - sum : null;
+      const unent = lines.some(l => l.amount == null);
+      const st = !has ? '<span class="pst warn">残高未入力</span>' : after ? '' : rest < 0 ? '<span class="pst bad">不足あり</span>' : '<span class="pst ok">準備OK</span>';
+      return { short: has && rest < 0, html: '<div class="duecard' + (has && rest < 0 && !after ? ' bad' : '') + '"><div class="dc-head"><b>' + esc(b.name) + '</b>' + st + '</div>' +
+        '<div class="dc-list">' + lines.map(l => '<div class="dc-row nd"><span class="nico">' + lineIcon(l.name) + '</span><span class="nname">' + esc(l.name.replace(/（\d+月分は未入力）$/, '')) + '</span><span class="namt num">' + (l.amount == null ? '<span class="flag">未入力</span>' : '¥' + nf.format(l.amount)) + '</span></div>').join('') + '</div>' +
+        '<div class="dc-flow"><span><small>今の残高</small><b class="num">' + (has ? yenS(bal) : '未入力') + '</b></span><span class="ar" aria-hidden="true">−</span><span><small>引落</small><b class="num">¥' + nf.format(sum) + (unent ? '＋未入力' : '') + '</b></span><span class="ar" aria-hidden="true">＝</span>' +
+        '<span class="' + (has && rest < 0 ? 'bad' : '') + '"><small>引落後の残高</small><b class="num">' + (has ? yenS(rest) : '—') + '</b></span></div>' +
+        (has && rest < 0 && !after ? '<div class="dc-need">¥' + nf.format(-rest) + ' の入金が必要です</div>' : '') + '</div>' };
+    }).filter(Boolean).sort((x, y) => (y.short - x.short));
+    const lab = after ? md(ndDate) + '（次の期間）の引き落とし' : (nd === t0 ? '今日（' + md(ndDate) + '）' : mdw(ndDate)) + 'の引き落とし';
+    return '<div class="dc-sec"><div class="dc-sech"><b>' + lab + '</b><span class="num">合計 ¥' + nf.format(total) + '</span></div>' + cards.map(c => c.html).join('') +
+      (after ? '<p class="note" style="margin:0">締め日までの引き落としは終わっています。次の期間の最初の引き落としです（給料などの入金で残高が変わるため、足りるかの判定はしていません）。</p>' : '') + '</div>';
+  }
+  function yenS(v) { return (v < 0 ? '−' : '') + '¥' + nf.format(Math.abs(v)); }
   function dueHTML(r) {
     const W = r.windows.filter(w => w.inClose); const w0 = W[W.length - 1] || r.windows[0];
     const by = w0 ? md(w0.to) : '';
+    const near = nearDueHTML(r);
     const rank = b => b.balance != null && b.shortfall > 0 ? 0 : b.balance == null ? 1 : 2; // 不足あり → 未入力 → 準備OK の順
     const banks = r.banks.filter(b => b.dueActive).sort((x, y) => rank(x) - rank(y));
     const cards = banks.map(b => {
@@ -638,7 +665,8 @@
         '<div class="dc-sum"><span>引落 <b class="num">¥' + nf.format(b.due) + '</b></span><span>残高 <b class="num">' + (b.balance == null ? '未入力' : '¥' + nf.format(b.balance)) + '</b></span>' +
         (b.balance == null ? '' : b.shortfall > 0 ? '<span class="bad">不足 <b class="num">¥' + nf.format(b.shortfall) + '</b></span>' : '<span class="ok">余り <b class="num">¥' + nf.format(b.surplus) + '</b></span>') + '</div></div>';
     }).join('');
-    return '<div class="pphead"><span>' + by + 'までの引き落とし</span><button class="pclose" data-panel-btn="due" aria-label="閉じる">閉じる ✕</button></div>' +
+    return '<div class="pphead"><span>引き落としと残高</span><button class="pclose" data-panel-btn="due" aria-label="閉じる">閉じる ✕</button></div>' + near +
+      '<div class="dc-sech dc-sech2"><b>' + by + '締めまでの引き落とし（口座ごと）</b></div>' +
       (cards || '<p class="sub" style="margin:0;padding:8px 2px">' + by + 'までの引き落としはありません。</p>') +
       (cards ? '<p class="note" style="margin:0">口座ごとに、' + by + 'までの引き落としと今の残高をくらべています。今日「引落完了」にした分は入りません。</p>' : '');
   }

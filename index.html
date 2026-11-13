@@ -1052,6 +1052,7 @@ input[type="date"]::-webkit-date-and-time-value, input[type="month"]::-webkit-da
 .dc-head .pst { font-size: 12px; padding: 2px 10px; }
 .dc-list { display: grid; }
 .dc-row { display: grid; grid-template-columns: auto 22px minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.dc-row.nd { grid-template-columns: 22px minmax(0, 1fr) auto; }
 .dc-row .nname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); }
 .dc-row .ndate { font-size: 12px; color: var(--muted); }
 .dc-row .namt { font-weight: 800; color: var(--navy); }
@@ -1104,6 +1105,17 @@ input[type="date"]::-webkit-date-and-time-value, input[type="month"]::-webkit-da
 .irow2 .inc-acc { margin-top: 6px; font-size: 13px; }
 .irow2 .inc-est { margin-top: 8px; padding: 8px 10px; border-radius: 10px; background: rgba(240, 170, 0, .14); color: var(--ink); font-size: 13px; line-height: 1.5; }
 .hrec .flag.est { background: rgba(240, 170, 0, .18); color: #B7791F; }
+.dc-sec { display: grid; gap: 10px; margin-bottom: 14px; }
+.dc-sech { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding: 2px 2px 0; font-size: 15px; }
+.dc-sech .num { font-weight: 800; }
+.dc-sech2 { margin: 4px 0 8px; color: var(--muted); font-size: 14px; }
+.duecard .dc-flow { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; align-items: end; gap: 6px; margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line); text-align: center; }
+.duecard .dc-flow small { display: block; font-size: 11px; color: var(--muted); font-weight: 600; margin-bottom: 2px; }
+.duecard .dc-flow b { font-size: 15px; white-space: nowrap; }
+.duecard .dc-flow .ar { color: var(--muted); font-weight: 700; padding-bottom: 2px; }
+.duecard .dc-flow .bad b { color: var(--short); }
+.duecard .dc-need { margin-top: 8px; font-size: 13px; font-weight: 700; color: var(--short); text-align: right; }
+@media (max-width: 360px) { .duecard .dc-flow b { font-size: 13px; } }
 .fd-lh { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px; }
 .fd-lh b { color: var(--navy); font-size: 15px; }
 .fd-lh .sub { font-size: 12px; }
