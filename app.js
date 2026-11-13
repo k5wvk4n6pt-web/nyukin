@@ -612,7 +612,7 @@
       }
     }
     const st = !next || afterClose ? '' : nearShort ? '<span class="pst bad">不足あり</span>' : nearMiss ? '<span class="pst warn">未入力</span>' : '<span class="pst ok">準備OK</span>';
-    const nearLab = next && afterClose ? '次の期間の引落' : '必要な金額'; // 日付は左に出ているので書かない
+    const nearLab = next && afterClose ? '引落額' : '必要な金額'; // 日付は左に出ているので書かない
     const closeSum = w0 ? (r.totals[w0.key] || 0) : 0;
     const hero = '<button class="herocard' + (meta.prepPanel === 'due' ? ' on' : '') + '" data-panel-btn="due" aria-expanded="' + (meta.prepPanel === 'due') + '">' +
       '<span class="hc-l"><span class="hc-lab">次の引落日' + (next ? '<b class="hc-date num">' + md(next.date) + '</b>' : '') + '</span><span class="hc-days num">' + (days == null ? '—' : days === 0 ? '今日' : '<small class="pre">あと</small>' + days + '<small>日</small>') + '</span></span>' +
@@ -648,9 +648,9 @@
         '<span class="' + (has && rest < 0 ? 'bad' : '') + '"><small>引落後の残高</small><b class="num">' + (has ? yenS(rest) : '—') + '</b></span></div>' +
         (has && rest < 0 && !after ? '<div class="dc-need">¥' + nf.format(-rest) + ' の入金が必要です</div>' : '') + '</div>' };
     }).filter(Boolean).sort((x, y) => (y.short - x.short));
-    const lab = after ? md(ndDate) + '（次の期間）の引き落とし' : (nd === t0 ? '今日（' + md(ndDate) + '）' : mdw(ndDate)) + 'の引き落とし';
+    const lab = after ? mdw(ndDate) + 'の引き落とし' : (nd === t0 ? '今日（' + md(ndDate) + '）' : mdw(ndDate)) + 'の引き落とし';
     return '<div class="dc-sec"><div class="dc-sech"><b>' + lab + '</b><span class="num">合計 ¥' + nf.format(total) + '</span></div>' + cards.map(c => c.html).join('') +
-      (after ? '<p class="note" style="margin:0">締め日までの引き落としは終わっています。次の期間の最初の引き落としです（給料などの入金で残高が変わるため、足りるかの判定はしていません）。</p>' : '') + '</div>';
+      (after ? '<p class="note" style="margin:0">締め日までの引き落としは終わっています。給料などの入金で残高が変わるため、足りるかの判定はしていません。</p>' : '') + '</div>';
   }
   function yenS(v) { return (v < 0 ? '−' : '') + '¥' + nf.format(Math.abs(v)); }
   function dueHTML(r) {
