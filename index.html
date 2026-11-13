@@ -1116,6 +1116,20 @@ input[type="date"]::-webkit-date-and-time-value, input[type="month"]::-webkit-da
 .duecard .dc-flow .bad b { color: var(--short); }
 .duecard .dc-need { margin-top: 8px; font-size: 13px; font-weight: 700; color: var(--short); text-align: right; }
 @media (max-width: 360px) { .duecard .dc-flow b { font-size: 13px; } }
+.grpbox { display: grid; gap: 10px; margin: 0 0 14px; }
+.grpcard { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 14px 16px; display: grid; gap: 6px; }
+.grpcard .gc-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.grpcard .gc-head b { font-size: 16px; }
+.grpcard .gc-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.grpcard .gc-row b { font-size: 18px; }
+.grpcard .gc-row b.bad { color: var(--short); }
+.grpcard .gc-names { font-size: 12px; }
+.grpset .grow { border-top: 1px dashed var(--line); padding-top: 10px; display: grid; gap: 8px; }
+.grpset .grow-h { display: flex; gap: 8px; align-items: center; }
+.grpset .grow-h input { flex: 1; min-width: 0; }
+.grpset .grow-accs { display: flex; flex-wrap: wrap; gap: 4px 18px; }
+.grpset .grow-accs label.check { display: inline-flex; flex-direction: row; align-items: center; gap: 6px; flex: 0 0 auto; min-height: 36px; font-size: 14px; color: var(--ink); }
+.grpset .grow-accs label.check input { display: inline-block; width: 20px; height: 20px; margin: 0; }
 .fd-lh { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px; }
 .fd-lh b { color: var(--navy); font-size: 15px; }
 .fd-lh .sub { font-size: 12px; }

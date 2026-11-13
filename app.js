@@ -175,6 +175,7 @@
         const sd = cs.d1.start || (cs.d1.day === 'end' ? 1 : cs.d1.day + 1);
         return { startDay: sd, startShift: cs.d1.shift, closeDay: sd === 1 ? 'end' : sd - 1, closeShift: cs.d1.shift, close2On: !!cs.d2, close2Day: cs.d2saved.day, close2Shift: cs.d2saved.shift, close2Start: cs.d2saved.start || null }; })(),
       excludeSurplus: Array.isArray(d.excludeSurplus) ? d.excludeSurplus.map(String).filter(a => d.accounts.map(String).includes(a)) : [],
+      accGroups: Array.isArray(d.accGroups) ? d.accGroups.filter(g => g && g.name).map(g => ({ id: String(g.id || uid('g')), name: String(g.name), accounts: (Array.isArray(g.accounts) ? g.accounts : []).map(String).filter(a => d.accounts.map(String).includes(a)) })) : [],
       hiddenAccounts: Array.isArray(d.hiddenAccounts) ? d.hiddenAccounts.map(String).filter(a => d.accounts.map(String).includes(a)) : [],
       income: Array.isArray(d.income) && d.income.length ? d.income.map(i => Object.assign({ id: i.id || uid('i'), name: String(i.name), day: i.day, amount: i.amount == null ? null : Number(i.amount), hidden: !!i.hidden, shift: validShift(i.shift, 'before'),
           account: i.account && d.accounts.map(String).includes(String(i.account)) ? String(i.account) : '', vary: !!i.vary },
@@ -549,7 +550,7 @@
     const P = (k, html) => '<div class="ppanel" data-panel="' + k + '"' + (meta.prepPanel === k ? '' : ' hidden') + '>' + html + '</div>';
     const pt = prepTopHTML(r);
     return '<div id="prepTop">' + pt.top + '</div>' +
-      P('money', '<div class="pphead"><span>口座残高</span><button class="small xmove" data-act="xfer-any">残高移動</button><button class="pclose" data-panel-btn="money" aria-label="口座残高を閉じる">閉じる ✕</button></div>' + totalHTML(r) + '<div id="ballist">' + balListHTML(r) + '</div>') +
+      P('money', '<div class="pphead"><span>口座残高</span><button class="small xmove" data-act="xfer-any">残高移動</button><button class="pclose" data-panel-btn="money" aria-label="口座残高を閉じる">閉じる ✕</button></div>' + totalHTML(r) + groupsHTML(r) + '<div id="ballist">' + balListHTML(r) + '</div>') +
       P('need', '<section class="summary" id="sec-top" aria-label="過不足"><div class="acchead">' + QI.scale.replace('<svg ', '<svg class="pico" ') + '過不足<button class="pclose" data-panel-btn="need" aria-label="過不足を閉じる">閉じる ✕</button></div>' + shortboxHTML(r) + '</section>') +
       P('due', dueHTML(r)) +
       P('sched', '<div id="schedNotice">' + prepNoticeHTML(r) + '</div><div class="pphead"><span>引落予定</span></div><div id="schedBox">' + schedHTML() + '</div>') +
@@ -774,6 +775,22 @@
       '<span class="tl-val num' + (hide ? ' masked' : '') + '">' + (hide ? '¥ ••••••' : '¥' + nf.format(total)) + '</span>' +
       '<span class="tl-note">' + (withBal.length ? withBal.length + '口座の残高の合計' + (missing ? '（残高未入力の口座 ' + missing + '件）' : '') + (exN ? '・合計に含めない口座 ' + exN + '件' : '') : '下の「銀行別の入金準備」で残高を入れると合計が出ます') + '</span>';
   }
+  /** 口座のグループ（例：楽天の夫婦口座）ごとの合計残高 */
+  function groupsHTML(r) {
+    const gs = (state.accGroups || []).filter(g => g.accounts.length);
+    if (!gs.length) return '';
+    const hide = !!meta.hideTotal; const W = r.windows.filter(w => w.inClose); const by = W.length ? md(W[W.length - 1].to) : '';
+    const y = v => hide ? '¥ ••••' : yenS(v);
+    return '<section class="grpbox" aria-label="グループの合計">' + gs.map(g => {
+      const bs = r.banks.filter(b => g.accounts.includes(b.name));
+      const withBal = bs.filter(b => b.balance != null); const miss = bs.length - withBal.length;
+      const tot = withBal.reduce((a, b) => a + b.balance, 0), due = withBal.reduce((a, b) => a + (b.due || 0), 0);
+      return '<div class="grpcard"><div class="gc-head"><b>' + esc(g.name) + '</b><span class="sub">' + bs.length + '口座' + (miss ? '・残高未入力 ' + miss : '') + '</span></div>' +
+        '<div class="gc-row"><span>合計残高</span><b class="num' + (hide ? ' masked' : '') + '">' + y(tot) + '</b></div>' +
+        (due ? '<div class="gc-row sub"><span>' + by + '締めまでの引落</span><span class="num">' + y(due) + '</span></div><div class="gc-row"><span>引落後の合計</span><b class="num' + (tot - due < 0 && !hide ? ' bad' : '') + '">' + y(tot - due) + '</b></div>' : '') +
+        '<div class="gc-names sub">' + bs.map(b => esc(b.name)).join('・') + '</div></div>';
+    }).join('') + '</section>';
+  }
   function totalHTML(r) {
     return '<section class="totalcard" id="totalbal" aria-label="全口座の合計残高">' + ICON.coins.replace('<svg ', '<svg class="coins" ') + '<div class="tl-body" data-total>' + totalInner(r) + '</div></section>';
   }
@@ -782,7 +799,7 @@
   }
   function bindTotal() {
     const b = main.querySelector('[data-act="eye"]'); if (!b) return;
-    b.addEventListener('click', () => { meta.hideTotal = !meta.hideTotal; saveMeta(); const t = main.querySelector('[data-total]'); const rr = C.compute(state, today()); t.innerHTML = totalInner(rr); bindTotal(); const bl = $('#ballist'); if (bl) { bl.innerHTML = balListHTML(rr); bindBalList(); } });
+    b.addEventListener('click', () => { meta.hideTotal = !meta.hideTotal; saveMeta(); const t = main.querySelector('[data-total]'); const rr = C.compute(state, today()); t.innerHTML = totalInner(rr); bindTotal(); const gb = main.querySelector('.grpbox'); if (gb) gb.outerHTML = groupsHTML(rr); const bl = $('#ballist'); if (bl) { bl.innerHTML = balListHTML(rr); bindBalList(); } });
   }
   /* ---------- これからの入出金（直近の予定） ---------- */
   const ARROW = d => '<svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">' + (d === 'in' ? '<path d="M8 13V3M3.5 7.5 8 3l4.5 4.5"/>' : '<path d="M8 3v10M3.5 8.5 8 13l4.5-4.5"/>') + '</svg>';
@@ -1329,9 +1346,13 @@
         hideBtn(hiddenAcc().includes(a), 'acchide') +
         '<button class="danger small" data-act="accdel">削除</button></div>').join('');
     const autoSw = '<div class="card form autodeduct"><label class="switchrow"><span><b>引落日が過ぎたら残高から引く</b><small>引落日の当日は、引落予定の「引落完了」を押すと残高から引けます。押さなかった分は、翌日にアプリを開いたときに自動で引きます（引落日以降に残高を入れ直した口座は引きません）</small></span><input type="checkbox" id="autoDeduct" role="switch"' + (state.autoDeduct !== false ? ' checked' : '') + '></label></div>';
+    const grpCard = on ? '' : '<div class="card form grpset"><div class="shead">口座のグループ<span class="sub">いくつかの口座の合計残高をまとめて見られます（例：楽天の夫婦口座）。口座残高の画面に出ます</span></div>' +
+      (state.accGroups || []).map(g => '<div class="grow" data-grp="' + esc(g.id) + '"><div class="grow-h"><input class="text" data-grpname value="' + esc(g.name) + '" aria-label="グループの名前"><button class="danger small" data-act="grpdel">削除</button></div>' +
+        '<div class="grow-accs">' + state.accounts.map(a => '<label class="check"><input type="checkbox" data-grpacc="' + esc(a) + '"' + (g.accounts.includes(a) ? ' checked' : '') + '>' + esc(a) + '</label>').join('') + '</div></div>').join('') +
+      '<div class="srow add-row"><input class="text" id="grpnew" placeholder="新しいグループの名前（例：楽天 夫婦）" aria-label="新しいグループの名前"><button class="small" data-act="grpadd">追加</button></div></div>';
     return autoSw + '<div class="card">' + '<div class="pad">' + headHTML('口座', state.accounts.length + '口座', 'accounts') +
       '<p class="sub" style="margin:0">準備ページは引落の近い口座から並びます。同じ日の口座は、ここでの並び順になります。名前を変えると、その口座の引落もまとめて変わります。</p></div>' +
-      list + (on ? '' : '<div class="srow add-row"><input class="text" id="accnew" placeholder="新しい口座名" aria-label="新しい口座名"><button class="small" data-act="accadd">追加</button></div>') + '</div>';
+      list + (on ? '' : '<div class="srow add-row"><input class="text" id="accnew" placeholder="新しい口座名" aria-label="新しい口座名"><button class="small" data-act="accadd">追加</button></div>') + '</div>' + grpCard;
   }
 
   function booksHTML() {
@@ -1727,6 +1748,7 @@
         state.excludeSurplus = exclSurplus().map(a => a === old ? n : a);
         (state.transfers || []).forEach(t => { if (t.from === old) t.from = n; if (t.to === old) t.to = n; });
         (state.income || []).forEach(x => { if (x.account === old) x.account = n; }); // 収入の入金口座
+        (state.accGroups || []).forEach(g => { g.accounts = g.accounts.map(a => a === old ? n : a); });
         (state.history || []).forEach(h => { if (h.account === old) h.account = n; }); // 過去の記録も新しい名前に
         (state.incHistory || []).forEach(h => { if (h.account === old) h.account = n; });
         if (meta.qacc === old) { meta.qacc = n; saveMeta(); }
@@ -1745,9 +1767,18 @@
           return;
         }
         confirmSheet('「' + old + '」を削除しますか？', '<p class="sub" style="margin:0">入力した残高も消えます。</p>', '削除する', () => {
-          state.accounts = state.accounts.filter(a => a !== old); delete state.balances[old]; state.hiddenAccounts = hiddenAcc().filter(a => a !== old); state.excludeSurplus = exclSurplus().filter(a => a !== old); save(); renderKeep(); toast('削除しました');
+          state.accounts = state.accounts.filter(a => a !== old); delete state.balances[old]; (state.accGroups || []).forEach(g => { g.accounts = g.accounts.filter(a => a !== old); }); state.hiddenAccounts = hiddenAcc().filter(a => a !== old); state.excludeSurplus = exclSurplus().filter(a => a !== old); save(); renderKeep(); toast('削除しました');
         }, true);
       });
+    });
+    const grpadd = main.querySelector('[data-act="grpadd"]');
+    if (grpadd) grpadd.addEventListener('click', () => { const n = $('#grpnew').value.trim(); if (!n) { toast('グループの名前を入力してください'); return; }
+      state.accGroups = (state.accGroups || []).concat({ id: uid('g'), name: n, accounts: [] }); save(); renderKeep(); toast('「' + n + '」を追加しました。入れる口座にチェックを付けてください'); });
+    main.querySelectorAll('[data-grp]').forEach(el => {
+      const g = (state.accGroups || []).find(x => x.id === el.dataset.grp); if (!g) return;
+      el.querySelector('[data-grpname]').addEventListener('change', e => { const n = e.target.value.trim(); if (!n) { e.target.value = g.name; return; } g.name = n; save(); toast('グループの名前を「' + n + '」にしました'); });
+      el.querySelectorAll('[data-grpacc]').forEach(cb => cb.addEventListener('change', () => { const a = cb.dataset.grpacc; g.accounts = cb.checked ? state.accounts.filter(x => x === a || g.accounts.includes(x)) : g.accounts.filter(x => x !== a); save(); toast('「' + g.name + '」：' + (g.accounts.length ? g.accounts.join('・') : '口座なし')); }));
+      el.querySelector('[data-act="grpdel"]').addEventListener('click', () => confirmSheet('「' + g.name + '」を削除しますか？', '<p class="sub" style="margin:0">グループだけを消します。口座や残高はそのままです。</p>', '削除する', () => { state.accGroups = state.accGroups.filter(x => x.id !== g.id); save(); renderKeep(); toast('グループを削除しました'); }, true));
     });
     const accadd = main.querySelector('[data-act="accadd"]');
     if (accadd) accadd.addEventListener('click', () => {
