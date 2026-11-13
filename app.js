@@ -785,10 +785,10 @@
       const bs = r.banks.filter(b => g.accounts.includes(b.name));
       const withBal = bs.filter(b => b.balance != null); const miss = bs.length - withBal.length;
       const tot = withBal.reduce((a, b) => a + b.balance, 0), due = withBal.reduce((a, b) => a + (b.due || 0), 0);
+      const need = Math.max(0, due - tot); // グループ全体で足りない額（グループの中で移せる前提）
       return '<div class="grpcard"><div class="gc-head"><b>' + esc(g.name) + '</b><span class="sub">' + bs.length + '口座' + (miss ? '・残高未入力 ' + miss : '') + '</span></div>' +
-        '<div class="gc-row"><span>合計残高</span><b class="num' + (hide ? ' masked' : '') + '">' + y(tot) + '</b></div>' +
-        (due ? '<div class="gc-row sub"><span>' + by + '締めまでの引落</span><span class="num">' + y(due) + '</span></div><div class="gc-row"><span>引落後の合計</span><b class="num' + (tot - due < 0 && !hide ? ' bad' : '') + '">' + y(tot - due) + '</b></div>' : '') +
-        grpPlanHTML(g, withBal, hide) +
+        '<div class="gc-row"><span>' + by + 'までの必要額</span><b class="num' + (need > 0 && !hide ? ' bad' : '') + '">' + (hide ? '¥ ••••' : need > 0 ? yenS(need) : '¥0（足りています）') + '</b></div>' +
+        '<div class="gc-row"><span>今の残高合計</span><b class="num' + (hide ? ' masked' : '') + '">' + y(tot) + '</b></div>' +
         '<div class="gc-names sub">' + bs.map(b => esc(b.name)).join('・') + '</div></div>';
     }).join('') + '</section>';
   }
@@ -1376,7 +1376,6 @@
     const autoSw = '<div class="card form autodeduct"><label class="switchrow"><span><b>引落日が過ぎたら残高から引く</b><small>引落日の当日は、引落予定の「引落完了」を押すと残高から引けます。押さなかった分は、翌日にアプリを開いたときに自動で引きます（引落日以降に残高を入れ直した口座は引きません）</small></span><input type="checkbox" id="autoDeduct" role="switch"' + (state.autoDeduct !== false ? ' checked' : '') + '></label></div>';
     const grpCard = on ? '' : '<div class="card form grpset"><div class="shead">口座のグループ<span class="sub">いくつかの口座の合計残高をまとめて見られます（例：楽天の夫婦口座）。口座残高の画面に出ます</span></div>' +
       (state.accGroups || []).map(g => '<div class="grow" data-grp="' + esc(g.id) + '"><div class="grow-h"><input class="text" data-grpname value="' + esc(g.name) + '" aria-label="グループの名前"><button class="danger small" data-act="grpdel">削除</button></div>' +
-        (g.accounts.length > 1 ? '<label class="grow-hub">まとめて入金する口座<select data-grphub>' + g.accounts.map(a => '<option' + (a === (g.hub || g.accounts[0]) ? ' selected' : '') + '>' + esc(a) + '</option>').join('') + '</select></label>' : '') +
         '<div class="grow-accs">' + state.accounts.map(a => '<label class="check"><input type="checkbox" data-grpacc="' + esc(a) + '"' + (g.accounts.includes(a) ? ' checked' : '') + '>' + esc(a) + '</label>').join('') + '</div></div>').join('') +
       '<div class="srow add-row"><input class="text" id="grpnew" placeholder="新しいグループの名前（例：楽天 夫婦）" aria-label="新しいグループの名前"><button class="small" data-act="grpadd">追加</button></div></div>';
     return autoSw + '<div class="card">' + '<div class="pad">' + headHTML('口座', state.accounts.length + '口座', 'accounts') +
