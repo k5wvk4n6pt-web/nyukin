@@ -1942,7 +1942,16 @@
       if (reg) reg.addEventListener('click', () => { // 変動の収入：何月分として金額を登録
         const v = parseAmount(el.value); const ym = row.querySelector('[data-incmonth]').value;
         if (Number.isNaN(v) || v == null) { toast('金額を入れてください'); el.focus(); return; }
-        const h = (state.incHistory || []).find(x => x.src === inc.id && x.forM === ym);
+        let h = (state.incHistory || []).find(x => x.src === inc.id && x.forM === ym)
+          || (state.incHistory || []).find(x => x.src === inc.id && !x.forM && forYm(x.date, inc.forOff || 0) === ym); // 前からある記録（何月分の印なし）
+        if (h && !h.forM) h.forM = ym;
+        if (!h) { // 入金日がもう過ぎているのに記録がない月は、記録を足す（残高は変えない）
+          const os = C.occurrencesIn(inc, C.addDays(today(), -120), today(), true).map(isoOf).filter(d => forYm(d, inc.forOff || 0) === ym);
+          if (os.length) { const d = os[os.length - 1];
+            (state.incHistory = state.incHistory || []).push({ id: uid('r'), date: d, name: inc.name, amount: v, src: inc.id, auto: false, edited: false, account: inc.account || '', dep: null, est: false, forM: ym });
+            inc.amount = v; if (!inc.month || inc.month <= ym) inc.month = nextYm(ym); save(); renderKeep();
+            toast(forLab(ym) + '（' + md(isoToObj(d)) + '入金）の記録を追加しました' + (inc.account ? '。口座残高は変えていないので、必要なら口座残高で直してください' : '')); return; }
+        }
         if (h) { const d = incAdjust(h, v); h.amount = v; h.est = false; h.edited = true; inc.amount = v; save(); renderKeep();
           toast(forLab(ym) + '（' + md(isoToObj(h.date)) + '入金）を ' + nf.format(v) + '円に直しました' + (d ? '（' + h.account + ' 残高 ' + (d > 0 ? '＋' : '−') + nf.format(Math.abs(d)) + '円）' : '')); return; }
         inc.month = ym; inc.amount = v; save(); renderKeep(); toast('「' + inc.name + '」' + forLab(ym) + ' ' + nf.format(v) + '円を登録しました');
