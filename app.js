@@ -974,7 +974,7 @@
     main.querySelectorAll('[data-unpaid]').forEach(b => b.addEventListener('click', () => {
       const h = (state.history || []).find(x => x.src === b.dataset.unpaid && x.date === isoToday()); if (!h) return;
       if (h.deducted) { const bal = state.balances[h.account]; if (bal && bal.amount != null) bal.amount += h.amount; }
-      h.paid = false; h.deducted = false; h.deductChecked = false; save(); renderKeep(); toast('「' + h.name + '」の引落完了を取り消しました' + (h.amount ? '' : ''));
+      h.paid = false; h.deducted = false; h.deductChecked = true; save(); renderKeep(); toast('「' + h.name + '」の引落完了を取り消しました' + (h.amount ? '' : ''));
     }));
   }
   /** 当日の引き落としを「完了」にする（残高から引くか、もう直したかを選ぶ） */
@@ -1390,7 +1390,7 @@
         '<label class="check"><input type="checkbox" data-act="accsurplus"' + (exclSurplus().includes(a) ? '' : ' checked') + '>合計に含める（合計残高・余りの合計）</label>' +
         hideBtn(hiddenAcc().includes(a), 'acchide') +
         '<button class="danger small" data-act="accdel">削除</button></div>').join('');
-    const autoSw = '<div class="card form autodeduct"><label class="switchrow"><span><b>引落日が過ぎたら残高から引く</b><small>引落日の当日は、引落予定の「引落完了」を押すと残高から引けます。押さなかった分は、翌日にアプリを開いたときに自動で引きます（引落日以降に残高を入れ直した口座は引きません）</small></span><input type="checkbox" id="autoDeduct" role="switch"' + (state.autoDeduct !== false ? ' checked' : '') + '></label></div>';
+    const autoSw = '<div class="card form autodeduct"><label class="switchrow"><span><b>引落日になったら残高から引く</b><small>引落日になると（日付が変わったら）、アプリを開いたときに自動で残高から引きます。残高が足りない口座と、引落日以降に残高を入れ直した口座は引きません。そのときは引落予定の「引落完了」で引けます</small></span><input type="checkbox" id="autoDeduct" role="switch"' + (state.autoDeduct !== false ? ' checked' : '') + '></label></div>';
     const grpCard = on ? '' : '<div class="card form grpset"><div class="shead">口座のグループ<span class="sub">いくつかの口座の必要額と残高合計をまとめて見られます（例：楽天の夫婦口座）。口座残高の画面に出ます</span></div>' +
       ((state.accGroups || []).length ? '<div class="grplist">' + state.accGroups.map(g => '<div class="grpitem" data-grp="' + esc(g.id) + '"><div class="gi-main"><b>' + esc(g.name) + '</b><span class="sub">' + (g.accounts.length ? g.accounts.map(esc).join('・') : '口座なし') + '</span></div>' +
         '<button class="small" data-act="grpedit">編集</button><button class="small danger" data-act="grpdel">削除</button></div>').join('') + '</div>' : '') +
@@ -2426,18 +2426,18 @@
     if (state.autoDeduct === false) return;
     const done = {}, skip = {};
     for (const h of state.history || []) {
-      if (!h.auto || h.deductChecked || h.paid || h.date < state.deductSince || h.date >= todayIso) continue; // 当日は「引落完了」ボタンで。押さなかった分は翌日に引く
+      if (!h.auto || h.deductChecked || h.paid || h.date < state.deductSince || h.date > todayIso) continue; // 引落日になったら（日付が変わったら）引く
       h.deductChecked = true;
       if (h.amount == null || h.amount === 0) continue;
       const b = state.balances[h.account];
       if (!b || b.amount == null) continue;
       if (b.updatedAt && localIso(b.updatedAt) >= h.date) continue; // 引落日以降に残高を入れ直している
       if (b.amount < h.amount) { h.lackSkip = true; skip[h.account] = (skip[h.account] || 0) + h.amount; continue; } // 残高不足：引き落とされていないはずなので引かない
-      b.amount -= h.amount; h.deducted = true;
+      b.amount -= h.amount; h.deducted = true; if (h.date === todayIso) h.paid = true; // 今日の分は引落完了の扱い
       done[h.account] = (done[h.account] || 0) + h.amount;
     }
     const keys = Object.keys(done), sk = Object.keys(skip);
-    const msg = (keys.length ? '引落が済んだ分を残高から引きました：' + keys.map(k => k + ' −' + nf.format(done[k]) + '円').join('、') : '') +
+    const msg = (keys.length ? '引き落としの分を残高から引きました：' + keys.map(k => k + ' −' + nf.format(done[k]) + '円').join('、') : '') +
       (sk.length ? (keys.length ? '\n' : '') + '残高が足りないため引きませんでした：' + sk.map(k => k + ' ' + nf.format(skip[k]) + '円').join('、') + '（口座残高を確認してください）' : '');
     if (msg) setTimeout(() => toast(msg), 600);
   }
