@@ -2226,7 +2226,8 @@
     }
     const to = by(toKey);
     const srcs = cat.filter(c => c.key !== toKey).sort((x, y) => (x.book === books.current ? 0 : 1) - (y.book === books.current ? 0 : 1) || y.surplus - x.surplus);
-    const from = fromKey0 ? by(fromKey0) : srcs.find(c => c.book === books.current && c.surplus > 0 && !c.hidden);
+    // 「残高移動」から開いたとき（口座の指定なし）は、移動元も移動先も選ぶところから
+    const from = fromKey0 ? by(fromKey0) : toKey ? srcs.find(c => c.book === books.current && c.surplus > 0 && !c.hidden) : null;
     // 金額の初期値：移動先の不足（この口座から移すときは、余りを超えない範囲）
     let need = to ? to.shortfall : 0;
     if (fromKey0 && from && need) need = Math.min(need, Math.max(0, from.surplus));
