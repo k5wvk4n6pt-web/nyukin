@@ -433,8 +433,9 @@
   }
   function showHelp() {
     const ph = state ? pageHelp() : null;
-    const body = ph ? '<div class="help"><div class="phelp-k">このページ：' + esc(ph[0]) + '</div>' + ph[1] + '</div>' +
-      '<details class="allhelp"><summary>ほかの使い方（すべて）</summary>' + helpHTML() + '</details>' : helpHTML();
+    const fbBtn = '<button class="fbopen" data-act="feedback">ご意見・ご要望を送る ›</button>';
+    const body = ph ? '<div class="help">' + fbBtn + '<div class="phelp-k">このページ：' + esc(ph[0]) + '</div>' + ph[1] + '</div>' +
+      '<details class="allhelp"><summary>ほかの使い方（すべて）</summary>' + helpHTML().replace(fbBtn, '') + '</details>' : helpHTML();
     confirmSheet('使い方', body, null, null); const fb = $('#modal [data-act="feedback"]'); if (fb) fb.addEventListener('click', openFeedback); }
 
   function backupNoticeHTML() {
