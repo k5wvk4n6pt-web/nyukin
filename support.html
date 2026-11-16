@@ -14,6 +14,7 @@ p, li { margin:0 0 10px; }
 ul { padding-left:1.3em; margin:0 0 10px; }
 .meta { color:var(--muted); font-size:14px; margin-bottom:24px; }
 a { color:var(--accent); }
+[hidden] { display:none !important; }
 main { padding-top:0 !important; }
 .backbar { position:sticky; top:0; z-index:5; margin:0 -16px 8px; padding:calc(env(safe-area-inset-top, 0px) + 10px) 16px 10px; background:var(--bg); border-bottom:1px solid var(--line); }
 .backbar a { font-weight:700; text-decoration:none; font-size:17px; }
@@ -30,7 +31,8 @@ main { padding-top:0 !important; }
 .fbmsg.err { color:#B83A3A; }
 </style></head>
 <body><main>
-<div class="backbar"><a href="./" onclick="if (history.length > 1) { history.back(); return false; }">‹ 戻る</a></div>
+<div class="backbar" id="backbar" hidden><a href="#" onclick="history.back(); return false;">‹ 戻る</a></div>
+<script>if (history.length > 1) document.getElementById('backbar').hidden = false;</script>
 
 <h1>引落ナビ サポート</h1>
 <p class="meta">口座ごとに「締め日までにいくら入れておけばよいか」がわかる家計アプリ</p>
