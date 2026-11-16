@@ -223,6 +223,7 @@
     autoSaving = true; try { recordPast(); rollVariable(); } finally { autoSaving = false; }
     const r = C.compute(state, T);
     if (meta.page === 'accounts') { meta.page = 'balance'; meta.btab = meta.atab === 'books' ? 'books' : 'acc'; }
+    if (meta.page === 'settings' && ['acc', 'books'].includes(meta.stab)) { meta.page = 'balance'; meta.btab = meta.stab; meta.stab = 'backup'; }
     if (meta.page === 'prep' && meta.prepPanel === 'flow') { meta.page = 'flow'; meta.prepPanel = 'sched'; }
     const page = PAGES.includes(meta.page) ? meta.page : 'prep';
     const outSeg = '<div class="seg outseg" role="tablist" aria-label="支出の種類">' + [['variable', '変動費'], ['fixed', '固定費']].map(x => '<button type="button" role="tab" data-outtab="' + x[0] + '" class="' + (page === x[0] ? 'on' : '') + '" aria-selected="' + (page === x[0]) + '">' + x[1] + '</button>').join('') + '</div>';
@@ -332,7 +333,7 @@
       step(state.income.length > 0, 3, '収入を登録（任意）', '給料日などの予定を表示します', '登録する', 'go-in') +
       step(false, 4, '口座の残高を入力', 'このページの各口座に入力すると、不足と余りが出ます', '', '') +
       '</ol>' +
-      '<div class="restore-line"><span class="sub">以前のデータがある場合は</span><label class="fileBtn">バックアップから復元<input type="file" id="restoreFile" accept=".json,application/json"></label></div>' +
+      '<div class="restore-line"><span class="sub">以前のデータがある場合は</span><label class="fileBtn">復元する<input type="file" id="restoreFile" accept=".json,application/json"></label></div>' +
       '</section>';
   }
 
@@ -930,7 +931,7 @@
   let flowSel = 0; // 0=今回の締め期間、-1=前回…
   const FLOW_TO = 1;
   const flowFrom = () => proActive() ? -5 : -2; // 無料は直近3期間まで（それより前はプレミアム）
-  /** 1つの締め期間の収支。過ぎた日は「記録」、今日以降は登録内容から */
+  /** 1つの締め期間の収支。過ぎた日は記録した金額、今日以降は登録内容から */
   function flowData(off, rng) {
     const T = today(), tIso = isoOf(T);
     const cy = rng ? { from: rng.from, to: rng.to } : C.cycle(state, T, off); // rng：期間を自分で決めるとき（CSV）
@@ -1002,7 +1003,7 @@
       '<div class="fd-tools">' + (side === 'in' ? '<button class="small" data-act="frec-back">' + proMark() + '登録している収入を記録にまとめて反映</button>' : '') + '<button class="small" data-act="frec-csv">' + proMark() + 'CSVで書き出す</button></div></div>';
     return '<section class="flowcard"><div class="fg-legend"><span><i class="sw in"></i>収入</span><span><i class="sw out"></i>支出</span><span class="sub">棒を押すと内訳</span></div>' + svg + detail +
       (proActive() ? '' : '<button class="fd-pronote" data-act="pro-info" data-what="過去の収支"><span class="probadge sm">プレミアム</span><span class="fd-pt">もっと前の期間の収支を見る</span><span class="fd-pc" aria-hidden="true">›</span></button>') +
-      '<p class="note" style="margin:0">過ぎた日は「記録」（引き落とし・収入）、今日からあとは登録している金額で計算しています。</p></section>';
+      '<p class="note" style="margin:0">過ぎた日は記録した金額（引き落とし・収入）、今日からあとは登録している金額で計算しています。</p></section>';
   }
   /* ---------- 締め期間ごとの引落予定 ---------- */
   let schedOff = 0;
@@ -1033,7 +1034,7 @@
       '<div class="sc-total"><span>合計 ' + list.length + '件</span><b class="num">¥' + nf.format(d.expense) + '</b></div>' +
       (d.unentered ? '<p class="flag" style="margin:0">金額未入力が ' + d.unentered + '件あります（合計に入っていません）</p>' : '') +
       (d.noRecord ? '<p class="sub" style="margin:0">この期間は記録がないため、引き落としを表示できません（記録は使い始めた日から残ります）。</p>' : '') +
-      '<p class="note" style="margin:0">過ぎた日は「記録」、今日からあとは登録している内容から表示しています。</p></section>';
+      '<p class="note" style="margin:0">過ぎた日は記録した金額、今日からあとは登録している内容から表示しています。</p></section>';
   }
   function bindSched() {
     main.querySelectorAll('[data-sched]').forEach(b => b.addEventListener('click', () => { schedOff += Number(b.dataset.sched); const sb = $('#schedBox'); if (sb) { sb.innerHTML = schedHTML(); bindSched(); } }));
@@ -1477,7 +1478,7 @@
         '<button class="small" data-act="grpedit">編集</button><button class="small danger" data-act="grpdel">削除</button></div>').join('') + '</div>' : '') +
       '<div class="grpnew"><div class="gn-h">新しいグループ</div>' + grpForm(null, 'gn') + '<button class="primary" data-act="grpadd">登録</button></div></div>';
     return '<div class="card">' + '<div class="pad">' + headHTML('口座', state.accounts.length + '口座', 'accounts') +
-      '<p class="sub" style="margin:0">準備ページは引落の近い口座から並びます。同じ日の口座は、ここでの並び順になります。名前を変えると、その口座の引落もまとめて変わります。</p></div>' +
+      '<p class="sub" style="margin:0">引落ページは引落の近い口座から並びます。同じ日の口座は、ここでの並び順になります。名前を変えると、その口座の引落もまとめて変わります。</p></div>' +
       list + (on ? '' : '<div class="srow add-row"><input class="text" id="accnew" placeholder="新しい口座名" aria-label="新しい口座名"><button class="small" data-act="accadd">追加</button></div>') + '</div>' + (on ? '' : autoSw) + grpCard;
   }
 
@@ -1959,8 +1960,8 @@
           '<div class="mbk-btns"><button class="small" data-act="backup">書き出す</button><label class="fileBtn small">読み込む<input type="file" id="restoreFile" accept=".json,application/json"></label></div></details>'
         : '<p class="sub" style="margin:0">入力した内容は、変更するたびに自動でこの端末に保存されています。' + (N.isNative ? '' : 'アプリの更新（ファイルの入れ替え）でも消えません。') + 'ファイルへのバックアップは、機種変更や、データの削除に備えるためのものです。</p>' +
           '<div class="sub">最後のバックアップ：' + last + '</div>' +
-          '<div class="btnrow"><button class="primary" data-act="backup">バックアップを保存</button>' +
-          '<label class="fileBtn">バックアップから復元<input type="file" id="restoreFile" accept=".json,application/json"></label></div>' +
+          '<div class="btnrow"><button class="primary" data-act="backup">保存する</button>' +
+          '<label class="fileBtn">復元する<input type="file" id="restoreFile" accept=".json,application/json"></label></div>' +
           '<p class="note">保存先で「“ファイル”に保存」を選んでください。iCloud Driveに保存すると、iPhoneをなくしても残ります。</p>') +
       ((N.isNative && cloud.available) ? '' : '<label class="inline-field">バックアップのお知らせ<select id="backup-every">' + opts + '</select></label>') +
       '<div class="hist"><b>自動の履歴（この端末の中・' + HISTORY_DAYS + '日分）</b><p class="sub" style="margin:0">入力を間違えたときに、前の日の状態に戻せます。端末の中にあるので、機種変更の備えにはなりません。</p>' + histRows + '</div>' +

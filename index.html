@@ -1175,7 +1175,7 @@ input[type="date"]::-webkit-date-and-time-value, input[type="month"]::-webkit-da
 .manualbk .mbk-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .manualbk .mbk-btns > * { white-space: nowrap; text-align: center; justify-content: center; font-size: 14px; padding: 9px 12px; }
 /* 設定を開いているときは右上の歯車を色付きにする */
-.hero-top .roundbtn#setBtn.on { background: var(--accent); color: #fff; }
+.hero-top .roundbtn#setBtn.on { background: var(--accent); color: var(--surface); }
 .quick4.q2 { grid-template-columns: repeat(2, 1fr); }
 .seg.btabs button { white-space: nowrap; padding-left: 6px; padding-right: 6px; }
 .section-head.bal-head { justify-content: flex-end; margin: 0 0 10px; }
@@ -1190,6 +1190,9 @@ input[type="date"]::-webkit-date-and-time-value, input[type="month"]::-webkit-da
 .helptoc button { display: flex; justify-content: space-between; align-items: center; width: 100%; background: transparent; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; padding: 12px 4px; font-size: 15px; font-weight: 600; color: var(--ink); min-height: 0; box-shadow: none; text-align: left; }
 .helptoc button:last-child { border-bottom: 0; }
 .helptoc .ht-ar { color: var(--muted); font-size: 18px; }
+/* 暗い表示でも、青枠の白い金額欄の文字は濃い色にする */
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .hc-amt { color: #18223A; } }
+:root[data-theme="dark"] .hc-amt { color: #18223A; }
 .fd-lh { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px; }
 .fd-lh b { color: var(--navy); font-size: 15px; }
 .fd-lh .sub { font-size: 12px; }
