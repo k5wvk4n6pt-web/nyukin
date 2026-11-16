@@ -1180,6 +1180,13 @@ input[type="date"]::-webkit-date-and-time-value, input[type="month"]::-webkit-da
 .notice .btnrow > button, .notice .btnrow > .fileBtn { white-space: nowrap; padding-left: 14px; padding-right: 14px; }
 .notice .btnrow > .primary { flex: 1 1 auto; min-width: 0; }
 .notice .btnrow > .fileBtn, .notice .btnrow > .primary + button { flex: 0 0 auto; }
+.phelp-k { display: inline-block; font-size: 13px; font-weight: 700; color: var(--accent); background: var(--accent-soft, color-mix(in srgb, var(--accent) 12%, transparent)); border-radius: 999px; padding: 3px 12px; margin-bottom: 10px; }
+.allhelp { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 12px; }
+.allhelp > summary { cursor: pointer; font-weight: 700; font-size: 15px; color: var(--accent); list-style: none; }
+.allhelp > summary::-webkit-details-marker { display: none; }
+.allhelp > summary::after { content: " ▾"; font-size: 12px; }
+.allhelp[open] > summary::after { content: " ▴"; }
+.allhelp[open] > .help { margin-top: 12px; }
 .fd-lh { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px; }
 .fd-lh b { color: var(--navy); font-size: 15px; }
 .fd-lh .sub { font-size: 12px; }
