@@ -1869,11 +1869,16 @@
       : '<div class="cloudbox"><b>iCloudのバックアップは使えません</b><span class="sub">iPhoneの「設定」でApple IDにサインインし、iCloud Driveをオンにすると、自動でバックアップされます。それまでは下のボタンで「ファイル」に保存してください。</span></div>';
     return '<section class="backup" id="sec-backup" aria-label="バックアップ"><h2>バックアップ</h2>' +
       cloudBox +
-      '<p class="sub" style="margin:0">入力した内容は、変更するたびに自動でこの端末に保存されています。' + (N.isNative ? '' : 'アプリの更新（ファイルの入れ替え）でも消えません。') + 'ファイルへのバックアップは、機種変更や、データの削除に備えるためのものです。</p>' +
-      '<div class="sub">最後のバックアップ：' + last + '</div>' +
-      '<div class="btnrow"><button class="primary" data-act="backup">バックアップを保存</button>' +
-      '<label class="fileBtn">バックアップから復元<input type="file" id="restoreFile" accept=".json,application/json"></label></div>' +
-      '<p class="note">保存先で「“ファイル”に保存」を選んでください。iCloud Driveに保存すると、iPhoneをなくしても残ります。</p>' +
+      ((N.isNative && cloud.available)
+        // iCloudに自動で保存しているときは、手動のファイル保存は目立たせない
+        ? '<details class="manualbk"><summary>ファイルに書き出す・読み込む（手動のバックアップ）</summary>' +
+          '<p class="sub" style="margin:0">iCloudのバックアップはいつも最新の1つだけです。この時点の内容を残しておきたいときや、Web版などにデータを移すときに使います。最後に書き出した日：' + last + '</p>' +
+          '<div class="btnrow"><button class="small" data-act="backup">書き出す</button><label class="fileBtn small">読み込む<input type="file" id="restoreFile" accept=".json,application/json"></label></div></details>'
+        : '<p class="sub" style="margin:0">入力した内容は、変更するたびに自動でこの端末に保存されています。' + (N.isNative ? '' : 'アプリの更新（ファイルの入れ替え）でも消えません。') + 'ファイルへのバックアップは、機種変更や、データの削除に備えるためのものです。</p>' +
+          '<div class="sub">最後のバックアップ：' + last + '</div>' +
+          '<div class="btnrow"><button class="primary" data-act="backup">バックアップを保存</button>' +
+          '<label class="fileBtn">バックアップから復元<input type="file" id="restoreFile" accept=".json,application/json"></label></div>' +
+          '<p class="note">保存先で「“ファイル”に保存」を選んでください。iCloud Driveに保存すると、iPhoneをなくしても残ります。</p>') +
       ((N.isNative && cloud.available) ? '' : '<label class="inline-field">バックアップのお知らせ<select id="backup-every">' + opts + '</select></label>') +
       '<div class="hist"><b>自動の履歴（この端末の中・' + HISTORY_DAYS + '日分）</b><p class="sub" style="margin:0">入力を間違えたときに、前の日の状態に戻せます。端末の中にあるので、機種変更の備えにはなりません。</p>' + histRows + '</div>' +
       '<div class="danger-zone"><b>すべてのデータを消す</b><p class="sub" style="margin:0">すべての帳簿の口座・支出・収入・残高を消して、最初の画面に戻ります。元に戻せないので、先にバックアップを保存してください。</p><button class="danger" data-act="wipe">すべてのデータを消す</button></div></section>';
