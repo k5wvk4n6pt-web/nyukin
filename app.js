@@ -1871,9 +1871,10 @@
       cloudBox +
       ((N.isNative && cloud.available)
         // iCloudに自動で保存しているときは、手動のファイル保存は目立たせない
-        ? '<details class="manualbk"><summary>ファイルに書き出す・読み込む（手動のバックアップ）</summary>' +
-          '<p class="sub" style="margin:0">iCloudのバックアップはいつも最新の1つだけです。この時点の内容を残しておきたいときや、Web版などにデータを移すときに使います。最後に書き出した日：' + last + '</p>' +
-          '<div class="btnrow"><button class="small" data-act="backup">書き出す</button><label class="fileBtn small">読み込む<input type="file" id="restoreFile" accept=".json,application/json"></label></div></details>'
+        ? '<details class="manualbk"><summary><span class="mbk-t">手動のバックアップ<small>ファイルに書き出す・読み込む</small></span><span class="mbk-c" aria-hidden="true"></span></summary>' +
+          '<p class="sub" style="margin:0">iCloudのバックアップは、いつも最新の1つだけです。<br>今の内容を残しておきたいときや、Web版などにデータを移すときに使います。</p>' +
+          '<div class="sub">最後に書き出した日：' + last + '</div>' +
+          '<div class="mbk-btns"><button class="small" data-act="backup">書き出す</button><label class="fileBtn small">読み込む<input type="file" id="restoreFile" accept=".json,application/json"></label></div></details>'
         : '<p class="sub" style="margin:0">入力した内容は、変更するたびに自動でこの端末に保存されています。' + (N.isNative ? '' : 'アプリの更新（ファイルの入れ替え）でも消えません。') + 'ファイルへのバックアップは、機種変更や、データの削除に備えるためのものです。</p>' +
           '<div class="sub">最後のバックアップ：' + last + '</div>' +
           '<div class="btnrow"><button class="primary" data-act="backup">バックアップを保存</button>' +
