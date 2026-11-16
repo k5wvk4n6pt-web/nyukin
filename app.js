@@ -390,7 +390,7 @@
       '<h3>非表示</h3><p>使わなくなった項目・口座・収入は非表示にできます。非表示にしたものは計算に含みません。</p>' +
       '<h3>データの保存</h3><p>入力した内容は変更するたびに自動で、この端末の中だけに保存され、外部には送信しません（アプリ版でiCloudがオンの場合は、あなたのiCloudにも自動でバックアップします）。入力を間違えたときは「設定 → 保存」の自動の履歴から、前の日の状態に戻せます。機種変更やブラウザのデータ削除に備えて、ときどき「ファイル」アプリ（iCloud Driveなど）にバックアップを保存してください。お知らせの間隔は変えられます。</p>' +
       '<h3>ご注意</h3><p>計算結果は目安です。実際の引落日・金額は、金融機関やカード会社の案内で確認してください。</p>' +
-      '<p style="margin-top:14px"><a href="https://k5wvk4n6pt-web.github.io/nyukin/privacy.html" target="_blank" rel="noopener">プライバシーポリシー</a>　<a href="https://k5wvk4n6pt-web.github.io/nyukin/support.html" target="_blank" rel="noopener">サポート</a></p></div>';
+      '<p style="margin-top:14px"><a href="https://k5wvk4n6pt-web.github.io/nyukin/privacy.html" target="_blank" rel="noopener">プライバシーポリシー</a></p></div>';
   }
   /** 開いているページの使い方 */
   const HELP_KEYS = [['prep', '引落ページ'], ['out', '支出ページ'], ['bal', '口座ページ：残高'], ['acc', '口座ページ：口座の登録'], ['books', '口座ページ：帳簿・給料日'], ['income', '収入ページ'], ['flow', '収支ページ'], ['backup', '設定：保存'], ['notify', '設定：通知'], ['view', '設定：表示'], ['etc', '機能・その他']];
