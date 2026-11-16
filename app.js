@@ -3109,6 +3109,10 @@
   window.addEventListener('pageshow', () => syncTyping());
 
   $('#helpBtn').addEventListener('click', showHelp);
+  // シート（使い方など）を開いている間は、後ろの画面がスクロールしないようにする
+  (() => { const m = $('#modal'); if (!m || typeof MutationObserver !== 'function') return;
+    const sync = () => document.documentElement.classList.toggle('modal-open', !m.hidden);
+    new MutationObserver(sync).observe(m, { attributes: true, attributeFilter: ['hidden'] }); sync(); })();
 
   /* ---------- 表示の明るさ（自動・ライト・ダーク） ---------- */
   const THEMES = [['light', 'ライト', 'いつも明るい表示（標準）'], ['dark', 'ダーク', 'いつも暗い表示'], ['auto', '自動', '端末の設定に合わせる']];
