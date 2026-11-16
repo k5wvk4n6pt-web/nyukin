@@ -59,7 +59,9 @@
     color-scheme: dark;
 }
 * { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; touch-action: manipulation; }
+/* ダブルタップで拡大しない（タップの反応も速くなる） */
+body, button, a, label, select, input, textarea, summary, [data-act], [data-page] { touch-action: manipulation; }
 body {
   margin: 0; background: var(--bg); color: var(--ink);
   font-family: var(--font-body); font-size: 15px; line-height: 1.55;
