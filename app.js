@@ -968,12 +968,12 @@
   function flowHTML() {
     const FROM = flowFrom(); if (flowSel < FROM) flowSel = 0;
     const data = []; for (let o = FROM; o <= FLOW_TO; o++) data.push(flowData(o));
-    const max = Math.max(1, ...data.map(d => Math.max(d.income, d.expense)));
+    const max = Math.max(10000, ...data.map(d => Math.max(d.income, d.expense))); // 金額がないときも目盛りは1万円まで
     const step = niceStep(max / 3), top = Math.ceil(max / step) * step;
     const W = 340, H = 190, L = 34, Rr = 6, T0 = 14, B = 34, ch = H - T0 - B, gw = (W - L - Rr) / data.length, bw = Math.min(14, gw / 2 - 4);
     const y = v => T0 + ch - (v / top) * ch;
     let g = '';
-    for (let v = 0; v <= top + 1; v += step) g += '<line x1="' + L + '" x2="' + (W - Rr) + '" y1="' + y(v) + '" y2="' + y(v) + '" class="fg-grid"/><text x="' + (L - 4) + '" y="' + (y(v) + 3.5) + '" class="fg-ax" text-anchor="end">' + (v === 0 ? '0' : (v / 10000) + '万') + '</text>';
+    for (let v = 0; v <= top + step / 100; v += step) g += '<line x1="' + L + '" x2="' + (W - Rr) + '" y1="' + y(v) + '" y2="' + y(v) + '" class="fg-grid"/><text x="' + (L - 4) + '" y="' + (y(v) + 3.5) + '" class="fg-ax" text-anchor="end">' + (v === 0 ? '0' : (v / 10000) + '万') + '</text>';
     const bar = (x, v, cls) => { if (!v) return ''; const h = Math.max(2, (v / top) * ch), yy = T0 + ch - h, r = Math.min(4, bw / 2, h); return '<path class="' + cls + '" d="M' + x + ',' + (T0 + ch) + 'V' + (yy + r) + 'Q' + x + ',' + yy + ' ' + (x + r) + ',' + yy + 'H' + (x + bw - r) + 'Q' + (x + bw) + ',' + yy + ' ' + (x + bw) + ',' + (yy + r) + 'V' + (T0 + ch) + 'Z"/>'; };
     data.forEach((d, i) => {
       const cx = L + gw * i + gw / 2, sel = d.off === flowSel;
