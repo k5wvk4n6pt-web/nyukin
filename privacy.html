@@ -14,9 +14,15 @@ p, li { margin:0 0 10px; }
 ul { padding-left:1.3em; margin:0 0 10px; }
 .meta { color:var(--muted); font-size:14px; margin-bottom:24px; }
 a { color:var(--accent); }
+main { padding-top:0 !important; }
+.backbar { position:sticky; top:0; z-index:5; margin:0 -16px 8px; padding:calc(env(safe-area-inset-top, 0px) + 10px) 16px 10px; background:var(--bg); border-bottom:1px solid var(--line); }
+.backbar a { font-weight:700; text-decoration:none; font-size:17px; }
+
 .box { background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:16px; }
 </style></head>
 <body><main>
+<div class="backbar"><a href="./" onclick="if (history.length > 1) { history.back(); return false; }">‹ 戻る</a></div>
+
 <h1>プライバシーポリシー</h1>
 <p class="meta">引落ナビ（iPhoneアプリ版・ウェブ版）　制定日：2026年11月4日　改定日：2026年11月9日</p>
 
