@@ -207,7 +207,7 @@
     const T = today(); todayKey = keyOf(T);
     $('#nav').hidden = !state;
     const bk = $('#books');
-    bk.hidden = !state;
+    bk.hidden = !state || !books || books.list.length < 2;
     if (state && books) {
       bk.innerHTML = books.list.map((b, i) => '<button class="book b' + (i % 5) + (b.id === books.current ? ' on' : '') + '" data-book="' + esc(b.id) + '"' + (b.id === books.current ? ' aria-current="true"' : '') + '>' + esc(b.name) + '</button>').join('') +
         '<button class="book add" data-act="book-add" aria-label="帳簿を追加">＋ 帳簿</button>';
@@ -233,7 +233,7 @@
       : page === 'flow' ? '<section id="sec-flow" aria-label="収支記録"><div class="section-head"><h2>収支記録<small class="sub">（給料日ごと）</small></h2></div><div id="flowBox">' + flowHTML() + '</div></section>'
       : page === 'history' ? historyHTML()
       : page === 'income' ? inHTML()
-      : sampleBannerHTML() + (needsSetup() ? setupGuideHTML() : backupNoticeHTML()) + summaryHTML(r) +
+      : (needsSetup() ? setupGuideHTML() : '') + summaryHTML(r, sampleBannerHTML() + (needsSetup() ? '' : backupNoticeHTML())) +
         '<p class="note">表示される金額と日付は、登録した内容から計算した目安です。実際の引落日・金額は金融機関やカード会社の案内で確認してください。</p>';
     if (typeof syncFab === 'function') setTimeout(syncFab, 0);
     document.body.className = document.body.className.replace(/\bpg-\S+/g, '').trim() + ' pg-' + page;
@@ -318,8 +318,8 @@
   function sampleBannerHTML() {
     if (!state.sample) return '';
     return '<div class="notice"><div><b>サンプルデータを表示しています。</b><br>口座名や金額はすべて架空です。自由に触って試してみてください。</div>' +
-      '<div class="btnrow"><button class="primary" data-act="sample-clear">サンプルを消して自分のデータではじめる</button>' +
-      '<label class="fileBtn">バックアップから復元<input type="file" id="restoreFile" accept=".json,application/json"></label></div></div>';
+      '<div class="btnrow"><button class="primary" data-act="sample-clear">自分のデータではじめる</button>' +
+      '<label class="fileBtn">復元する<input type="file" id="restoreFile" accept=".json,application/json"></label></div></div>';
   }
   function allItems() { return state.variable.concat(state.fixed, state.once || []); }
   function needsSetup() { return !state.sample && (state.accounts.length === 0 || allItems().length === 0); }
@@ -396,7 +396,10 @@
 
   function backupNoticeHTML() {
     const every = backupEvery();
-    if (!every || (N.isNative && cloud.available)) return '';
+    if (!every || (N.isNative && cloud.available) || state.sample) return '';
+    // 自分のデータを使い始めてから3日たつまでは出さない
+    if (!meta.realSince) { meta.realSince = new Date().toISOString(); saveMeta(); }
+    if (!meta.lastBackupAt && Date.now() - new Date(meta.realSince) < 3 * 86400000) return '';
     if (meta.snoozeUntil && Date.now() < new Date(meta.snoozeUntil)) return '';
     const last = meta.lastBackupAt ? new Date(meta.lastBackupAt) : null;
     const days = last ? Math.floor((Date.now() - last) / 86400000) : null;
@@ -548,14 +551,14 @@
     card.classList.add('flash'); setTimeout(() => card.classList.remove('flash'), 1600);
   }
 
-  function summaryHTML(r) {
+  function summaryHTML(r, notices) {
     const per = r.windows.map((w, i) => '<div class="period' + (w.inClose ? '' : ' after') + '" data-tile><span class="lab">' + ICON.cal(w.inClose ? '--c-blue' : '--c-pink') + w.label + 'に必要' + (w.inClose ? '' : '<span class="tag">参考</span>') + (i === 0 ? '<button class="linkish" data-act="go-close" aria-label="期限を変更">変更</button>' : '') + '</span><span class="rng">' + md(w.from) + '〜' + md(w.to) + (w.nominal ? '<br>' + md(w.nominal) + 'が休日のため' + md(w.to) + 'まで' : '') + '</span><span class="val num" data-sum="' + w.key + '">' + yen(r.totals[w.key]) + '</span></div>').join('');
     const inc = r.income.map(i => '<div class="income-row"><span class="who">' + esc(i.name) + '</span><span class="when">' + (i.next ? '<span class="' + (isWeekend(i.next) ? 'wkend' : '') + '">' + mdw(i.next) + '</span> 予定' + shiftNote(i.next) : '') + '</span>' +
       '<input class="amount' + (i.amount == null ? ' empty' : '') + '" inputmode="numeric" enterkeyhint="done" autocomplete="off" id="inc-' + esc(i.id) + '" data-inc="' + esc(i.id) + '" value="' + yenTxt(i.amount) + '" placeholder="金額（任意）" aria-label="' + esc(i.name) + 'の収入予定額"></div>').join('');
     if (!['sched', 'need', 'due'].includes(meta.prepPanel)) meta.prepPanel = 'sched'; // トップは「引落予定」
     const P = (k, html) => '<div class="ppanel" data-panel="' + k + '"' + (meta.prepPanel === k ? '' : ' hidden') + '>' + html + '</div>';
     const pt = prepTopHTML(r);
-    return '<div id="prepTop">' + pt.top + '</div>' +
+    return '<div id="prepTop">' + pt.top + '</div>' + (notices || '') +
       P('need', '<section class="summary" id="sec-top" aria-label="不足と余り"><div class="acchead">' + QI.scale.replace('<svg ', '<svg class="pico" ') + '不足と余り<button class="pclose" data-panel-btn="need" aria-label="不足と余りを閉じる">閉じる ✕</button></div>' + shortboxHTML(r) + '</section>') +
       P('due', dueHTML(r)) +
       P('sched', '<div id="schedNotice">' + prepNoticeHTML(r) + '</div><div class="pphead"><span>引落予定</span></div><div id="schedBox">' + schedHTML() + '</div>') +
@@ -818,7 +821,7 @@
   }
   /** 下のタブ「口座残高」のページ */
   function balancePageHTML(r) {
-    return '<section id="sec-balance" aria-label="口座残高"><div class="section-head"><h2>口座残高</h2><span class="head-right"><button class="small xmove" data-act="xfer-any">残高移動</button></span></div>' +
+    return '<section id="sec-balance" aria-label="口座残高"><div class="section-head bal-head"><span class="head-right"><button class="small xmove" data-act="xfer-any">残高移動</button></span></div>' +
       totalHTML(r) + groupsHTML(r) + '<div id="ballist">' + balListHTML(r) + '</div></section>';
   }
   function totalHTML(r) {
@@ -1412,9 +1415,9 @@
       ((state.accGroups || []).length ? '<div class="grplist">' + state.accGroups.map(g => '<div class="grpitem" data-grp="' + esc(g.id) + '"><div class="gi-main"><b>' + esc(g.name) + '</b><span class="sub">' + (g.accounts.length ? g.accounts.map(esc).join('・') : '口座なし') + '</span></div>' +
         '<button class="small" data-act="grpedit">編集</button><button class="small danger" data-act="grpdel">削除</button></div>').join('') + '</div>' : '') +
       '<div class="grpnew"><div class="gn-h">新しいグループ</div>' + grpForm(null, 'gn') + '<button class="primary" data-act="grpadd">登録</button></div></div>';
-    return autoSw + '<div class="card">' + '<div class="pad">' + headHTML('口座', state.accounts.length + '口座', 'accounts') +
+    return '<div class="card">' + '<div class="pad">' + headHTML('口座', state.accounts.length + '口座', 'accounts') +
       '<p class="sub" style="margin:0">準備ページは引落の近い口座から並びます。同じ日の口座は、ここでの並び順になります。名前を変えると、その口座の引落もまとめて変わります。</p></div>' +
-      list + (on ? '' : '<div class="srow add-row"><input class="text" id="accnew" placeholder="新しい口座名" aria-label="新しい口座名"><button class="small" data-act="accadd">追加</button></div>') + '</div>' + grpCard;
+      list + (on ? '' : '<div class="srow add-row"><input class="text" id="accnew" placeholder="新しい口座名" aria-label="新しい口座名"><button class="small" data-act="accadd">追加</button></div>') + '</div>' + (on ? '' : autoSw) + grpCard;
   }
 
   function booksHTML() {
