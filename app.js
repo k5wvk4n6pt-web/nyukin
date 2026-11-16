@@ -434,7 +434,7 @@
       if (t === 'notify') return ['通知', H('引落前のお知らせ', 'iPhoneアプリ版のプレミアムでは、引落日の当日・前日・2日前などに通知でお知らせできます（時刻も選べます）。ロック画面に金額を出したくないときは「金額も表示する」をオフにしてください。通知の予約はiPhoneの中だけで行い、外部には送りません。')];
       if (t === 'view') return ['表示', H('明るさ', 'ライト・ダーク・自動（iPhoneの設定に合わせる）を選べます。') +
         H('アプリの色（プレミアム）', 'ブルー・ピンク・グリーン・パープル・オレンジから選べます。ロゴとホーム画面のアイコンも同じ色になります。') +
-        H('ご意見・ご要望', '感想やほしい機能、不具合を運営に送れます。家計データは送られません。')];
+        H('ご意見・ご要望', '感想やほしい機能、不具合を運営に送れます。')];
       return ['保存', H('自動の保存', '入力した内容は変更するたびに自動で、この端末の中だけに保存されます。アプリ版でiCloudがオンなら、あなたのiCloudにも自動でバックアップします。') +
         H('自動の履歴', '入力を間違えたときは、前の日の状態に戻せます。') +
         H('ファイルのバックアップ', '機種変更やデータの削除に備えて、「ファイル」アプリ（iCloud Driveなど）に保存できます。')];
@@ -1301,7 +1301,7 @@
     else if (st === 'in') body = inHTML();
     else if (st === 'acc') body = accHTML();
     else if (st === 'books') body = booksHTML();
-    else if (st === 'view') body = viewHTML() + '<div class="card form"><div class="shead">ご意見・ご要望<span class="sub">感想やほしい機能、不具合を運営に送れます（家計データは送られません）</span></div><button data-act="feedback">ご意見・ご要望を送る</button></div>';
+    else if (st === 'view') body = viewHTML() + '<div class="card form"><div class="shead">ご意見・ご要望<span class="sub">感想やほしい機能、不具合を運営に送れます</span></div><button data-act="feedback">ご意見・ご要望を送る</button></div>';
     else if (st === 'notify') body = notifyHTML();
     else body = backupHTML();
     const cs = C.closeSettings(state);
