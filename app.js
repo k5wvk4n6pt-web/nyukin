@@ -392,14 +392,25 @@
       '<p style="margin-top:14px"><a href="https://k5wvk4n6pt-web.github.io/nyukin/privacy.html" target="_blank" rel="noopener">プライバシーポリシー</a>　<a href="https://k5wvk4n6pt-web.github.io/nyukin/support.html" target="_blank" rel="noopener">サポート</a></p></div>';
   }
   /** 開いているページの使い方 */
-  function pageHelp() {
-    const pg = meta.page, H = (t, b) => '<h3>' + t + '</h3><p>' + b + '</p>';
+  const HELP_KEYS = [['prep', '引落'], ['out', '支出'], ['bal', '口座の残高'], ['acc', '口座の登録'], ['books', '帳簿・給料日'], ['income', '収入'], ['flow', '収支'], ['backup', '保存'], ['notify', '通知'], ['view', '表示'], ['etc', 'そのほか']];
+  function helpKeyNow() {
+    const pg = meta.page;
+    if (pg === 'variable' || pg === 'fixed') return 'out';
+    if (pg === 'balance') return ['acc', 'books'].includes(meta.btab) ? meta.btab : 'bal';
+    if (pg === 'income') return 'income';
+    if (pg === 'flow' || pg === 'history') return 'flow';
+    if (pg === 'settings') return ['notify', 'view'].includes(meta.stab) ? meta.stab : 'backup';
+    return 'prep';
+  }
+  function pageHelp(key) {
+    const PG = { out: 'variable', bal: 'balance', acc: 'balance', books: 'balance', income: 'income', flow: 'flow', backup: 'settings', notify: 'settings', view: 'settings' };
+    const pg = PG[key] || 'prep', H = (t, b) => '<h3>' + t + '</h3><p>' + b + '</p>';
     if (pg === 'variable' || pg === 'fixed') return ['支出', H('変動費と固定費', '上の「変動費｜固定費」で切り替えます。変動費はカードの請求のように毎月金額が変わるもの、固定費は家賃や保険のように毎月同じ金額のものです。') +
       H('変動費の入れ方', '各行で「○月分」を選んで、請求額を入れます。わからないときは空欄のままで大丈夫です（「未入力」として扱います）。引落が済むと自動で次の月に進みます。金額欄の右の電卓で、明細の合計を計算してそのまま入れられます。') +
       H('固定費', '金額・引落日・口座が変わったときだけ直します。「固定費を記録に反映」で、過去の分をまとめて記録できます。') +
       H('追加・並び替え', '右下の「＋」や見出しの「＋ 追加」から、ページを移らずに追加できます。年払いの保険など1回だけのものは、変動費ページの下の「1回のみの引落」に追加します。使わなくなった項目は非表示にできます。')];
     if (pg === 'balance') {
-      const t = meta.btab;
+      const t = key;
       if (t === 'acc') return ['口座の登録', H('口座の追加・名前の変更', '一覧の下の欄に口座名を入れて「追加」を押します。名前を変えると、その口座の引落もまとめて変わります。「並び替え」で順番を変えられます。') +
         H('合計に含める・非表示', '「合計に含める」を外すと、合計残高や余りの合計に入れません。使わない口座は「非表示」にすると計算に含みません。') +
         H('引落日になったら残高から引く', 'オンにすると、引落日になったとき（アプリを開いたとき）に自動で残高から引きます。残高が足りない口座は引きません。') +
@@ -418,7 +429,7 @@
       H('明細の修正・追加', '済みの行を押すと、実際の金額に直せます。「＋ 記録を追加」で、登録していない支出も記録できます。') +
       H('書き出し', 'CSVで書き出すと、Excelで開けます（プレミアム）。')];
     if (pg === 'settings') {
-      const t = meta.stab;
+      const t = key;
       if (t === 'notify') return ['通知', H('引落前のお知らせ', 'iPhoneアプリ版のプレミアムでは、引落日の当日・前日・2日前などに通知でお知らせできます（時刻も選べます）。ロック画面に金額を出したくないときは「金額も表示する」をオフにしてください。通知の予約はiPhoneの中だけで行い、外部には送りません。')];
       if (t === 'view') return ['表示', H('明るさ', 'ライト・ダーク・自動（iPhoneの設定に合わせる）を選べます。') +
         H('アプリの色（プレミアム）', 'ブルー・ピンク・グリーン・パープル・オレンジから選べます。ロゴとホーム画面のアイコンも同じ色になります。') +
@@ -431,12 +442,18 @@
       H('引落予定', '締め日までの引落が日付順に並びます。‹ › で前後の期間も見られます。引落が済んだら「引落完了」で残高から引けます。') +
       H('不足と余り', '口座ごとに、締め日までにいくら足りないか・余っているかがわかります。不足している口座には「ほかの口座から移す」で移せます。')];
   }
-  function showHelp() {
-    const ph = state ? pageHelp() : null;
+  function showHelp(key) {
     const fbBtn = '<button class="fbopen" data-act="feedback">ご意見・ご要望を送る ›</button>';
-    const body = ph ? '<div class="help">' + fbBtn + '<div class="phelp-k">このページ：' + esc(ph[0]) + '</div>' + ph[1] + '</div>' +
-      '<details class="allhelp"><summary>ほかの使い方（すべて）</summary>' + helpHTML().replace(fbBtn, '') + '</details>' : helpHTML();
-    confirmSheet('使い方', body, null, null); const fb = $('#modal [data-act="feedback"]'); if (fb) fb.addEventListener('click', openFeedback); }
+    if (!state) { confirmSheet('使い方', helpHTML(), null, null); const fb0 = $('#modal [data-act="feedback"]'); if (fb0) fb0.addEventListener('click', openFeedback); return; }
+    const k = HELP_KEYS.some(x => x[0] === key) ? key : helpKeyNow();
+    const name = HELP_KEYS.find(x => x[0] === k)[1];
+    const main0 = k === 'etc' ? helpHTML().replace(fbBtn, '') : '<div class="help">' + pageHelp(k)[1] + '</div>';
+    const toc = '<div class="helptoc"><div class="ht-h">ほかのページの使い方</div>' + HELP_KEYS.filter(x => x[0] !== k).map(x => '<button type="button" data-help="' + x[0] + '"><span>' + esc(x[1]) + '</span><span class="ht-ar" aria-hidden="true">›</span></button>').join('') + '</div>';
+    confirmSheet('使い方', '<div class="help">' + fbBtn + '</div>' + main0 + toc, null, null);
+    const h = $('#mt'); if (h) { h.classList.add('helptitle'); h.insertAdjacentHTML('beforeend', '<span class="phelp-k">' + esc(name) + '</span>'); }
+    const fb = $('#modal [data-act="feedback"]'); if (fb) fb.addEventListener('click', openFeedback);
+    $('#modal').querySelectorAll('[data-help]').forEach(b => b.addEventListener('click', () => { showHelp(b.dataset.help); const sh = $('#modal .sheet'); if (sh) sh.scrollTop = 0; }));
+  }
 
   function backupNoticeHTML() {
     const every = backupEvery();
@@ -3108,7 +3125,7 @@
   window.addEventListener('focus', () => syncTyping());
   window.addEventListener('pageshow', () => syncTyping());
 
-  $('#helpBtn').addEventListener('click', showHelp);
+  $('#helpBtn').addEventListener('click', () => showHelp());
   // シート（使い方など）を開いている間は、後ろの画面がスクロールしないようにする
   (() => { const m = $('#modal'); if (!m || typeof MutationObserver !== 'function') return;
     const sync = () => document.documentElement.classList.toggle('modal-open', !m.hidden);
