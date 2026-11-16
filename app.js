@@ -393,7 +393,7 @@
       '<p style="margin-top:14px"><a href="https://k5wvk4n6pt-web.github.io/nyukin/privacy.html" target="_blank" rel="noopener">プライバシーポリシー</a>　<a href="https://k5wvk4n6pt-web.github.io/nyukin/support.html" target="_blank" rel="noopener">サポート</a></p></div>';
   }
   /** 開いているページの使い方 */
-  const HELP_KEYS = [['prep', '引落ページ'], ['out', '支出ページ'], ['bal', '口座ページ：残高'], ['acc', '口座ページ：口座の登録'], ['books', '口座ページ：帳簿・給料日'], ['income', '収入ページ'], ['flow', '収支ページ'], ['backup', '設定：保存'], ['notify', '設定：通知'], ['view', '設定：表示'], ['etc', 'そのほか']];
+  const HELP_KEYS = [['prep', '引落ページ'], ['out', '支出ページ'], ['bal', '口座ページ：残高'], ['acc', '口座ページ：口座の登録'], ['books', '口座ページ：帳簿・給料日'], ['income', '収入ページ'], ['flow', '収支ページ'], ['backup', '設定：保存'], ['notify', '設定：通知'], ['view', '設定：表示'], ['etc', '機能・その他']];
   function helpKeyNow() {
     const pg = meta.page;
     if (pg === 'variable' || pg === 'fixed') return 'out';
