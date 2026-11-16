@@ -556,7 +556,7 @@
     const P = (k, html) => '<div class="ppanel" data-panel="' + k + '"' + (meta.prepPanel === k ? '' : ' hidden') + '>' + html + '</div>';
     const pt = prepTopHTML(r);
     return '<div id="prepTop">' + pt.top + '</div>' +
-      P('need', '<section class="summary" id="sec-top" aria-label="過不足"><div class="acchead">' + QI.scale.replace('<svg ', '<svg class="pico" ') + '過不足<button class="pclose" data-panel-btn="need" aria-label="過不足を閉じる">閉じる ✕</button></div>' + shortboxHTML(r) + '</section>') +
+      P('need', '<section class="summary" id="sec-top" aria-label="不足と余り"><div class="acchead">' + QI.scale.replace('<svg ', '<svg class="pico" ') + '不足と余り<button class="pclose" data-panel-btn="need" aria-label="不足と余りを閉じる">閉じる ✕</button></div>' + shortboxHTML(r) + '</section>') +
       P('due', dueHTML(r)) +
       P('sched', '<div id="schedNotice">' + prepNoticeHTML(r) + '</div><div class="pphead"><span>引落予定</span></div><div id="schedBox">' + schedHTML() + '</div>') +
       '';
@@ -623,7 +623,7 @@
       '</span>' +
       '<span class="hc-chev" aria-hidden="true">›</span></button>';
     const q = (k, ico, lab) => '<button class="qbtn' + (meta.prepPanel === k ? ' on' : '') + '" ' + (k === 'manage' ? 'data-act="go-variable"' : 'data-panel-btn="' + k + '" aria-expanded="' + (meta.prepPanel === k) + '"') + '>' + ico + '<span>' + lab + '</span></button>';
-    const quick = '<div class="quick4 q2">' + q('sched', QI.sched, '引落予定') + q('need', QI.scale, '過不足') + '</div>';
+    const quick = '<div class="quick4 q2">' + q('sched', QI.sched, '引落予定') + q('need', QI.scale, '不足と余り') + '</div>';
     const rows = list.slice(0, 3).map(x => '<div class="nrow"><span class="ndate' + (x.short ? ' bad' : '') + '">' + md(x.date) + '</span><span class="nico">' + lineIcon(x.name) + '</span><span class="nname">' + esc(x.name) + '<small>' + esc(x.bank) + '</small></span><span class="namt num">' + (x.amount == null ? '<span class="flag">未入力</span>' : '¥' + nf.format(x.amount)) + '</span></div>').join('');
     const near = '<section class="nearlist" aria-label="直近の引落予定"><div class="nhead"><h2>直近の引落予定</h2><button class="more" data-act="go-banks">すべて見る ›</button></div>' +
       '<div class="ncard">' + (rows || '<p class="sub" style="margin:0;padding:14px">これからの引き落としはありません。</p>') + '</div></section>';
@@ -1251,7 +1251,7 @@
       (cs.d2
         ? (() => { const st2 = cs.d2.start || (cs.d2.day === 'end' ? 1 : Math.min(31, cs.d2.day + 1)); const nc2 = C.nextClosing(T0, cs.d2), ns2 = C.addDays({ y: nc2.y, m: nc2.m, d: nc2.d }, 1);
             return '<div class="dl"><div class="dlhead"><b>もう一つの給料日</b><button class="small danger" data-act="close2-off">外す</button></div>' +
-              '<span class="sub">給料日の前日がもう一つの締め日です。2つの締め日のうち、近いほうまでで過不足を判定します</span>' +
+              '<span class="sub">給料日の前日がもう一つの締め日です。2つの締め日のうち、近いほうまでで不足と余りを判定します</span>' +
               '<label>日付<select id="close2-day">' + sOpts(st2) + '</select></label>' +
               '<div class="sshift"><span class="k">給料日が土日・祝日のとき</span><input type="hidden" id="close2-shift" value="' + cs.d2.shift + '"><div class="seg">' + [['before', '前の平日'], ['after', '後ろの平日'], ['none', 'ずらさない']].map(x => '<button type="button" data-sshift2="' + x[0] + '" class="' + (cs.d2.shift === x[0] ? 'on' : '') + '" aria-pressed="' + (cs.d2.shift === x[0]) + '">' + x[1] + '</button>').join('') + '</div></div>' +
               '<span class="sub">次の締め日：' + md(nc2) + '（' + C.WD[C.weekday(nc2)] + '）／次の給料日：' + md(ns2) + '（' + C.WD[C.weekday(ns2)] + '）</span></div>'; })()
