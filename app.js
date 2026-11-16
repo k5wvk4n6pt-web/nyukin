@@ -230,7 +230,7 @@
       : page === 'variable' ? outSeg + listHTML('variable', '変動費', '何月分の引落かを選んで、金額を入力します。引落が済むと次の月に進みます。1回のみの引落もここに並びます（日付が過ぎたら「済み」にまとまります）。')
       : page === 'fixed' ? outSeg + listHTML('fixed', '固定費', '金額・引落日・口座が変わった時だけ変更します。') + ((state.fixed || []).length ? '<div class="fixbackw"><button class="small" data-act="fix-back-list">' + proMark() + '固定費を過去の記録にまとめて反映</button></div>' : '')
       : page === 'settings' ? settingsHTML()
-      : page === 'flow' ? '<section id="sec-flow" aria-label="収支記録"><div class="section-head"><h2>収支記録<small class="sub">（給料日ごと）</small></h2></div><div id="flowBox">' + flowHTML() + '</div></section>'
+      : page === 'flow' ? '<section id="sec-flow" aria-label="収支"><div class="section-head"><h2>収支<small class="sub">（給料日ごと）</small></h2></div><div id="flowBox">' + flowHTML() + '</div></section>'
       : page === 'history' ? historyHTML()
       : page === 'income' ? inHTML()
       : (needsSetup() ? setupGuideHTML() : '') + summaryHTML(r, sampleBannerHTML() + (needsSetup() ? '' : backupNoticeHTML())) +
@@ -377,14 +377,14 @@
       '<h3>締め日と期間</h3><p>初めは25日始まり（締め日は毎月24日）で、確認日から次の締め日までの引落で不足と余りを判定します。1日始まり（月末締め）など、もう一つの区切りも見たいときは「口座 → 帳簿・給料日」で「＋ もう一つの給料日を追加」を押すと、2つの締め日（それぞれの給料日の前日）のうち、近いほうまでの引落で不足と余りを判定します。給料日はどちらも1〜31日と、土日・祝日に当たったときの扱い（前の平日・後ろの平日・ずらさない）を選べます。確認日（今日）から次の締め日までの引落で、不足と余りを判定します。</p>' +
       '<h3>休日のずれ</h3><p>土日・祝日・年末年始（12/31〜1/3）に当たる日は、項目ごとに「後ろにずらす／前にずらす／ずらさない」を選べます。初期値は、支出が後ろ（翌営業日）、収入が前（前営業日）です。</p>' +
       '<h3>表示モード</h3><p>標準はライトモード（明るい表示）です。「設定 → 表示」で、ライトモード・ダークモード・自動（iPhoneの設定に合わせる）を選べます。</p>' +
-      '<h3>移動と追加</h3><p>下のタブは「引落・支出・口座・収入・収支記録」です。口座のページは上の「残高｜口座の登録｜帳簿・給料日」で切り替えます。保存・通知・表示の設定は右上の歯車から開きます。支出のページは上の「変動費｜固定費」で切り替えます。口座タブの「残高」で残高を入れ直したり、口座間で移したりできます。下のタブで今のページをもう一度押すか、右下の「↑」で一番上に戻れます。支出のページでは、右下の「＋」や見出しの「＋ 追加」から、ページを移らずに追加できます。「追加して続ける」で何件も続けて入れられます。</p>' +
+      '<h3>移動と追加</h3><p>下のタブは「引落・支出・口座・収入・収支」です。口座のページは上の「残高｜口座の登録｜帳簿・給料日」で切り替えます。保存・通知・表示の設定は右上の歯車から開きます。支出のページは上の「変動費｜固定費」で切り替えます。口座タブの「残高」で残高を入れ直したり、口座間で移したりできます。下のタブで今のページをもう一度押すか、右下の「↑」で一番上に戻れます。支出のページでは、右下の「＋」や見出しの「＋ 追加」から、ページを移らずに追加できます。「追加して続ける」で何件も続けて入れられます。</p>' +
       '<h3>帳簿</h3><p>家族のお金なども、人ごとに別の帳簿で管理できます。帳簿が2つ以上あると画面上に名前が並び、タップで切り替わります。帳簿の追加は「口座 → 帳簿・給料日」からできます。バックアップは全部の帳簿をまとめて保存します。</p>' +
       '<h3>口座間の移動</h3><p>不足している口座の「ほかの口座から移す」は、その口座へ入れる移動です。それ以外の口座の「ほかの口座へ移す」は、その口座から出す移動です。ほかの帳簿の口座（自分 → 母など）や、非表示の口座とも移動できます。「ほかの口座から移す」や口座タブの「残高移動」で、実際に移したお金を記録すると、両方の残高が書きかわります。不足している口座から開くと、不足額が最初から入ります。手数料は「移動元から別に引く」か「移す金額から引く」を選べ、口座の組み合わせごとに前回の手数料を覚えます。間違えたときは、両方の口座の残高を入れ直してください。</p>' +
-      '<h3>収支記録</h3><p>下のタブの「収支記録」で、給料日ごとの収入・支出・差し引きがグラフで見られます。引落日が来た分はそのときの金額で自動で残ります。月ごとの合計・先月との差・口座ごとの合計が見られ、実際の金額と違うときは押して直せます。CSVで書き出すとExcelで開けます。</p>' +
+      '<h3>収支</h3><p>下のタブの「収支」で、給料日ごとの収入・支出・差し引きがグラフで見られます。引落日が来た分はそのときの金額で自動で残ります。月ごとの合計・先月との差・口座ごとの合計が見られ、実際の金額と違うときは押して直せます。CSVで書き出すとExcelで開けます。</p>' +
       '<h3>プレミアム（iPhoneアプリ版・買い切り）</h3><p>「設定 → 表示」でアプリの色を選べます（ブルー・ピンク・グリーン・パープル・オレンジ）。アプリの色に合わせて、画面上のロゴとホーム画面のアイコンも同じ色になります（アイコンを変えたくないときは、スイッチでオフにできます）。</p>' +
         '<h3>引落前のお知らせ（プレミアム）</h3><p>iPhoneアプリ版のプレミアムでは、「設定 → 通知」で、引落日の当日・前日・2日前などに通知でお知らせできます（時刻も選べます）。通知の予約はiPhoneの中だけで行い、外部には送りません。ロック画面に金額を出したくないときは「金額も表示する」をオフにしてください。Webアプリ版では通知は届きません。</p>' +
         '<h3>電卓</h3><p>変動費・1回のみの引落の金額欄の右にある電卓のボタンで、明細の合計などをその場で計算できます。入っている金額から計算が始まり、「この金額にする」でそのまま金額欄に入ります（小数は四捨五入します）。</p>' +
-        '<h3>何月分の引落か</h3><p>変動費は金額が毎月変わるので、各行で「○月分」を選んで入力します。金額はその月の引落にだけ使い、ほかの月は「未入力」として扱います。選んだ月の引落が済むと、自動で次の月に進んで金額が空になり、次の請求額を入れられる状態になります（済んだ分は「収支記録」に残ります。0円の項目はそのまま引き継ぎます）。</p>' +
+        '<h3>何月分の引落か</h3><p>変動費は金額が毎月変わるので、各行で「○月分」を選んで入力します。金額はその月の引落にだけ使い、ほかの月は「未入力」として扱います。選んだ月の引落が済むと、自動で次の月に進んで金額が空になり、次の請求額を入れられる状態になります（済んだ分は「収支」に残ります。0円の項目はそのまま引き継ぎます）。</p>' +
       '<h3>1回のみの引落</h3><p>年払いの保険や税金など、決まった日に1回だけ引き落とされるものは、「変動費」ページの下にある「1回のみの引落」の「＋追加」から、日付を指定して追加します。変動費ページの下に並び、日付が過ぎると「済み」にまとまります。</p>' +
       '<h3>非表示</h3><p>使わなくなった項目・口座・収入は非表示にできます。非表示にしたものは計算に含みません。</p>' +
       '<h3>データの保存</h3><p>入力した内容は変更するたびに自動で、この端末の中だけに保存され、外部には送信しません（アプリ版でiCloudがオンの場合は、あなたのiCloudにも自動でバックアップします）。入力を間違えたときは「設定 → 保存」の自動の履歴から、前の日の状態に戻せます。機種変更やブラウザのデータ削除に備えて、ときどき「ファイル」アプリ（iCloud Driveなど）にバックアップを保存してください。お知らせの間隔は変えられます。</p>' +
@@ -404,7 +404,7 @@
         H('合計に含める・非表示', '「合計に含める」を外すと、合計残高や余りの合計に入れません。使わない口座は「非表示」にすると計算に含みません。') +
         H('引落日になったら残高から引く', 'オンにすると、引落日になったとき（アプリを開いたとき）に自動で残高から引きます。残高が足りない口座は引きません。') +
         H('口座のグループ', '同じ銀行の口座などをまとめて登録すると、口座タブの「残高」で、グループの必要額と残高の合計が見られます。振込手数料を減らしたいときに便利です。')];
-      if (t === 'books') return ['帳簿・給料日', H('給料日（期間の始まり）', '給料日の前日が締め日になり、締め日までの引落で不足と余りを判定します。収支記録も給料日から区切ります。給料日が土日・祝日のときに、前の平日・後ろの平日・ずらさないを選べます。') +
+      if (t === 'books') return ['帳簿・給料日', H('給料日（期間の始まり）', '給料日の前日が締め日になり、締め日までの引落で不足と余りを判定します。収支も給料日から区切ります。給料日が土日・祝日のときに、前の平日・後ろの平日・ずらさないを選べます。') +
         H('もう一つの給料日', '「＋ もう一つの給料日を追加」で、たとえば25日始まりのほかに1日始まり（月末締め）の分も見られます。2つの締め日のうち、近いほうまでで判定します。') +
         H('帳簿', '家族のお金なども、人ごとに別の帳簿で管理できます。口座・支出・収入・残高は帳簿ごとに別々です。2冊目からはプレミアムです。')];
       return ['口座の残高', H('残高を入れる', '口座ごとの金額を押すと、その場で残高を入れ直せます。通帳やネットバンキングの今の残高を入れてください。') +
@@ -414,7 +414,7 @@
     if (pg === 'income') return ['収入', H('収入の登録', '給料などの収入を登録すると、入金日を表示します。ボーナスのような年に何回かの収入や、1回だけの臨時収入も登録できます。') +
       H('入金する口座', '口座を選んでおくと、入金日に自動でその口座の残高へ足します。') +
       H('金額が変わる収入', '変動の収入は「○月分」を選んで金額を入れ、「登録」を押します。入金日のあとに金額を直すと、口座の残高も差の分だけ直ります。')];
-    if (pg === 'flow' || pg === 'history') return ['収支記録', H('グラフ', '給料日ごとの収入（緑）と支出（赤）が並びます。棒を押すと、その期間の内訳と差し引きが見られます。') +
+    if (pg === 'flow' || pg === 'history') return ['収支', H('グラフ', '給料日ごとの収入（緑）と支出（赤）が並びます。棒を押すと、その期間の内訳と差し引きが見られます。') +
       H('明細の修正・追加', '済みの行を押すと、実際の金額に直せます。「＋ 記録を追加」で、登録していない支出も記録できます。') +
       H('書き出し', 'CSVで書き出すと、Excelで開けます（プレミアム）。')];
     if (pg === 'settings') {
@@ -893,13 +893,13 @@
 
   let cycleOffset = 0; // 0=今のサイクル（画面を開き直すと今に戻る）
   /* ---------- 締め期間ごとの収支（グラフ） ---------- */
-  let flowRange = null; // 収支記録から開いたときの期間 {from, to, off}
+  let flowRange = null; // 収支から開いたときの期間 {from, to, off}
   const inRangeDate = src => { // 期間の中で、その項目の日付（今日まで）
     if (!flowRange) return null; const tI = isoToday();
     const to = isoOf(flowRange.to) < tI ? flowRange.to : today();
     const os = C.occurrencesIn(src, flowRange.from, to, false); return os.length ? isoOf(os[os.length - 1]) : null; };
   const rangeDefault = () => { if (!flowRange) return null; const tI = isoToday(); const t = isoOf(flowRange.to); return t < tI ? t : tI; };
-  /** 収支記録から追加するとき、支出と収入を切り替えるボタン */
+  /** 収支から追加するとき、支出と収入を切り替えるボタン */
   function recSwitch(cur) {
     return '<div class="seg askind recsw" role="tablist" aria-label="記録の種類">' + [['out', '支出（引き落とし）'], ['in', '収入']].map(k => '<button type="button" role="tab" data-recsw="' + k[0] + '" class="' + (k[0] === cur ? 'on' : '') + '" aria-selected="' + (k[0] === cur) + '">' + k[1] + '</button>').join('') + '</div>';
   }
@@ -984,7 +984,7 @@
       (rowsH ? '<div class="fd-list">' + rowsH + '</div>' : '<p class="sub" style="margin:0">この期間の' + (side === 'in' ? '収入' : '支出') + 'はありません。</p>') +
       '<div class="fd-tools">' + (side === 'in' ? '<button class="small" data-act="frec-back">' + proMark() + '登録している収入を記録にまとめて反映</button>' : '') + '<button class="small" data-act="frec-csv">' + proMark() + 'CSVで書き出す</button></div></div>';
     return '<section class="flowcard"><div class="fg-legend"><span><i class="sw in"></i>収入</span><span><i class="sw out"></i>支出</span><span class="sub">棒を押すと内訳</span></div>' + svg + detail +
-      (proActive() ? '' : '<button class="fd-pronote" data-act="pro-info" data-what="過去の収支記録"><span class="probadge sm">プレミアム</span><span class="fd-pt">もっと前の期間の収支を見る</span><span class="fd-pc" aria-hidden="true">›</span></button>') +
+      (proActive() ? '' : '<button class="fd-pronote" data-act="pro-info" data-what="過去の収支"><span class="probadge sm">プレミアム</span><span class="fd-pt">もっと前の期間の収支を見る</span><span class="fd-pc" aria-hidden="true">›</span></button>') +
       '<p class="note" style="margin:0">過ぎた日は「記録」（引き落とし・収入）、今日からあとは登録している金額で計算しています。</p></section>';
   }
   /* ---------- 締め期間ごとの引落予定 ---------- */
@@ -1291,7 +1291,7 @@
     const sh = (id, v) => shiftSelect(id, v, '休日のとき').replace(SHIFT_LABEL.after, '後ろ（翌営業日）').replace(SHIFT_LABEL.before, '前（前営業日）');
     const sOpts = sel => { let o = ''; for (let i = 1; i <= 31; i++) o += '<option value="' + i + '"' + (i === sel ? ' selected' : '') + '>毎月' + i + '日</option>'; return o; };
     const T0 = today(), nc = C.nextClosing(T0, cs.d1), ns = C.addDays({ y: nc.y, m: nc.m, d: nc.d }, 1);
-    const closeCard = '<div class="card form closecard" id="closecard"><div class="shead">給料日（期間の始まり）<span class="sub">帳簿「' + esc(curBook() ? curBook().name : '') + '」の設定です。給料日の前日が締め日になり、締め日までの引落で不足と余りを判定します。収支記録も給料日から区切ります</span></div>' +
+    const closeCard = '<div class="card form closecard" id="closecard"><div class="shead">給料日（期間の始まり）<span class="sub">帳簿「' + esc(curBook() ? curBook().name : '') + '」の設定です。給料日の前日が締め日になり、締め日までの引落で不足と余りを判定します。収支も給料日から区切ります</span></div>' +
       '<div class="dl"><b>給料日</b><label>日付<select id="close-day">' + sOpts(cs.d1.start || 11) + '</select></label>' +
       '<div class="sshift"><span class="k">給料日が土日・祝日のとき</span><input type="hidden" id="close-shift" value="' + cs.d1.shift + '"><div class="seg">' + [['before', '前の平日'], ['after', '後ろの平日'], ['none', 'ずらさない']].map(x => '<button type="button" data-sshift="' + x[0] + '" class="' + (cs.d1.shift === x[0] ? 'on' : '') + '" aria-pressed="' + (cs.d1.shift === x[0]) + '">' + x[1] + '</button>').join('') + '</div></div>' +
       '<span class="sub">次の締め日：' + md(nc) + '（' + C.WD[C.weekday(nc)] + '）／次の給料日：' + md(ns) + '（' + C.WD[C.weekday(ns)] + '）</span></div>' +
@@ -1530,7 +1530,7 @@
     if (!(N.isNative && N.proStatus)) return '<p class="note"><span class="probadge">プレミアム</span> ' + esc(what) + 'は、<b>iPhoneアプリ版（App Store）のプレミアム</b>で使えます。' + (what === '引落前のお知らせ' ? '' : '<button class="linkbtn" data-act="owner-code">コードをお持ちの方</button>') + '</p>';
     if (pro.owned) return '<p class="proline ok">✓ プレミアムをご利用中です。ありがとうございます。</p>';
     return '<div class="procard"><div class="protitle"><span class="probadge">プレミアム</span>' + esc(what) + 'はプレミアムの機能です</div>' +
-      '<p class="sub">一度購入すれば、ずっと使えます（買い切り・月額料金なし）。プレミアムでは「引落前のお知らせ」「アプリの色・アイコン」「帳簿の追加（家族の分など）」「過去の収支記録」「CSVの書き出し」「まとめて反映」が使えます。同じApple IDなら機種変更しても使えます。</p>' +
+      '<p class="sub">一度購入すれば、ずっと使えます（買い切り・月額料金なし）。プレミアムでは「引落前のお知らせ」「アプリの色・アイコン」「帳簿の追加（家族の分など）」「過去の収支」「CSVの書き出し」「まとめて反映」が使えます。同じApple IDなら機種変更しても使えます。</p>' +
       '<div class="btnrow"><button class="primary" data-act="pro-buy"' + (pro.busy || (pro.checked && !pro.available) ? ' disabled' : '') + '>' + (pro.busy ? '処理中…' : pro.price ? pro.price + 'で購入する' : pro.checked ? '現在購入できません' : '確認中…') + '</button>' +
       '<button data-act="pro-restore"' + (pro.busy ? ' disabled' : '') + '>購入を復元</button></div></div>';
   }
@@ -1542,7 +1542,7 @@
     const m = $('#modal');
     const draw = () => {
       m.innerHTML = '<div class="sheet form prosheet" role="dialog" aria-modal="true" aria-labelledby="mt"><h2 id="mt"><span class="probadge">プレミアム</span> ' + esc(what) + '</h2>' +
-        proHTML(what) + (N.isNative && N.proStatus ? '' : '<p class="sub" style="margin:0">プレミアムでできること：引落前のお知らせ、アプリの色・アイコン、帳簿の追加（家族の分など）、過去の収支記録、CSVの書き出し、まとめて反映</p>') +
+        proHTML(what) + (N.isNative && N.proStatus ? '' : '<p class="sub" style="margin:0">プレミアムでできること：引落前のお知らせ、アプリの色・アイコン、帳簿の追加（家族の分など）、過去の収支、CSVの書き出し、まとめて反映</p>') +
         '<div class="btnrow"><button id="mCancel">閉じる</button></div></div>';
       m.hidden = false;
       $('#mCancel').onclick = close; m.onclick = e => { if (e.target === m) close(); };
@@ -2538,7 +2538,7 @@
   }
   function histTabs() {
     const t = meta.histType === 'in' ? 'in' : 'out';
-    return '<button class="backlink" data-act="back-flow">‹ 収支記録に戻る</button><div class="seg htabs" role="tablist">' + [['out', '引き落とし'], ['in', '収入']].map(x => '<button role="tab" data-htype="' + x[0] + '" class="' + (x[0] === t ? 'on' : '') + '" aria-selected="' + (x[0] === t) + '">' + x[1] + 'の記録</button>').join('') + '</div>';
+    return '<button class="backlink" data-act="back-flow">‹ 収支に戻る</button><div class="seg htabs" role="tablist">' + [['out', '引き落とし'], ['in', '収入']].map(x => '<button role="tab" data-htype="' + x[0] + '" class="' + (x[0] === t ? 'on' : '') + '" aria-selected="' + (x[0] === t) + '">' + x[1] + 'の記録</button>').join('') + '</div>';
   }
   function incHistoryHTML() {
     const cur = isoToday().slice(0, 7); histMonth = histMonth || cur;
@@ -2758,7 +2758,7 @@
     };
   }
   /** 固定費を、過去の月の記録にまとめて入れる（同じ日・同じ項目の記録があれば入れない。残高からは引かない） */
-  /** 入れる範囲：収支記録から開いたときは期間ごと、記録のページからは月ごと */
+  /** 入れる範囲：収支から開いたときは期間ごと、記録のページからは月ごと */
   function backRanges(ym, n) {
     const out = [];
     if (flowRange) { for (let k = 0; k < n; k++) { const d = flowData(flowRange.off - k); out.push({ from: d.from, to: d.to }); } return out; }
@@ -2832,7 +2832,7 @@
     }
     return h + '<optgroup label="その他"><option value="__other"' + (sel === '__other' ? ' selected' : '') + '>臨時・その他（自分で入力）</option></optgroup>';
   }
-  /** 収支記録の、いま選んでいる期間の明細をCSVにする（済みは記録、これからは予定） */
+  /** 収支の、いま選んでいる期間の明細をCSVにする（済みは記録、これからは予定） */
   /** CSVで書き出す期間と種類を選ぶシート */
   function openCsvSheet(side, fd) {
     if (needPro('CSVの書き出し')) return;
