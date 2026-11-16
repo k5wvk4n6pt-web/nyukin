@@ -3075,7 +3075,7 @@
       m.querySelectorAll('[data-theme-pick]').forEach(x => x.classList.toggle('on', x === b));
     }));
   }
-  $('#setBtn').addEventListener('click', () => { if (!state) return; meta.page = 'settings'; meta.reorder = null; saveMeta(); renderAll(); window.scrollTo(0, 0); });
+  $('#setBtn').addEventListener('click', () => { if (!state) { toast('設定は「空の状態ではじめる」か「サンプルデータで試してみる」を押すと開けます'); const w = document.querySelector('.welcome'); if (w) w.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; } meta.page = 'settings'; meta.reorder = null; saveMeta(); renderAll(); window.scrollTo(0, 0); });
   try { window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme); } catch (e) { /* 古い端末 */ }
   const fabTop = $('#fabTop'), fabAdd = $('#fabAdd');
   const syncFab = () => {
