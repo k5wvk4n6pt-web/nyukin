@@ -70,7 +70,7 @@
   /** その月の実際の日付（休日なら設定どおりずらす）。orig に元の日付 */
   function actual(item, y, m, isIncome) {
     const o = occurrence(item, y, m);
-    if (item.day === 'close') return o; // 締め日はすでに始期日の休日の扱いで決まっているので、さらにずらさない
+    if (item.day === 'close') return o; // 締め日はすでに給料日の休日の扱いで決まっているので、さらにずらさない
     const a = shiftDate(o, shiftMode(item, isIncome));
     return serial(a) === serial(o) ? o : Object.assign({ orig: o }, a);
   }
@@ -107,12 +107,12 @@
   function closeSettings(data) {
     const s = (data && data.settings) || {};
     const sd = Number(s.startDay);
-    // 始期日基準：締め日＝（休日でずらした）始期日の前日
+    // 給料日基準：締め日＝（休日でずらした）給料日の前日
     const d1 = Number.isInteger(sd) && sd >= 1 && sd <= 31
       ? { day: sd === 1 ? 'end' : sd - 1, shift: SHIFTS.includes(s.startShift) ? s.startShift : 'none', start: sd }
       : { day: validDayVal(s.closeDay, 10), shift: SHIFTS.includes(s.closeShift) ? s.closeShift : 'after' };
     // 期限2は「追加」したときだけ使う（初期は締め日1つ）
-    // もう一つの始期日（その前日がもう一つの締め日）。古いデータは締め日の指定のまま
+    // もう一つの給料日（その前日がもう一つの締め日）。古いデータは締め日の指定のまま
     const s2 = Number(s.close2Start), sh2 = SHIFTS.includes(s.close2Shift) ? s.close2Shift : 'none';
     const d2saved = Number.isInteger(s2) && s2 >= 1 && s2 <= 31
       ? { day: s2 === 1 ? 'end' : s2 - 1, shift: sh2, start: s2 }

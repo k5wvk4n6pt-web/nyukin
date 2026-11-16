@@ -171,7 +171,7 @@
       once: Array.isArray(d.once) ? d.once.map(x => item(x, 'once')) : [],
       balances: {},
       settings: (() => { const cs = C.closeSettings(d);
-        // 始期日がまだなければ、締め日の翌日を始期日にする（休日の扱いもそのまま引き継ぐ）
+        // 給料日がまだなければ、締め日の翌日を給料日にする（休日の扱いもそのまま引き継ぐ）
         const sd = cs.d1.start || (cs.d1.day === 'end' ? 1 : cs.d1.day + 1);
         return { startDay: sd, startShift: cs.d1.shift, closeDay: sd === 1 ? 'end' : sd - 1, closeShift: cs.d1.shift, close2On: !!cs.d2, close2Day: cs.d2saved.day, close2Shift: cs.d2saved.shift, close2Start: cs.d2saved.start || null }; })(),
       excludeSurplus: Array.isArray(d.excludeSurplus) ? d.excludeSurplus.map(String).filter(a => d.accounts.map(String).includes(a)) : [],
@@ -371,11 +371,11 @@
   function helpHTML() {
     return '<div class="help"><button class="fbopen" data-act="feedback">ご意見・ご要望を送る ›</button>' +
       '<h3>できること</h3><p>登録した毎月の引落をもとに、口座ごとに「締め日までに必要な金額」を計算します。残高を入力すると、不足している口座と余っている口座がわかります。</p>' +
-      '<h3>締め日と期間</h3><p>初めは25日始まり（締め日は毎月24日）で、確認日から次の締め日までの引落で不足と余りを判定します。1日始まり（月末締め）など、もう一つの区切りも見たいときは「口座管理 → 帳簿・始期日」で「＋ もう一つの始期日を追加」を押すと、2つの締め日（それぞれの始期日の前日）のうち、近いほうまでの引落で不足と余りを判定します。始期日はどちらも1〜31日と、土日・祝日に当たったときの扱い（前の平日・後ろの平日・ずらさない）を選べます。確認日（今日）から次の締め日までの引落で、不足と余りを判定します。</p>' +
+      '<h3>締め日と期間</h3><p>初めは25日始まり（締め日は毎月24日）で、確認日から次の締め日までの引落で不足と余りを判定します。1日始まり（月末締め）など、もう一つの区切りも見たいときは「口座管理 → 帳簿・給料日」で「＋ もう一つの給料日を追加」を押すと、2つの締め日（それぞれの給料日の前日）のうち、近いほうまでの引落で不足と余りを判定します。給料日はどちらも1〜31日と、土日・祝日に当たったときの扱い（前の平日・後ろの平日・ずらさない）を選べます。確認日（今日）から次の締め日までの引落で、不足と余りを判定します。</p>' +
       '<h3>休日のずれ</h3><p>土日・祝日・年末年始（12/31〜1/3）に当たる日は、項目ごとに「後ろにずらす／前にずらす／ずらさない」を選べます。初期値は、支出が後ろ（翌営業日）、収入が前（前営業日）です。</p>' +
       '<h3>表示モード</h3><p>標準はライトモード（明るい表示）です。「設定 → 表示」で、ライトモード・ダークモード・自動（iPhoneの設定に合わせる）を選べます。</p>' +
       '<h3>締め期間の収支</h3><p>準備ページの「締め期間の収支」に、締め日の翌日から次の締め日までの収入の合計・支出の合計・差し引きが出ます。‹ › で前後の期間も見られます。</p>' +
-      '<h3>移動と追加</h3><p>下のタブは「TOP・支出・口座残高・収入・口座管理」です。口座管理では口座・帳簿・始期日を登録します。保存・通知・表示の設定は右上の歯車から開きます。支出のページは上の「変動費｜固定費」で切り替えます。口座残高のページで残高を入れ直したり、口座間で移したりできます。下のタブで今のページをもう一度押すか、右下の「↑」で一番上に戻れます。支出のページでは、右下の「＋」や見出しの「＋ 追加」から、ページを移らずに追加できます。「追加して続ける」で何件も続けて入れられます。</p>' +
+      '<h3>移動と追加</h3><p>下のタブは「TOP・支出・口座残高・収入・口座管理」です。口座管理では口座・帳簿・給料日を登録します。保存・通知・表示の設定は右上の歯車から開きます。支出のページは上の「変動費｜固定費」で切り替えます。口座残高のページで残高を入れ直したり、口座間で移したりできます。下のタブで今のページをもう一度押すか、右下の「↑」で一番上に戻れます。支出のページでは、右下の「＋」や見出しの「＋ 追加」から、ページを移らずに追加できます。「追加して続ける」で何件も続けて入れられます。</p>' +
       '<h3>帳簿</h3><p>家族のお金なども、人ごとに別の帳簿で管理できます。画面上の名前をタップすると切り替わり、「＋ 帳簿」で追加できます。バックアップは全部の帳簿をまとめて保存します。</p>' +
       '<h3>口座間の移動</h3><p>不足している口座の「ほかの口座から移す」は、その口座へ入れる移動です。それ以外の口座の「ほかの口座へ移す」は、その口座から出す移動です。ほかの帳簿の口座（自分 → 母など）や、非表示の口座とも移動できます。準備ページの「ほかの口座から移す」「口座間で移す」で、実際に移したお金を記録すると、両方の残高が書きかわります。不足している口座から開くと、不足額が最初から入ります。手数料は「移動元から別に引く」か「移す金額から引く」を選べ、口座の組み合わせごとに前回の手数料を覚えます。間違えたときは、両方の口座の残高を入れ直してください。</p>' +
       '<h3>引き落としの記録</h3><p>下のタブの「記録」に、引落日が来た分がそのときの金額で自動で残ります。月ごとの合計・先月との差・口座ごとの合計が見られ、実際の金額と違うときは押して直せます。CSVで書き出すとExcelで開けます。</p>' +
@@ -556,7 +556,7 @@
       P('need', '<section class="summary" id="sec-top" aria-label="過不足"><div class="acchead">' + QI.scale.replace('<svg ', '<svg class="pico" ') + '過不足<button class="pclose" data-panel-btn="need" aria-label="過不足を閉じる">閉じる ✕</button></div>' + shortboxHTML(r) + '</section>') +
       P('due', dueHTML(r)) +
       P('sched', '<div id="schedNotice">' + prepNoticeHTML(r) + '</div><div class="pphead"><span>引落予定</span></div><div id="schedBox">' + schedHTML() + '</div>') +
-      P('flow', '<div class="pphead"><span>収支記録<small class="sub">（始期日ごと）</small></span><button class="pclose" data-panel-btn="flow" aria-label="収支記録を閉じる">閉じる ✕</button></div><div id="flowBox">' + flowHTML() + '</div>') +
+      P('flow', '<div class="pphead"><span>収支記録<small class="sub">（給料日ごと）</small></span><button class="pclose" data-panel-btn="flow" aria-label="収支記録を閉じる">閉じる ✕</button></div><div id="flowBox">' + flowHTML() + '</div>') +
       '';
   }
 
@@ -916,8 +916,8 @@
         '<text x="' + cx + '" y="' + (H - B + 15) + '" class="fg-lab" text-anchor="middle">' + md(d.from) + '</text>' +
         '<text x="' + cx + '" y="' + (H - B + 28) + '" class="fg-sub" text-anchor="middle">' + (d.off === 0 ? '今回' : d.off === -1 ? '前回' : d.off === 1 ? '次回' : '') + '</text></g>';
     });
-    g += '<text x="' + (L - 2) + '" y="' + (H - B + 15) + '" class="fg-ax fg-axlab" text-anchor="end">始期日</text>';
-    const svg = '<svg class="flowchart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="始期日ごとの収入と支出">' + g + '</svg>';
+    g += '<text x="' + (L - 2) + '" y="' + (H - B + 15) + '" class="fg-ax fg-axlab" text-anchor="end">給料日</text>';
+    const svg = '<svg class="flowchart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="給料日ごとの収入と支出">' + g + '</svg>';
     const d = data.find(x => x.off === flowSel) || data.find(x => x.off === 0);
     const neg = d.diff < 0;
     const side = flowSide === 'in' ? 'in' : 'out';
@@ -1212,7 +1212,7 @@
   }
 
   const STABS = [['backup', '保存'], ['notify', '通知'], ['view', '表示']];
-  const ATABS = [['acc', '口座'], ['books', '帳簿・始期日']];
+  const ATABS = [['acc', '口座'], ['books', '帳簿・給料日']];
   function settingsHTML() {
     const isAcc = meta.page === 'accounts';
     const TABS = isAcc ? ATABS : STABS;
@@ -1232,18 +1232,18 @@
     const sh = (id, v) => shiftSelect(id, v, '休日のとき').replace(SHIFT_LABEL.after, '後ろ（翌営業日）').replace(SHIFT_LABEL.before, '前（前営業日）');
     const sOpts = sel => { let o = ''; for (let i = 1; i <= 31; i++) o += '<option value="' + i + '"' + (i === sel ? ' selected' : '') + '>毎月' + i + '日</option>'; return o; };
     const T0 = today(), nc = C.nextClosing(T0, cs.d1), ns = C.addDays({ y: nc.y, m: nc.m, d: nc.d }, 1);
-    const closeCard = '<div class="card form closecard" id="closecard"><div class="shead">始期日（期間の始まり）<span class="sub">帳簿「' + esc(curBook() ? curBook().name : '') + '」の設定です。始期日の前日が締め日になり、締め日までの引落で不足と余りを判定します。収支記録も始期日から区切ります</span></div>' +
-      '<div class="dl"><b>始期日</b><label>日付<select id="close-day">' + sOpts(cs.d1.start || 11) + '</select></label>' +
-      '<div class="sshift"><span class="k">始期日が土日・祝日のとき</span><input type="hidden" id="close-shift" value="' + cs.d1.shift + '"><div class="seg">' + [['before', '前の平日'], ['after', '後ろの平日'], ['none', 'ずらさない']].map(x => '<button type="button" data-sshift="' + x[0] + '" class="' + (cs.d1.shift === x[0] ? 'on' : '') + '" aria-pressed="' + (cs.d1.shift === x[0]) + '">' + x[1] + '</button>').join('') + '</div></div>' +
-      '<span class="sub">次の締め日：' + md(nc) + '（' + C.WD[C.weekday(nc)] + '）／次の始期日：' + md(ns) + '（' + C.WD[C.weekday(ns)] + '）</span></div>' +
+    const closeCard = '<div class="card form closecard" id="closecard"><div class="shead">給料日（期間の始まり）<span class="sub">帳簿「' + esc(curBook() ? curBook().name : '') + '」の設定です。給料日の前日が締め日になり、締め日までの引落で不足と余りを判定します。収支記録も給料日から区切ります</span></div>' +
+      '<div class="dl"><b>給料日</b><label>日付<select id="close-day">' + sOpts(cs.d1.start || 11) + '</select></label>' +
+      '<div class="sshift"><span class="k">給料日が土日・祝日のとき</span><input type="hidden" id="close-shift" value="' + cs.d1.shift + '"><div class="seg">' + [['before', '前の平日'], ['after', '後ろの平日'], ['none', 'ずらさない']].map(x => '<button type="button" data-sshift="' + x[0] + '" class="' + (cs.d1.shift === x[0] ? 'on' : '') + '" aria-pressed="' + (cs.d1.shift === x[0]) + '">' + x[1] + '</button>').join('') + '</div></div>' +
+      '<span class="sub">次の締め日：' + md(nc) + '（' + C.WD[C.weekday(nc)] + '）／次の給料日：' + md(ns) + '（' + C.WD[C.weekday(ns)] + '）</span></div>' +
       (cs.d2
         ? (() => { const st2 = cs.d2.start || (cs.d2.day === 'end' ? 1 : Math.min(31, cs.d2.day + 1)); const nc2 = C.nextClosing(T0, cs.d2), ns2 = C.addDays({ y: nc2.y, m: nc2.m, d: nc2.d }, 1);
-            return '<div class="dl"><div class="dlhead"><b>もう一つの始期日</b><button class="small danger" data-act="close2-off">外す</button></div>' +
-              '<span class="sub">始期日の前日がもう一つの締め日です。2つの締め日のうち、近いほうまでで過不足を判定します</span>' +
+            return '<div class="dl"><div class="dlhead"><b>もう一つの給料日</b><button class="small danger" data-act="close2-off">外す</button></div>' +
+              '<span class="sub">給料日の前日がもう一つの締め日です。2つの締め日のうち、近いほうまでで過不足を判定します</span>' +
               '<label>日付<select id="close2-day">' + sOpts(st2) + '</select></label>' +
-              '<div class="sshift"><span class="k">始期日が土日・祝日のとき</span><input type="hidden" id="close2-shift" value="' + cs.d2.shift + '"><div class="seg">' + [['before', '前の平日'], ['after', '後ろの平日'], ['none', 'ずらさない']].map(x => '<button type="button" data-sshift2="' + x[0] + '" class="' + (cs.d2.shift === x[0] ? 'on' : '') + '" aria-pressed="' + (cs.d2.shift === x[0]) + '">' + x[1] + '</button>').join('') + '</div></div>' +
-              '<span class="sub">次の締め日：' + md(nc2) + '（' + C.WD[C.weekday(nc2)] + '）／次の始期日：' + md(ns2) + '（' + C.WD[C.weekday(ns2)] + '）</span></div>'; })()
-        : '<div class="dl"><button class="small" data-act="close2-on">＋ もう一つの始期日を追加</button><span class="sub">例：25日始まりのほかに、1日始まり（月末締め）の分も見ておきたいとき</span></div>') + '</div>';
+              '<div class="sshift"><span class="k">給料日が土日・祝日のとき</span><input type="hidden" id="close2-shift" value="' + cs.d2.shift + '"><div class="seg">' + [['before', '前の平日'], ['after', '後ろの平日'], ['none', 'ずらさない']].map(x => '<button type="button" data-sshift2="' + x[0] + '" class="' + (cs.d2.shift === x[0] ? 'on' : '') + '" aria-pressed="' + (cs.d2.shift === x[0]) + '">' + x[1] + '</button>').join('') + '</div></div>' +
+              '<span class="sub">次の締め日：' + md(nc2) + '（' + C.WD[C.weekday(nc2)] + '）／次の給料日：' + md(ns2) + '（' + C.WD[C.weekday(ns2)] + '）</span></div>'; })()
+        : '<div class="dl"><button class="small" data-act="close2-on">＋ もう一つの給料日を追加</button><span class="sub">例：25日始まりのほかに、1日始まり（月末締め）の分も見ておきたいとき</span></div>') + '</div>';
     if (st === 'books') body = body + closeCard;
     return '<section id="sec-settings" aria-label="' + (isAcc ? '口座管理' : '設定') + '"><div class="section-head"><h2>' + (isAcc ? '口座管理' : '設定') + '</h2></div>' + seg + '<div class="stab-body">' + body + '</div></section>';
   }
@@ -1698,13 +1698,13 @@
         const p = { startDay: sd, startShift: sh0, closeDay: sd === 1 ? 'end' : sd - 1, closeShift: sh0 };
         if ($('#close2-day')) { const s2 = Number($('#close2-day').value); p.close2Start = s2; p.close2Day = s2 === 1 ? 'end' : s2 - 1; p.close2Shift = validShift($('#close2-shift').value, 'none'); }
         setS(p);
-        toast('始期日：' + state.settings.startDay + '日・休みなら' + { before: '前の平日', after: '後ろの平日', none: 'ずらさない' }[state.settings.startShift] + '（締め日はその前日）' + (state.settings.close2On ? '／もう一つの始期日：' + state.settings.close2Start + '日' : ''));
+        toast('給料日：' + state.settings.startDay + '日・休みなら' + { before: '前の平日', after: '後ろの平日', none: 'ずらさない' }[state.settings.startShift] + '（締め日はその前日）' + (state.settings.close2On ? '／もう一つの給料日：' + state.settings.close2Start + '日' : ''));
       };
       main.querySelectorAll('[data-sshift]').forEach(b => b.addEventListener('click', () => { $('#close-shift').value = b.dataset.sshift; upd(); }));
       main.querySelectorAll('[data-sshift2]').forEach(b => b.addEventListener('click', () => { $('#close2-shift').value = b.dataset.sshift2; upd(); }));
       ['#close-day', '#close-shift', '#close2-day', '#close2-shift'].forEach(id => { const el = $(id); if (el) el.addEventListener('change', upd); });
-      const on = main.querySelector('[data-act="close2-on"]'); if (on) on.addEventListener('click', () => { const s2 = cur().d2saved.start || 1; setS({ close2On: true, close2Start: s2, close2Day: s2 === 1 ? 'end' : s2 - 1 }); toast('もう一つの始期日を追加しました（' + s2 + '日始まり）'); });
-      const off = main.querySelector('[data-act="close2-off"]'); if (off) off.addEventListener('click', () => { setS({ close2On: false }); toast('もう一つの始期日を外しました'); });
+      const on = main.querySelector('[data-act="close2-on"]'); if (on) on.addEventListener('click', () => { const s2 = cur().d2saved.start || 1; setS({ close2On: true, close2Start: s2, close2Day: s2 === 1 ? 'end' : s2 - 1 }); toast('もう一つの給料日を追加しました（' + s2 + '日始まり）'); });
+      const off = main.querySelector('[data-act="close2-off"]'); if (off) off.addEventListener('click', () => { setS({ close2On: false }); toast('もう一つの給料日を外しました'); });
     }
     main.querySelectorAll('[data-stab]').forEach(b => b.addEventListener('click', () => { if (meta.page === 'accounts') meta.atab = b.dataset.stab; else meta.stab = b.dataset.stab; meta.reorder = null; saveMeta(); renderAll(); window.scrollTo(0, 0); }));
     // 支出の追加
