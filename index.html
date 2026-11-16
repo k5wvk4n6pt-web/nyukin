@@ -1191,8 +1191,10 @@ input[type="date"]::-webkit-date-and-time-value, input[type="month"]::-webkit-da
 .helptoc button:last-child { border-bottom: 0; }
 .helptoc .ht-ar { color: var(--muted); font-size: 18px; }
 /* 暗い表示でも、青枠の白い金額欄の文字は濃い色にする */
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .hc-amt { color: #18223A; } }
-:root[data-theme="dark"] .hc-amt { color: #18223A; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .hc-amt { color: #18223A; background: #E3E9F2; } :root:not([data-theme="light"]) .herocard { background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 50%, #1A2130), color-mix(in srgb, var(--accent) 32%, #10141C)); box-shadow: none; } }
+:root[data-theme="dark"] .hc-amt { color: #18223A; background: #E3E9F2; }
+/* 暗い表示では青枠の背景を落ち着いた色にする（まぶしくしない） */
+:root[data-theme="dark"] .herocard { background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 50%, #1A2130), color-mix(in srgb, var(--accent) 32%, #10141C)); box-shadow: none; }
 .fd-lh { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px; }
 .fd-lh b { color: var(--navy); font-size: 15px; }
 .fd-lh .sub { font-size: 12px; }
