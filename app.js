@@ -616,7 +616,7 @@
     const closeSum = w0 ? (r.totals[w0.key] || 0) : 0;
     const hero = '<button class="herocard' + (meta.prepPanel === 'due' ? ' on' : '') + '" data-panel-btn="due" aria-expanded="' + (meta.prepPanel === 'due') + '">' +
       '<span class="hc-l"><span class="hc-lab">次の引落日' + (next ? '<b class="hc-date num">' + md(next.date) + '</b>' : '') + '</span><span class="hc-days num">' + (days == null ? '—' : days === 0 ? '今日' : '<small class="pre">あと</small>' + days + '<small>日</small>') + '</span></span>' +
-      '<span class="hc-r"><span class="hc-lab">' + nearLab + st + '</span><span class="hc-amt num">¥' + nf.format(nearAmt) + '</span>' +
+      '<span class="hc-r"><span class="hc-lab">' + nearLab + st + '</span>' + (() => { const t = '¥' + nf.format(nearAmt); const L = t.length; return '<span class="hc-amt num' + (L >= 11 ? ' l3' : L >= 9 ? ' l2' : L >= 8 ? ' l1' : '') + '">' + t + '</span>'; })() +
       '</span>' +
       '<span class="hc-chev" aria-hidden="true">›</span></button>';
     const q = (k, ico, lab) => '<button class="qbtn' + (meta.prepPanel === k ? ' on' : '') + '" ' + (k === 'manage' ? 'data-act="go-variable"' : 'data-panel-btn="' + k + '" aria-expanded="' + (meta.prepPanel === k) + '"') + '>' + ico + '<span>' + lab + '</span></button>';
