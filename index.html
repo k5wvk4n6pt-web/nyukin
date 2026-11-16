@@ -953,9 +953,10 @@ body.pg-variable .fab.add, body.pg-fixed .fab.add, #sec-variable .section-head b
 .lg-w { background: color-mix(in srgb, var(--accent) 70%, #4FB4FF); -webkit-mask-image: url("logo-wave.png"); mask-image: url("logo-wave.png"); }
 :root[data-color] .lg-w { background: color-mix(in srgb, var(--accent) 85%, #fff); }
 .lg-t { background: var(--navy); -webkit-mask-image: url("logo-text.png"); mask-image: url("logo-text.png"); }
-:root[data-theme="dark"] .lg-o { background: #fff; }
-:root[data-theme="dark"] .lg-t { background: #12255A; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .lg-t { background: #12255A; } }
+/* 暗い表示：白いふちをやめて文字を明るくし、下線と文字が離れて見えるようにする */
+:root[data-theme="dark"] .lg-o { display: none; }
+:root[data-theme="dark"] .lg-t { background: #EEF3FC; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .lg-o { display: none; } :root:not([data-theme="light"]) .lg-t { background: #EEF3FC; } }
 .surbrk { margin-top: 10px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
 .surbrk summary { cursor: pointer; list-style: none; padding: 10px 14px; font-size: 14px; font-weight: 700; color: var(--accent); }
 .surbrk summary::-webkit-details-marker { display: none; }
