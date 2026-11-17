@@ -526,7 +526,7 @@
     if (showAll) {
       const l2 = r.banks.filter(b => b.balance != null && b.shortAll > 0).sort((a, b) => b.shortAll - a.shortAll);
       second = '<div class="sb2' + (r.shortTotalAll > 0 ? ' short' : '') + '"><div class="sb2-h"><span>' + md(r.endAll) + '締めまで見ると</span><b class="num">' +
-        (r.shortTotalAll > 0 ? '入金が必要 ¥' + nf.format(r.shortTotalAll) : '入金は不要') + '</b></div>' +
+        (r.shortTotalAll > 0 ? '入金必要額 ¥' + nf.format(r.shortTotalAll) : '入金は不要') + '</b></div>' +
         (l2.length ? '<div class="surlist">' + l2.map(b => row(b, '残高 ' + nf.format(b.balance) + ' − 引落 ' + nf.format(b.total), nf.format(b.shortAll), 'neg')).join('') + '</div>' : '') + '</div>';
     }
     return '<div id="shortbox"><div class="tots">' + short + plus + '</div>' + second + both + detail + miss + '</div>';
@@ -676,14 +676,17 @@
     const next = list[0];
     const days = next ? Math.round((new Date(next.date.y, next.date.m - 1, next.date.d) - new Date(T.y, T.m - 1, T.d)) / 864e5) : null;
     // 右側：直近の引落日までに必要な金額（その日までの引き落とし）と、その日までに残高が足りるか
-    let nearAmt = 0, nearShort = false, nearMiss = false;
+    let nearAmt = 0, nearShort = false, nearMiss = false, nearLater = false;
     if (next) {
       const nd = serial2(next.date);
       nearAmt = list.filter(x => serial2(x.date) <= nd).reduce((a, x) => a + (x.amount || 0), 0);
       if (!afterClose) for (const b of r.banks) {
-        const sum = r.windows.flatMap(w => b.lines[w.key]).filter(l => l.amount && serial2(l.date) >= t0 && serial2(l.date) <= nd).reduce((a, l) => a + l.amount, 0);
+        const pick = ws => ws.flatMap(w => b.lines[w.key]).filter(l => l.amount && serial2(l.date) >= t0 && serial2(l.date) <= nd).reduce((a, l) => a + l.amount, 0);
+        const sum = pick(r.windows);
         if (!sum) continue;
-        if (b.balance == null) nearMiss = true; else if (sum > b.balance) nearShort = true;
+        if (b.balance == null) { nearMiss = true; continue; }
+        // 近いほうの締め日までで足りないときは「不足あり」。そのあと（給料日のあと）の分で足りないだけなら「入金要」
+        if (pick(r.windows.filter(w => w.inClose)) > b.balance) nearShort = true; else if (sum > b.balance) nearLater = true;
       }
       // 締め日のあとの引き落とし：今の残高で足りない口座があれば「入金要」
       if (afterClose) {
@@ -691,7 +694,7 @@
         for (const k of Object.keys(by)) { const bal = (state.balances[k] || {}).amount; if (bal != null && by[k] > bal) nearShort = true; }
       }
     }
-    const st = !next ? '' : afterClose ? (nearShort ? '<span class="pst warn">入金要</span>' : '') : nearShort ? '<span class="pst bad">不足あり</span>' : nearMiss ? '<span class="pst warn">未入力</span>' : '<span class="pst ok">準備OK</span>';
+    const st = !next ? '' : afterClose ? (nearShort ? '<span class="pst warn">入金要</span>' : '') : nearShort ? '<span class="pst bad">不足あり</span>' : nearLater ? '<span class="pst warn">入金要</span>' : nearMiss ? '<span class="pst warn">未入力</span>' : '<span class="pst ok">準備OK</span>';
     const nearLab = next && afterClose ? '引落額' : '必要な金額'; // 日付は左に出ているので書かない
     const closeSum = w0 ? (r.totals[w0.key] || 0) : 0;
     const hero = '<button class="herocard' + (meta.prepPanel === 'due' ? ' on' : '') + '" data-panel-btn="due" aria-expanded="' + (meta.prepPanel === 'due') + '">' +
