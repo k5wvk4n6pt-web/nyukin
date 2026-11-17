@@ -829,7 +829,8 @@
       main.querySelectorAll('[data-panel-btn]').forEach(x => { const on = x.dataset.panelBtn === meta.prepPanel; x.classList.toggle('on', on); x.setAttribute('aria-expanded', on); });
       const hcl = main.querySelector('.herocard .hc-chev small'); if (hcl) hcl.textContent = meta.prepPanel === 'due' ? '閉じる' : '口座ごとの内訳を見る';
       syncPanelPage();
-      const op = main.querySelector('.ppanel:not([hidden])'); if (op) op.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      // 閉じたとき（もう一度押した・「閉じる」）は画面を動かさない。開いたときだけ、開いた中身が見えるようにする
+      if (meta.prepPanel === k) { const op = main.querySelector('.ppanel:not([hidden])'); if (op) op.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
     }); });
   }
 
