@@ -1212,6 +1212,9 @@ input[type="date"]::-webkit-date-and-time-value, input[type="month"]::-webkit-da
 /* 暗い表示：引き出しの枠線を青枠の色に合わせる */
 :root[data-theme="dark"] #prepTop .herocard.on + .duedrop { border-color: color-mix(in srgb, var(--accent) 50%, #1A2130); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) #prepTop .herocard.on + .duedrop { border-color: color-mix(in srgb, var(--accent) 50%, #1A2130); } }
+.duecard .dc-need.soft { padding: 7px 10px; border-radius: 10px; text-align: center; background: color-mix(in srgb, #E8A23A 16%, transparent); color: #8A5A10; }
+:root[data-theme="dark"] .duecard .dc-need.soft { color: #F2C77A; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .duecard .dc-need.soft { color: #F2C77A; } }
 .fd-lh { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px; }
 .fd-lh b { color: var(--navy); font-size: 15px; }
 .fd-lh .sub { font-size: 12px; }

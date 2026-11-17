@@ -710,16 +710,17 @@
       const sum = lines.reduce((a2, l) => a2 + (l.amount || 0), 0); total += sum;
       const bal = (state.balances[b.name] || {}).amount; const has = bal != null; const rest = has ? bal - sum : null;
       const unent = lines.some(l => l.amount == null);
-      const st = !has ? '<span class="pst warn">残高未入力</span>' : after ? '' : rest < 0 ? '<span class="pst bad">不足あり</span>' : '<span class="pst ok">準備OK</span>';
+      const st = !has ? '<span class="pst warn">残高未入力</span>' : after ? (rest < 0 ? '<span class="pst warn">このままだと不足</span>' : '<span class="pst ok">今の残高で足ります</span>') : rest < 0 ? '<span class="pst bad">不足あり</span>' : '<span class="pst ok">準備OK</span>';
       return { short: has && rest < 0, html: '<div class="duecard' + (has && rest < 0 && !after ? ' bad' : '') + '"><div class="dc-head"><b>' + esc(b.name) + '</b>' + st + '</div>' +
         '<div class="dc-list">' + lines.map(l => '<div class="dc-row nd"><span class="nico">' + lineIcon(l.name) + '</span><span class="nname">' + esc(l.name.replace(/（\d+月分は未入力）$/, '')) + '</span><span class="namt num">' + (l.amount == null ? '<span class="flag">未入力</span>' : '¥' + nf.format(l.amount)) + '</span></div>').join('') + '</div>' +
         '<div class="dc-flow"><span><small>今の残高</small><b class="num">' + (has ? yenS(bal) : '未入力') + '</b></span><span class="ar" aria-hidden="true">−</span><span><small>引落</small><b class="num">¥' + nf.format(sum) + (unent ? '＋未入力' : '') + '</b></span><span class="ar" aria-hidden="true">＝</span>' +
         '<span class="' + (has && rest < 0 ? 'bad' : '') + '"><small>引落後の残高</small><b class="num">' + (has ? yenS(rest) : '—') + '</b></span></div>' +
-        (has && rest < 0 && !after ? '<div class="dc-need">¥' + nf.format(-rest) + ' の入金が必要です</div>' : '') + '</div>' };
+        (has && rest < 0 && !after ? '<div class="dc-need">¥' + nf.format(-rest) + ' の入金が必要です</div>' : '') +
+        (has && rest < 0 && after ? '<div class="dc-need soft">今の残高のままだと ¥' + nf.format(-rest) + ' 足りません</div>' : '') + '</div>' };
     }).filter(Boolean).sort((x, y) => (y.short - x.short));
     const lab = after ? mdw(ndDate) + 'の引き落とし' : (nd === t0 ? '今日（' + md(ndDate) + '）' : mdw(ndDate)) + 'の引き落とし';
     return '<div class="dc-sec"><div class="dc-sech"><b>' + lab + '</b><span class="num">合計 ¥' + nf.format(total) + '</span></div>' + cards.map(c => c.html).join('') +
-      (after ? '<p class="note" style="margin:0">締め日までの引き落としは終わっています。給料などの入金で残高が変わるため、足りるかの判定はしていません。</p>' : '') + '</div>';
+      (after ? '<p class="note" style="margin:0">締め日までの引き落としは終わっています。この引き落としは次の期間の分なので、「不足と余り」の計算にはまだ入れていません。給料などの入金があれば足りる場合もあります。</p>' : '') + '</div>';
   }
   function yenS(v) { return (v < 0 ? '−' : '') + '¥' + nf.format(Math.abs(v)); }
   function dueHTML(r) {
