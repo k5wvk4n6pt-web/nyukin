@@ -1196,6 +1196,13 @@ input[type="date"]::-webkit-date-and-time-value, input[type="month"]::-webkit-da
 :root[data-theme="dark"] .hc-amt { color: #18223A; background: #E3E9F2; }
 /* 暗い表示では青枠の背景を落ち着いた色にする（まぶしくしない） */
 :root[data-theme="dark"] .herocard { background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 50%, #1A2130), color-mix(in srgb, var(--accent) 32%, #10141C)); box-shadow: none; }
+/* 青枠を押したときの中身：青枠とつながった引き出しのように開く */
+.herocard.on { outline: none; border-radius: 22px 22px 0 0; position: relative; z-index: 1; }
+.duedrop { margin: 0 0 14px; padding: 6px 14px 16px; border-radius: 0 0 22px 22px; background: color-mix(in srgb, var(--accent) 9%, var(--surface)); border: 2px solid color-mix(in srgb, var(--accent) 55%, transparent); border-top: 0; box-shadow: 0 10px 22px color-mix(in srgb, var(--accent) 14%, transparent); }
+#prepTop .herocard.on + .duedrop { margin-top: 0; }
+.duedrop .pphead { margin-top: 6px; }
+.duedrop .pphead > span { color: var(--accent); }
+.duedrop .duecard { background: var(--surface); }
 .fd-lh { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px; }
 .fd-lh b { color: var(--navy); font-size: 15px; }
 .fd-lh .sub { font-size: 12px; }

@@ -622,7 +622,6 @@
     const pt = prepTopHTML(r);
     return '<div id="prepTop">' + pt.top + '</div>' + (notices || '') +
       P('need', '<section class="summary" id="sec-top" aria-label="不足と余り"><div class="acchead">' + QI.scale.replace('<svg ', '<svg class="pico" ') + '不足と余り<button class="pclose" data-panel-btn="need" aria-label="不足と余りを閉じる">閉じる ✕</button></div>' + shortboxHTML(r) + '</section>') +
-      P('due', dueHTML(r)) +
       P('sched', '<div id="schedNotice">' + prepNoticeHTML(r) + '</div><div class="pphead"><span>引落予定</span></div><div id="schedBox">' + schedHTML() + '</div>') +
       '';
   }
@@ -692,7 +691,9 @@
     const rows = list.slice(0, 3).map(x => '<div class="nrow"><span class="ndate' + (x.short ? ' bad' : '') + '">' + md(x.date) + '</span><span class="nico">' + lineIcon(x.name) + '</span><span class="nname">' + esc(x.name) + '<small>' + esc(x.bank) + '</small></span><span class="namt num">' + (x.amount == null ? '<span class="flag">未入力</span>' : '¥' + nf.format(x.amount)) + '</span></div>').join('');
     const near = '<section class="nearlist" aria-label="直近の引落予定"><div class="nhead"><h2>直近の引落予定</h2><button class="more" data-act="go-banks">すべて見る ›</button></div>' +
       '<div class="ncard">' + (rows || '<p class="sub" style="margin:0;padding:14px">これからの引き落としはありません。</p>') + '</div></section>';
-    return { top: hero + quick, near };
+    // 青枠を押したときの中身は、青枠のすぐ下につなげて開く（下の「引落予定」などと見分けやすく）
+    const drop = '<div class="ppanel duedrop" data-panel="due"' + (meta.prepPanel === 'due' ? '' : ' hidden') + '>' + dueHTML(r) + '</div>';
+    return { top: hero + drop + quick, near };
   }
   /** 「○日までに必要な金額」を押したとき：期限までの引き落としを口座ごとに、準備OK／不足ありで表示 */
   /** 直近の引落日の分を、口座ごとに（何がいくら引かれて、残高はいくらになるか） */
