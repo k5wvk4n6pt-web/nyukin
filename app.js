@@ -685,7 +685,7 @@
       '<span class="hc-l"><span class="hc-lab">次の引落日' + (next ? '<b class="hc-date num">' + md(next.date) + '</b>' : '') + '</span><span class="hc-days num">' + (days == null ? '—' : days === 0 ? '今日' : '<small class="pre">あと</small>' + days + '<small>日</small>') + '</span></span>' +
       '<span class="hc-r"><span class="hc-lab">' + nearLab + st + '</span>' + (() => { const t = '¥' + nf.format(nearAmt); const L = t.length; return '<span class="hc-amt num' + (L >= 11 ? ' l3' : L >= 9 ? ' l2' : L >= 8 ? ' l1' : '') + '">' + t + '</span>'; })() +
       '</span>' +
-      '<span class="hc-chev" aria-hidden="true">›</span></button>';
+      '<span class="hc-chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9.5l6 6 6-6"/></svg><small>' + (meta.prepPanel === 'due' ? '閉じる' : '口座ごとの内訳を見る') + '</small></span></button>';
     const q = (k, ico, lab) => '<button class="qbtn' + (meta.prepPanel === k ? ' on' : '') + '" ' + (k === 'manage' ? 'data-act="go-variable"' : 'data-panel-btn="' + k + '" aria-expanded="' + (meta.prepPanel === k) + '"') + '>' + ico + '<span>' + lab + '</span></button>';
     const quick = '<div class="quick4 q2">' + q('sched', QI.sched, '引落予定') + q('need', QI.scale, '不足と余り') + '</div>';
     const rows = list.slice(0, 3).map(x => '<div class="nrow"><span class="ndate' + (x.short ? ' bad' : '') + '">' + md(x.date) + '</span><span class="nico">' + lineIcon(x.name) + '</span><span class="nname">' + esc(x.name) + '<small>' + esc(x.bank) + '</small></span><span class="namt num">' + (x.amount == null ? '<span class="flag">未入力</span>' : '¥' + nf.format(x.amount)) + '</span></div>').join('');
@@ -736,7 +736,7 @@
         '<div class="dc-sum"><span>引落 <b class="num">¥' + nf.format(b.due) + '</b></span><span>残高 <b class="num">' + (b.balance == null ? '未入力' : '¥' + nf.format(b.balance)) + '</b></span>' +
         (b.balance == null ? '' : b.shortfall > 0 ? '<span class="bad">不足 <b class="num">¥' + nf.format(b.shortfall) + '</b></span>' : '<span class="ok">余り <b class="num">¥' + nf.format(b.surplus) + '</b></span>') + '</div></div>';
     }).join('');
-    return '<div class="pphead"><span>引き落としと残高</span><button class="pclose" data-panel-btn="due" aria-label="閉じる">閉じる ✕</button></div>' + near +
+    return '<div class="pphead"><span>引き落としと残高</span></div>' + near +
       '<div class="dc-sech dc-sech2"><b>' + by + '締めまでの引き落とし（口座ごと）</b></div>' +
       (cards || '<p class="sub" style="margin:0;padding:8px 2px">' + by + 'までの引き落としはありません。</p>') +
       (cards ? '<p class="note" style="margin:0">口座ごとに、' + by + 'までの引き落としと今の残高をくらべています。今日「引落完了」にした分は入りません。</p>' : '');
@@ -827,6 +827,7 @@
       if (was === 'money' || meta.prepPanel === 'money') { renderKeep(); window.scrollTo(0, 0); return; }
       main.querySelectorAll('.ppanel').forEach(p => { p.hidden = p.dataset.panel !== meta.prepPanel; });
       main.querySelectorAll('[data-panel-btn]').forEach(x => { const on = x.dataset.panelBtn === meta.prepPanel; x.classList.toggle('on', on); x.setAttribute('aria-expanded', on); });
+      const hcl = main.querySelector('.herocard .hc-chev small'); if (hcl) hcl.textContent = meta.prepPanel === 'due' ? '閉じる' : '口座ごとの内訳を見る';
       syncPanelPage();
       const op = main.querySelector('.ppanel:not([hidden])'); if (op) op.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }); });
