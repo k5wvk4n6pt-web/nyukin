@@ -440,7 +440,7 @@
         H('ファイルのバックアップ', '機種変更やデータの削除に備えて、「ファイル」アプリ（iCloud Driveなど）に保存できます。')];
     }
     return ['引落', H('いちばん上の枠', '左に次の引落日まであと何日か、右に引落日までに口座へ入れておく必要な金額が出ます。準備ができていれば「準備OK」と出ます。押すと、口座ごとの今の残高・引落額・引落後の残高が見られます。') +
-      H('引落予定', '締め日までの引落が日付順に並びます。‹ › で前後の期間も見られます。引落が済んだら「引落完了」で残高から引けます。') +
+      H('引落予定', '締め日までの引落が日付順に並びます。‹ › で前後の期間も見られます。✎の付いた金額を押すと、その場で金額を入れたり直したりできます。引落が済んだら「引落完了」で残高から引けます。') +
       H('不足と余り', '口座ごとに、締め日までにいくら足りないか・余っているかがわかります。不足している口座には「ほかの口座から移す」で移せます。')];
   }
   function showHelp(key) {
@@ -951,8 +951,9 @@
         if (it.hidden || hiddenAcc.has(it.account) || !state.accounts.includes(it.account)) continue;
         for (const o of C.occurrencesIn(it, from, cy.to, false)) {
           const amt = C.amountFor(it, o); if (amt === 0) continue;
-          if (amt == null) { unentered++; items.push({ name: it.name, account: it.account, date: isoOf(o), amount: null, past: false, src: it.id }); continue; }
-          expense += amt; items.push({ name: it.name, account: it.account, date: isoOf(o), amount: amt, past: false, src: it.id });
+          const ed = C.amountFor(Object.assign({}, it, { amount: 0 }), o) === 0; // この回の金額を入れられるか（変動費は「○月分」の回だけ）
+          if (amt == null) { unentered++; items.push({ name: it.name, account: it.account, date: isoOf(o), amount: null, past: false, src: it.id, kind: k, ed }); continue; }
+          expense += amt; items.push({ name: it.name, account: it.account, date: isoOf(o), amount: amt, past: false, src: it.id, kind: k, ed });
         }
       }
     }
@@ -1026,7 +1027,11 @@
         else if (h) { const bb = state.balances[x.account]; const hasB = bb && bb.amount != null;
           act = hasB ? '<div class="paidrow"><span class="sub">' + balTxt + '</span><button class="small primary" data-paid="' + esc(x.src) + '">引落完了</button></div>'
             : '<div class="paidrow"><span class="sub">口座残高を入力すると「引落完了」にできます</span><button class="small" disabled>引落完了</button></div>'; } }
-      return '<div class="srow2' + (done ? ' done' : '') + '"><span class="ndate">' + mdw(o) + '</span><span class="nico">' + lineIcon(x.name) + '</span><span class="nname">' + esc(x.name) + '<small>' + esc(x.account) + '</small></span><span class="namt num">' + (x.amount == null ? '<span class="flag">未入力</span>' : '¥' + nf.format(x.amount)) + '</span>' + act + '</div>'; };
+      return '<div class="srow2' + (done ? ' done' : '') + '"><span class="ndate">' + mdw(o) + '</span><span class="nico">' + lineIcon(x.name) + '</span><span class="nname">' + esc(x.name) + '<small>' + esc(x.account) + '</small></span>' + (() => { const t = x.amount == null ? '<span class="flag">未入力</span>' : '¥' + nf.format(x.amount);
+        // 金額を押すと、その場で入れられる（これからの分は登録している項目、済んだ分は記録を直す）
+        if (x.past && x.hid) return '<button class="namt num samt" data-shid="' + esc(x.hid) + '" aria-label="' + esc(x.name) + 'の金額を直す">' + t + '<span class="samt-ed" aria-hidden="true">✎</span></button>';
+        if (!x.past && x.src && x.ed && x.kind !== 'fixed') return '<button class="namt num samt" data-samt="' + esc(x.src) + '" data-sdate="' + esc(x.date) + '" aria-label="' + esc(x.name) + 'の金額を入れる">' + t + '<span class="samt-ed" aria-hidden="true">✎</span></button>';
+        return '<span class="namt num">' + t + '</span>'; })() + act + '</div>'; };
     const sumOf = l => l.reduce((a, x) => a + (x.amount || 0), 0);
     const rows = (upList.length ? '<div class="sc-grp up"><div class="sc-gh"><span>これからの引き落とし</span><span class="num">' + upList.length + '件・¥' + nf.format(sumOf(upList)) + '</span></div>' + upList.map(rowOf).join('') + '</div>' : '') +
       (doneList.length ? '<div class="sc-grp donegrp"><div class="sc-gh"><span>✓ 引落済み</span><span class="num">' + doneList.length + '件・¥' + nf.format(sumOf(doneList)) + '</span></div>' + doneList.map(rowOf).join('') + '</div>' : '');
@@ -1040,11 +1045,35 @@
   function bindSched() {
     main.querySelectorAll('[data-sched]').forEach(b => b.addEventListener('click', () => { schedOff += Number(b.dataset.sched); const sb = $('#schedBox'); if (sb) { sb.innerHTML = schedHTML(); bindSched(); } }));
     main.querySelectorAll('[data-paid]').forEach(b => b.addEventListener('click', () => openPaid(b.dataset.paid)));
+    main.querySelectorAll('[data-samt]').forEach(b => b.addEventListener('click', () => openSchedAmount(b.dataset.samt, b.dataset.sdate)));
+    main.querySelectorAll('[data-shid]').forEach(b => b.addEventListener('click', () => openHistEdit(b.dataset.shid)));
     main.querySelectorAll('[data-unpaid]').forEach(b => b.addEventListener('click', () => {
       const h = (state.history || []).find(x => x.src === b.dataset.unpaid && x.date === isoToday()); if (!h) return;
       if (h.deducted) { const bal = state.balances[h.account]; if (bal && bal.amount != null) bal.amount += h.amount; }
       h.paid = false; h.deducted = false; h.deductChecked = true; save(); renderKeep(); toast('「' + h.name + '」の引落完了を取り消しました' + (h.amount ? '' : ''));
     }));
+  }
+  /** 引落予定から、これからの引き落としの金額を入れる（変動費・1回のみ） */
+  function openSchedAmount(src, dateIso) {
+    let it = null, kind = '';
+    for (const k of ['variable', 'once']) { const f = (state[k] || []).find(x => x.id === src); if (f) { it = f; kind = k; break; } }
+    if (!it) return;
+    const m = $('#modal');
+    const mlab = kind === 'variable' && it.month ? Number(it.month.slice(5)) + '月分・' : '';
+    m.innerHTML = '<div class="sheet form" role="dialog" aria-modal="true" aria-labelledby="mt"><h2 id="mt">' + esc(it.name) + '</h2>' +
+      '<p class="sub" style="margin:0">' + mlab + mdw(isoToObj(dateIso)) + 'に' + esc(it.account) + 'から引き落とし</p>' +
+      '<label>引き落とされる金額<input class="amount wide" id="sa-amt" inputmode="numeric" enterkeyhint="done" autocomplete="off" value="' + yenTxt(it.amount) + '" placeholder="未入力"></label>' +
+      '<div class="btnrow"><button id="mCancel">やめる</button><button id="mOk" class="primary">保存</button></div></div>';
+    m.hidden = false;
+    const close = () => { m.hidden = true; m.innerHTML = ''; };
+    $('#mCancel').onclick = close; m.onclick = e => { if (e.target === m) close(); };
+    const inp = $('#sa-amt'); setTimeout(() => { try { inp.focus(); } catch (e) {} }, 50);
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') $('#mOk').click(); });
+    $('#mOk').onclick = () => {
+      const v = parseAmount(inp.value);
+      if (Number.isNaN(v)) { toast('金額は数字で入力してください'); return; }
+      it.amount = v; save(); close(); renderKeep(); toast('「' + it.name + '」の金額を' + (v == null ? '未入力にしました' : '¥' + nf.format(v) + 'にしました'));
+    };
   }
   /** 当日の引き落としを「完了」にする（残高から引くか、もう直したかを選ぶ） */
   function openPaid(src) {
