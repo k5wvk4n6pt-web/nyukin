@@ -521,7 +521,15 @@
         '<span>引き落とされる口座にお金がないと引き落とせません。' +
         (net >= 0 ? '銀行で、余っている口座から不足している口座へ ' + nf.format(r.shortfallTotal) + '円 入金してください。' : (r.shortfallTotal + net > 0 ? '銀行で、ほかの口座から不足している口座へ ' + nf.format(r.shortfallTotal + net) + '円 入金したうえで、あと ' + nf.format(-net) + '円 の入金が必要です。' : 'ほかの口座にも余りがないので、' + nf.format(-net) + '円 の入金が必要です。')) + '</span></div>';
     }
-    return '<div id="shortbox"><div class="tots">' + short + plus + '</div>' + both + detail + miss + '</div>';
+    // 給料日（締め日）が2つあるとき：2つ目の締め日まで見た入金必要額も出す
+    let second = '';
+    if (showAll) {
+      const l2 = r.banks.filter(b => b.balance != null && b.shortAll > 0).sort((a, b) => b.shortAll - a.shortAll);
+      second = '<div class="sb2' + (r.shortTotalAll > 0 ? ' short' : '') + '"><div class="sb2-h"><span>' + md(r.endAll) + '締めまで見ると</span><b class="num">' +
+        (r.shortTotalAll > 0 ? '入金が必要 ¥' + nf.format(r.shortTotalAll) : '入金は不要') + '</b></div>' +
+        (l2.length ? '<div class="surlist">' + l2.map(b => row(b, '残高 ' + nf.format(b.balance) + ' − 引落 ' + nf.format(b.total), nf.format(b.shortAll), 'neg')).join('') + '</div>' : '') + '</div>';
+    }
+    return '<div id="shortbox"><div class="tots">' + short + plus + '</div>' + second + both + detail + miss + '</div>';
   }
 
   function bindSurBrk() {

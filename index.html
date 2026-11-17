@@ -1228,6 +1228,15 @@ input[type="date"]::-webkit-date-and-time-value, input[type="month"]::-webkit-da
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .duecard .dc-flow3 .soft b, :root:not([data-theme="light"]) .duecard .dc-flow3 .soft small { color: #F2C77A; } }
 @media (max-width: 360px) { .duecard .dc-flow3 b { font-size: 13px; } }
 .duecard .dc-flow3.two { grid-template-columns: repeat(2, 1fr); }
+/* 2つ目の締め日まで見たとき */
+.sb2 { margin-top: 10px; padding: 10px 14px; border-radius: 14px; background: var(--surface-2, color-mix(in srgb, var(--accent) 6%, var(--surface))); border: 1px solid var(--line); }
+.sb2.short { background: color-mix(in srgb, var(--short) 7%, var(--surface)); border-color: color-mix(in srgb, var(--short) 30%, transparent); }
+.sb2-h { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 2px 8px; font-size: 14px; }
+.sb2-h > * { white-space: nowrap; }
+.sb2-h span { color: var(--muted); font-weight: 600; }
+.sb2-h b { font-size: 16px; }
+.sb2.short .sb2-h b { color: var(--short); }
+.sb2 .surlist { margin-top: 8px; }
 .fd-lh { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px; }
 .fd-lh b { color: var(--navy); font-size: 15px; }
 .fd-lh .sub { font-size: 12px; }
