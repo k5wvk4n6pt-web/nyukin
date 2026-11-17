@@ -719,7 +719,8 @@
       return { short: has && rest < 0, html: '<div class="duecard' + (has && rest < 0 && !after ? ' bad' : '') + '"><div class="dc-head"><b>' + esc(b.name) + '</b>' + st + '</div>' +
         '<div class="dc-list">' + lines.map(l => '<div class="dc-row nd"><span class="nico">' + lineIcon(l.name) + '</span><span class="nname">' + esc(l.name.replace(/（\d+月分は未入力）$/, '')) + '</span><span class="namt num">' + (l.amount == null ? '<span class="flag">未入力</span>' : '¥' + nf.format(l.amount)) + '</span></div>').join('') + '</div>' +
         // 引落額・残高・入金必要額（足りるときは引落後の残高）を1回ずつ
-        '<div class="dc-flow3"><span><small>引落額</small><b class="num">¥' + nf.format(sum) + (unent ? '＋未入力' : '') + '</b></span>' +
+        // 引き落としが1件だけなら、上の行と同じ金額になるので「引落額」は出さない
+        '<div class="dc-flow3' + (lines.length === 1 ? ' two' : '') + '">' + (lines.length === 1 ? '' : '<span><small>引落額</small><b class="num">¥' + nf.format(sum) + (unent ? '＋未入力' : '') + '</b></span>') +
         '<span><small>残高</small><b class="num">' + (has ? yenS(bal) : '未入力') + '</b></span>' +
         (has && rest < 0 ? '<span class="' + (after ? 'soft' : 'bad') + '"><small>入金必要額</small><b class="num">¥' + nf.format(-rest) + '</b></span>'
           : '<span><small>引落後の残高</small><b class="num">' + (has ? yenS(rest) : '—') + '</b></span>') + '</div></div>' };
