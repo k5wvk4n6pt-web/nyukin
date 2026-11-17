@@ -1201,7 +1201,7 @@ input[type="date"]::-webkit-date-and-time-value, input[type="month"]::-webkit-da
 /* 青枠を押したときの中身：青枠とつながった引き出しのように開く */
 .herocard.on { outline: none; border-radius: 22px 22px 0 0; position: relative; z-index: 1; }
 .duedrop { margin: 0 0 14px; padding: 6px 14px 16px; border-radius: 0 0 22px 22px; background: color-mix(in srgb, var(--accent) 9%, var(--surface)); border: 2px solid color-mix(in srgb, var(--accent) 55%, transparent); border-top: 0; box-shadow: 0 10px 22px color-mix(in srgb, var(--accent) 14%, transparent); }
-#prepTop .herocard.on + .duedrop { margin-top: 0; }
+#prepTop .herocard.on + .duedrop { margin-top: calc(-1 * var(--drop-gap, 14px)); border-color: color-mix(in srgb, var(--accent) 85%, #000 0%); }
 .duedrop .pphead { margin-top: 6px; }
 .duedrop .pphead > span { color: var(--accent); }
 .duedrop .duecard { background: var(--surface); }
@@ -1209,6 +1209,9 @@ input[type="date"]::-webkit-date-and-time-value, input[type="month"]::-webkit-da
 .samt { background: transparent; border: 0; padding: 4px 2px 4px 8px; margin: -4px 0; min-height: 0; box-shadow: none; display: inline-flex; align-items: center; gap: 4px; color: inherit; font-family: inherit; cursor: pointer; border-radius: 8px; }
 .samt .samt-ed { font-size: 12px; color: var(--accent); opacity: .8; }
 .samt:active { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+/* 暗い表示：引き出しの枠線を青枠の色に合わせる */
+:root[data-theme="dark"] #prepTop .herocard.on + .duedrop { border-color: color-mix(in srgb, var(--accent) 50%, #1A2130); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) #prepTop .herocard.on + .duedrop { border-color: color-mix(in srgb, var(--accent) 50%, #1A2130); } }
 .fd-lh { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px; }
 .fd-lh b { color: var(--navy); font-size: 15px; }
 .fd-lh .sub { font-size: 12px; }
