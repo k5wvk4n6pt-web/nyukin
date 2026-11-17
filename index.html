@@ -1215,6 +1215,18 @@ input[type="date"]::-webkit-date-and-time-value, input[type="month"]::-webkit-da
 .duecard .dc-need.soft { padding: 7px 10px; border-radius: 10px; text-align: center; background: color-mix(in srgb, #E8A23A 16%, transparent); color: #8A5A10; }
 :root[data-theme="dark"] .duecard .dc-need.soft { color: #F2C77A; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .duecard .dc-need.soft { color: #F2C77A; } }
+/* 引き落としと残高：引落額・残高・入金必要額を1回ずつ */
+.duecard .dc-flow3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line); text-align: center; }
+.duecard .dc-flow3 > span { display: grid; gap: 2px; padding: 6px 2px; border-radius: 10px; }
+.duecard .dc-flow3 small { font-size: 11px; color: var(--muted); font-weight: 600; }
+.duecard .dc-flow3 b { font-size: 15px; white-space: nowrap; }
+.duecard .dc-flow3 .bad { background: color-mix(in srgb, var(--short) 10%, transparent); }
+.duecard .dc-flow3 .bad b, .duecard .dc-flow3 .bad small { color: var(--short); }
+.duecard .dc-flow3 .soft { background: color-mix(in srgb, #E8A23A 16%, transparent); }
+.duecard .dc-flow3 .soft b, .duecard .dc-flow3 .soft small { color: #8A5A10; }
+:root[data-theme="dark"] .duecard .dc-flow3 .soft b, :root[data-theme="dark"] .duecard .dc-flow3 .soft small { color: #F2C77A; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .duecard .dc-flow3 .soft b, :root:not([data-theme="light"]) .duecard .dc-flow3 .soft small { color: #F2C77A; } }
+@media (max-width: 360px) { .duecard .dc-flow3 b { font-size: 13px; } }
 .fd-lh { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px; }
 .fd-lh b { color: var(--navy); font-size: 15px; }
 .fd-lh .sub { font-size: 12px; }
