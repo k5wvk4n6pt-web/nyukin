@@ -715,7 +715,8 @@
       const sum = lines.reduce((a2, l) => a2 + (l.amount || 0), 0); total += sum;
       const bal = (state.balances[b.name] || {}).amount; const has = bal != null; const rest = has ? bal - sum : null;
       const unent = lines.some(l => l.amount == null);
-      const st = !has ? '<span class="pst warn">残高未入力</span>' : rest < 0 ? (after ? '<span class="pst warn">入金要</span>' : '<span class="pst bad">不足あり</span>') : '<span class="pst ok">' + (after ? '残高で足ります' : '準備OK') + '</span>';
+      // 足りないときは下の「入金必要額」で分かるので、右上のバッジは出さない
+      const st = !has ? '<span class="pst warn">残高未入力</span>' : rest < 0 ? '' : '<span class="pst ok">' + (after ? '残高で足ります' : '準備OK') + '</span>';
       return { short: has && rest < 0, html: '<div class="duecard' + (has && rest < 0 && !after ? ' bad' : '') + '"><div class="dc-head"><b>' + esc(b.name) + '</b>' + st + '</div>' +
         '<div class="dc-list">' + lines.map(l => '<div class="dc-row nd"><span class="nico">' + lineIcon(l.name) + '</span><span class="nname">' + esc(l.name.replace(/（\d+月分は未入力）$/, '')) + '</span><span class="namt num">' + (l.amount == null ? '<span class="flag">未入力</span>' : '¥' + nf.format(l.amount)) + '</span></div>').join('') + '</div>' +
         // 引落額・残高・入金必要額（足りるときは引落後の残高）を1回ずつ
