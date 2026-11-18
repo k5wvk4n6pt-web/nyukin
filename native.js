@@ -72,6 +72,8 @@
     async iconGet() { if (!plugin) return { supported: false, name: 'blue' }; try { return await plugin.iconGet(); } catch (e) { return { supported: false, name: 'blue' }; } },
     /** アイコンを変える（iPhoneが確認のメッセージを出す） */
     async iconSet(name) { if (!plugin) return false; try { const r = await plugin.iconSet({ name }); return !!(r && r.ok); } catch (e) { return false; } },
+    /** App Storeの評価画面（Apple純正）をお願いする。出すかどうかはiOSが決める */
+    async askReview() { if (!plugin) return false; try { await plugin.askReview(); return true; } catch (e) { return false; } },
     /** ファイルを共有シートで保存。true=保存した / false=やめた */
     async shareFile(filename, text) {
       const r = await plugin.shareText({ filename, text });

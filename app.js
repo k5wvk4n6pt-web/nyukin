@@ -118,6 +118,7 @@
     if (!books && localStorage.getItem(KEY)) ensureBooks(); // 以前の版のデータ
     if (books && !curBook()) books.current = books.list[0].id;
     state = books ? (readBook(books.current) || emptyState()) : null;
+    if (state && !state.sample && !meta.firstOpen) { meta.firstOpen = new Date().toISOString(); saveMeta(); } // 使い始めた日（評価のお願いの目安）
   }
   function switchBook(id, keepPage) {
     if (!books || id === books.current) return;
@@ -140,6 +141,23 @@
       $('#saved').textContent = '保存できませんでした';
       toast('保存できませんでした。バックアップを保存してください');
     }
+  }
+  /**
+   * App Storeの評価のお願い（アプリ版だけ）
+   * うまくいった瞬間（引落完了）に、Apple純正の評価画面を出す。満足度で人を振り分けることはしない。
+   * 条件：使い始めて7日以上・引落完了を3回以上・前回から120日以上（Apple側でも年3回まで）
+   */
+  function maybeAskReview() {
+    try {
+      if (!N.isNative || typeof N.askReview !== 'function' || !state || state.sample) return;
+      const now = Date.now();
+      if (!meta.firstOpen) meta.firstOpen = new Date(now).toISOString();
+      meta.paidCount = (meta.paidCount || 0) + 1;
+      const days = (now - new Date(meta.firstOpen)) / 864e5;
+      const since = meta.reviewAskedAt ? (now - new Date(meta.reviewAskedAt)) / 864e5 : Infinity;
+      if (meta.paidCount >= 3 && days >= 7 && since >= 120) { meta.reviewAskedAt = new Date(now).toISOString(); setTimeout(() => { N.askReview(); }, 1500); }
+      saveMeta();
+    } catch (e) { /* 評価のお願いは出なくても困らない */ }
   }
   function saveMeta() { try { localStorage.setItem(META, JSON.stringify(meta)); } catch (e) { /* 表示だけの情報 */ } }
 
@@ -1114,7 +1132,7 @@
     m.hidden = false;
     const close = () => { m.hidden = true; m.innerHTML = ''; };
     $('#mCancel').onclick = close; m.onclick = e => { if (e.target === m) close(); };
-    const done = sub => { if (sub && lack) return; if (sub && hasBal) { bal.amount -= h.amount; h.deducted = true; } else h.deducted = false; h.paid = true; h.deductChecked = true; save(); close(); renderKeep(); toast('「' + h.name + '」を引落完了にしました' + (sub && hasBal ? '（残高から引きました）' : '')); };
+    const done = sub => { if (sub && lack) return; if (sub && hasBal) { bal.amount -= h.amount; h.deducted = true; } else h.deducted = false; h.paid = true; h.deductChecked = true; save(); close(); renderKeep(); toast('「' + h.name + '」を引落完了にしました' + (sub && hasBal ? '（残高から引きました）' : '')); maybeAskReview(); };
     if (hasBal) $('#pd-sub').onclick = () => done(true);
     $('#pd-keep').onclick = () => done(false);
   }

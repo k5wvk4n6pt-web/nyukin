@@ -24,7 +24,8 @@ public class NyukinNativePlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "proPurchase", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "proRestore", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "iconGet", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "iconSet", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "iconSet", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "askReview", returnType: CAPPluginReturnPromise)
     ]
     private let iconNames: [String: String] = ["pink": "AppIconPink", "green": "AppIconGreen", "purple": "AppIconPurple", "orange": "AppIconOrange"]
     /// App Store Connect で作る「非消耗型」のアプリ内課金の製品ID
@@ -208,6 +209,19 @@ public class NyukinNativePlugin: CAPPlugin, CAPBridgedPlugin {
             call.resolve(["value": value])
         } else {
             call.resolve([:])
+        }
+    }
+
+    // MARK: App Storeの評価のお願い（Apple純正の画面。出すかどうか・回数はiOSが決める）
+
+    @objc func askReview(_ call: CAPPluginCall) {
+        DispatchQueue.main.async {
+            let scene = UIApplication.shared.connectedScenes
+                .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene
+            if let scene = scene {
+                SKStoreReviewController.requestReview(in: scene)
+            }
+            call.resolve(["ok": scene != nil])
         }
     }
 
