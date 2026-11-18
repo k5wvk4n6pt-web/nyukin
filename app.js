@@ -12,6 +12,14 @@
     return out;
   }
   function versionMismatch() { return staleFiles().length > 0; }
+  // Web版で古いファイルが残っていたら、1回だけ静かに読み込み直す（アプリ版はファイルが中に入っているので何もしない）
+  try {
+    if (versionMismatch() && !(window.NyukinNative && window.NyukinNative.isNative) && !sessionStorage.getItem('navi.vreload')) {
+      sessionStorage.setItem('navi.vreload', '1');
+      const go = () => location.reload();
+      if (navigator.serviceWorker && navigator.serviceWorker.getRegistration) navigator.serviceWorker.getRegistration().then(r => r && r.update()).catch(() => {}).finally(() => setTimeout(go, 300)); else go();
+    }
+  } catch (e) { /* 読み込み直しはできなくても、そのまま動かす */ }
   const N = window.NyukinNative || { isNative: false, ready: Promise.resolve() };
   let cloud = { available: false, data: null }; // iCloud（アプリ版のみ）
   const KEY = 'kakeibo.data.v1';
@@ -233,8 +241,10 @@
     $('#today').textContent = T.m + '月' + T.d + '日（' + C.WD[C.weekday(T)] + '）';
     document.querySelector('.todaycard').hidden = !state;
     if (!state) { main.innerHTML = welcomeHTML(); bindWelcome(); return; }
-    if (versionMismatch()) {
-      main.innerHTML = '<div class="notice"><div><b>アプリのファイルが一部だけ古いままです。</b><br>古いファイル：<b>' + staleFiles().join('、') + '</b><br>このファイルをアップロードし直してください。アップロード済みなら、アプリを閉じて数分後に開き直してください。（app.js：' + APP_VERSION + '／calc.js：' + (C && C.VERSION || '古い版') + '）</div></div>';
+    // ファイルの版がそろっていなくても、画面は止めない（本番で使えなくなるのを防ぐ）。
+    // 計算のファイルがまったく読めていないときだけは動かせないので、案内を出す。
+    if (!C || typeof C.compute !== 'function') {
+      main.innerHTML = '<div class="notice"><div><b>アプリのファイルを読み込めませんでした。</b><br>通信のよい所で、アプリを閉じて開き直してください。</div></div>';
       return;
     }
     C.setCloseCtx(state);
