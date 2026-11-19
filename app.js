@@ -629,7 +629,7 @@
   function balListHTML(r) {
     const list = r.banks; if (!list.length) return '';
     const hide = !!meta.hideTotal;
-    return '<section class="ballist" aria-label="口座ごとの残高">' + list.map((b, i) => '<div class="balrow">' + ICON.bank(BANK_COLORS[i % BANK_COLORS.length]) +
+    return '<section class="ballist" aria-label="口座ごとの残高">' + list.map((b, i) => '<div class="balrow" data-row="' + esc(b.name) + '">' + ICON.bank(BANK_COLORS[i % BANK_COLORS.length]) +
       '<label class="bn" for="bl-' + esc(b.name) + '">' + esc(b.name) + (b.excluded ? '<small>合計に含めない</small>' : '') + '</label>' +
       (hide ? '<span class="bv num">¥ •••••</span>' : '<input class="amount' + (b.balance == null ? ' empty' : '') + '" id="bl-' + esc(b.name) + '" data-bal="' + esc(b.name) + '" inputmode="numeric" enterkeyhint="done" autocomplete="off" placeholder="未入力" value="' + (b.balance == null ? '' : yenTxt(b.balance)) + '">') + '</div>').join('') +
       '</section><p class="sub" style="margin:0">' + (hide ? '残高を入れ直すときは「残高を表示」を押してください。' : '金額を押すと、その場で残高を入れ直せます。') + '</p>';
@@ -640,6 +640,15 @@
       const name = el.dataset.bal; const b = state.balances[name] || (state.balances[name] = { amount: null, updatedAt: null });
       el.addEventListener('input', () => onAmountInput(el, () => b.amount, v => { b.amount = v; b.updatedAt = new Date().toISOString(); }));
       el.addEventListener('blur', () => { const v = parseAmount(el.value); if (!Number.isNaN(v)) el.value = yenTxt(v); });
+    });
+  }
+  /** 口座タブの「残高」を開いて、その口座の行を見せる（入金が必要な口座を押したとき） */
+  function goBalance(name) {
+    meta.page = 'balance'; meta.btab = 'bal'; meta.reorder = null; saveMeta(); renderAll(); window.scrollTo(0, 0);
+    requestAnimationFrame(() => {
+      const row = main.querySelector('.balrow[data-row="' + CSS.escape(name) + '"]'); if (!row) return;
+      row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      row.classList.add('flash'); setTimeout(() => row.classList.remove('flash'), 1800);
     });
   }
   function gotoBank(name) {
@@ -828,9 +837,9 @@
         head = by + '締めまでに、口座へ <b class="num">¥' + nf.format(r.shortfallTotal) + '</b> の入金が必要です';
         rows = sl.sort((x, y) => y.b.shortfall - x.b.shortfall).map(x => ({ b: x.b, amt: x.b.shortfall }));
       }
-      const miss = r.banks.filter(b => b.dueActive && b.balance == null).map(b => '<button class="pn-row" data-goto="balance"><span>' + esc(b.name) + '</span><b class="num pn-miss">残高未入力</b><span class="pn-chev" aria-hidden="true">›</span></button>').join('');
+      const miss = r.banks.filter(b => b.dueActive && b.balance == null).map(b => '<button class="pn-row" data-gobal="' + esc(b.name) + '"><span>' + esc(b.name) + '</span><b class="num pn-miss">残高未入力</b><span class="pn-chev" aria-hidden="true">›</span></button>').join('');
       return '<div class="pnotice warn"><span class="pn-i" aria-hidden="true">i</span><div class="pn-body"><span>' + head + '</span>' +
-        '<div class="pn-list">' + rows.map(({ b, amt, sub }) => '<button class="pn-row" data-goto="balance"><span>' + esc(b.name) + (sub ? '<small>' + sub + '</small>' : '') + '</span><b class="num">¥' + nf.format(amt) + ' 不足</b><span class="pn-chev" aria-hidden="true">›</span></button>').join('') + miss + '</div></div></div>';
+        '<div class="pn-list">' + rows.map(({ b, amt, sub }) => '<button class="pn-row" data-gobal="' + esc(b.name) + '"><span>' + esc(b.name) + (sub ? '<small>' + sub + '</small>' : '') + '</span><b class="num">¥' + nf.format(amt) + ' 不足</b><span class="pn-chev" aria-hidden="true">›</span></button>').join('') + miss + '</div></div></div>';
     }
     if (missing) return '<button class="pnotice info" data-goto="balance"><span class="pn-i" aria-hidden="true">i</span><span>残高を入れると、入金が必要か分かります（未入力 ' + missing + '口座）</span><span class="pn-chev" aria-hidden="true">›</span></button>';
     if (r.dueCount) return '<div class="pnotice ok"><span class="pn-i" aria-hidden="true">✓</span><span>' + by + '締めまでに必要な金額 <b class="num">¥' + nf.format(w0 ? (r.totals[w0.key] || 0) : 0) + '</b><small class="pn-ok2">残高は足りています</small></span></div>';
@@ -2161,6 +2170,7 @@
     main.querySelectorAll('[data-act="go-in"]').forEach(b => b.addEventListener('click', () => { meta.page = 'income'; meta.reorder = null; saveMeta(); renderAll(); window.scrollTo(0, 0); }));
     bindTotal(); bindUpcoming(); bindPanels(); bindPrepTop(); bindFlow(); bindSched(); bindBack();
     if ($('#ballist')) bindBalList();
+    main.querySelectorAll('[data-gobal]').forEach(b => b.addEventListener('click', () => goBalance(b.dataset.gobal)));
     main.querySelectorAll('[data-goto]').forEach(b => b.addEventListener('click', () => { meta.page = b.dataset.goto; meta.reorder = null; saveMeta(); renderAll(); window.scrollTo(0, 0); }));
     main.querySelectorAll('[data-outtab]').forEach(b => b.addEventListener('click', () => { if (meta.page === b.dataset.outtab) return; meta.page = b.dataset.outtab; meta.reorder = null; saveMeta(); renderAll(); window.scrollTo(0, 0); }));
     main.querySelectorAll('[data-act="go-close"]').forEach(b => b.addEventListener('click', () => { go('books'); const c = $('#closecard'); if (c) c.scrollIntoView({ block: 'start' }); }));

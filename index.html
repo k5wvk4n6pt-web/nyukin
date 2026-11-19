@@ -121,7 +121,7 @@ header.top { padding-top: 18px; display: flex; justify-content: space-between; a
 .fab { pointer-events: auto; min-height: 48px; min-width: 48px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--accent); font-size: 18px; font-weight: 700; box-shadow: 0 4px 14px color-mix(in srgb, var(--ink) 18%, transparent); }
 .fab.add { background: var(--accent); color: var(--bg); border-color: var(--accent); font-size: 16px; padding: 10px 18px; }
 body.typing .fabs { display: none; }
-.row.flash, .bank.flash { animation: flash 1.6s ease-out; }
+.row.flash, .bank.flash, .balrow.flash { animation: flash 1.6s ease-out; border-radius: 12px; }
 @keyframes flash { from { background: var(--accent-soft); } to { background: transparent; } }
 @media (prefers-reduced-motion: reduce) { .row.flash { animation: none; } }
 .xsheet .btnrow > * { flex: 1 1 90px; }
