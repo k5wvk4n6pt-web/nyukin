@@ -1532,7 +1532,8 @@
     const rows = visible.map(i => { const k = incKind(i), id = esc(i.id);
       return '<div class="row irow2" data-inc-id="' + id + '">' +
         '<div class="row-main"><span class="row-name">' + esc(i.name) + '</span>' +
-        '<input class="amount' + (i.amount == null ? ' empty' : '') + '" inputmode="numeric" enterkeyhint="done" autocomplete="off" id="incamt-' + id + '" data-inc="' + id + '" value="' + yenTxt(i.amount) + '" placeholder="未入力" aria-label="' + esc(i.name) + 'の金額"></div>' +
+        '<input class="amount' + (i.amount == null ? ' empty' : '') + '" inputmode="numeric" enterkeyhint="done" autocomplete="off" id="incamt-' + id + '" data-inc="' + id + '" value="' + yenTxt(i.amount) + '" placeholder="未入力" aria-label="' + esc(i.name) + 'の金額">' +
+          '<button type="button" class="calcbtn" data-act="inccalc" aria-label="' + esc(i.name) + 'を電卓で計算">' + CALC_ICON + '</button></div>' +
         '<div class="row-sub"><span class="ikchip k-' + k + '">' + KL[k] + '</span>' + (i.vary ? '<span class="ikchip est">変動</span>' : '') +
         (k === 'once' ? '<input class="text datein" type="date" id="incdate-' + id + '" value="' + esc(i.date) + '" aria-label="入金日">'
           : (k === 'months' ? '<span class="imons">' + i.months.join('・') + '月</span>' : '') + daySelect('incday-' + id, i.day)) + '</div>' +
@@ -2123,6 +2124,9 @@
       const inc = state.income.find(i => i.id === el.dataset.inc);
       if (!inc.vary || !el.id.startsWith('incamt-')) el.addEventListener('input', () => onAmountInput(el, () => inc.amount, v => { inc.amount = v; }));
       const row = el.closest('.irow2'); const reg = row && row.querySelector('[data-act="increg"]');
+      // 電卓（年金を1/2にして入れるときなど）
+      const icb = el.id.startsWith('incamt-') && row && row.querySelector('[data-act="inccalc"]');
+      if (icb) icb.addEventListener('click', () => openCalc(el, inc.name, reg ? '（「登録」を押すと保存されます）' : ''));
       if (reg) el.addEventListener('change', () => { const v = parseAmount(el.value); if (!Number.isNaN(v) && v !== inc.amount) toast('「登録」を押すと保存されます'); });
       if (reg) reg.addEventListener('click', () => { // 変動の収入：何月分として金額を登録
         const v = parseAmount(el.value); const ym = row.querySelector('[data-incmonth]').value;
@@ -2247,7 +2251,7 @@
     let v = n2[0]; for (let i = 0; i < o2.length; i++) v = o2[i] === '+' ? v + n2[i + 1] : v - n2[i + 1];
     return Math.round(v * 1e6) / 1e6;
   }
-  function openCalc(inp, name) {
+  function openCalc(inp, name, hint) {
     const m = $('#modal');
     const cur = parseAmount(inp.value);
     let toks = (cur != null && !Number.isNaN(cur)) ? [String(cur)] : [];
@@ -2294,7 +2298,7 @@
       inp.value = y == null ? '' : String(y);
       inp.dispatchEvent(new Event('input', { bubbles: true })); // 保存・計算は通常の入力と同じ流れ
       inp.dispatchEvent(new Event('blur'));
-      toast('「' + name + '」に ' + (y == null ? '未入力' : nf.format(y) + '円') + ' を入れました');
+      toast('「' + name + '」に ' + (y == null ? '未入力' : nf.format(y) + '円') + ' を入れました' + (hint || ''));
     };
     draw();
   }
