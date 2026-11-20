@@ -173,6 +173,9 @@
   function validAmt(a) { return a === null || (typeof a === 'number' && isFinite(a) && a >= 0); }
 
   /** 読み込んだデータの形をそろえる。おかしな値があれば例外 */
+  /** 期間の始まりの呼び方（帳簿ごと）：給料日／年金の日／収入日 */
+  const PAY_LABELS = ['給料日', '年金の日', '収入日'];
+  function PW() { const v = state && state.settings && state.settings.payLabel; return PAY_LABELS.includes(v) ? v : '給料日'; }
   function normalize(d) {
     if (!d || d.app !== 'kakeibo' || !Array.isArray(d.accounts) || !Array.isArray(d.variable) || !Array.isArray(d.fixed)) throw new Error('入金準備帳のデータではありません');
     const item = (x, fixed) => {
@@ -199,7 +202,7 @@
       settings: (() => { const cs = C.closeSettings(d);
         // 給料日がまだなければ、締め日の翌日を給料日にする（休日の扱いもそのまま引き継ぐ）
         const sd = cs.d1.start || (cs.d1.day === 'end' ? 1 : cs.d1.day + 1);
-        return { startDay: sd, startShift: cs.d1.shift, closeDay: sd === 1 ? 'end' : sd - 1, closeShift: cs.d1.shift, close2On: !!cs.d2, close2Day: cs.d2saved.day, close2Shift: cs.d2saved.shift, close2Start: cs.d2saved.start || null }; })(),
+        return { startDay: sd, startShift: cs.d1.shift, closeDay: sd === 1 ? 'end' : sd - 1, closeShift: cs.d1.shift, close2On: !!cs.d2, close2Day: cs.d2saved.day, close2Shift: cs.d2saved.shift, close2Start: cs.d2saved.start || null, payLabel: PAY_LABELS.includes(d.settings && d.settings.payLabel) ? d.settings.payLabel : '給料日' }; })(),
       excludeSurplus: Array.isArray(d.excludeSurplus) ? d.excludeSurplus.map(String).filter(a => d.accounts.map(String).includes(a)) : [],
       accGroups: Array.isArray(d.accGroups) ? d.accGroups.filter(g => g && g.name).map(g => ({ id: String(g.id || uid('g')), name: String(g.name), accounts: (Array.isArray(g.accounts) ? g.accounts : []).map(String).filter(a => d.accounts.map(String).includes(a)), hub: g.hub && d.accounts.map(String).includes(String(g.hub)) ? String(g.hub) : '' })) : [],
       hiddenAccounts: Array.isArray(d.hiddenAccounts) ? d.hiddenAccounts.map(String).filter(a => d.accounts.map(String).includes(a)) : [],
@@ -259,7 +262,7 @@
       : page === 'variable' ? outSeg + listHTML('variable', '変動費', '何月分の引落かを選んで、金額を入力します。引落が済むと次の月に進みます。1回のみの引落もここに並びます（日付が過ぎたら「済み」にまとまります）。')
       : page === 'fixed' ? outSeg + listHTML('fixed', '固定費', '金額・引落日・口座が変わった時だけ変更します。') + ((state.fixed || []).length ? '<div class="fixbackw"><button class="small" data-act="fix-back-list">' + proMark() + '固定費を過去の記録にまとめて反映</button></div>' : '')
       : page === 'settings' ? settingsHTML()
-      : page === 'flow' ? '<section id="sec-flow" aria-label="収支"><div class="section-head"><h2>収支<small class="sub">（給料日ごと）</small></h2></div><div id="flowBox">' + flowHTML() + '</div></section>'
+      : page === 'flow' ? '<section id="sec-flow" aria-label="収支"><div class="section-head"><h2>収支<small class="sub">（' + PW() + 'ごと）</small></h2></div><div id="flowBox">' + flowHTML() + '</div></section>'
       : page === 'history' ? historyHTML()
       : page === 'income' ? inHTML()
       : (needsSetup() ? setupGuideHTML() : '') + summaryHTML(r, sampleBannerHTML() + (needsSetup() ? '' : backupNoticeHTML())) +
@@ -421,7 +424,8 @@
       '<p style="margin-top:14px"><a href="https://k5wvk4n6pt-web.github.io/nyukin/privacy.html" target="_blank" rel="noopener">プライバシーポリシー</a></p></div>';
   }
   /** 開いているページの使い方 */
-  const HELP_KEYS = [['prep', '引落ページ'], ['out', '支出ページ'], ['bal', '口座ページ：残高'], ['acc', '口座ページ：口座の登録'], ['books', '口座ページ：帳簿・給料日'], ['income', '収入ページ'], ['flow', '収支ページ'], ['backup', '設定：保存'], ['notify', '設定：通知'], ['view', '設定：表示'], ['etc', '機能・その他']];
+  const HELP_KEYS_BASE = [['prep', '引落ページ'], ['out', '支出ページ'], ['bal', '口座ページ：残高'], ['acc', '口座ページ：口座の登録'], ['books', '口座ページ：帳簿・給料日'], ['income', '収入ページ'], ['flow', '収支ページ'], ['backup', '設定：保存'], ['notify', '設定：通知'], ['view', '設定：表示'], ['etc', '機能・その他']];
+  function HELP_KEYS() { return HELP_KEYS_BASE.map(x => x[0] === 'books' ? ['books', '口座ページ：帳簿・' + PW()] : x); }
   function helpKeyNow() {
     const pg = meta.page;
     if (pg === 'variable' || pg === 'fixed') return 'out';
@@ -444,8 +448,8 @@
         H('合計に含める・非表示', '「合計に含める」を外すと、合計残高や余りの合計に入れません。使わない口座は「非表示」にすると計算に含みません。') +
         H('引落日になったら残高から引く', 'オンにすると、引落日になったとき（アプリを開いたとき）に自動で残高から引きます。残高が足りない口座は引きません。') +
         H('口座のグループ', '同じ銀行の口座などをまとめて登録すると、口座タブの「残高」で、グループの必要額と残高の合計が見られます。振込手数料を減らしたいときに便利です。')];
-      if (t === 'books') return ['帳簿・給料日', H('給料日（期間の始まり）', '給料日の前日が締め日になり、締め日までの引落で不足と余りを判定します。収支も給料日から区切ります。給料日が土日・祝日のときに、前の平日・後ろの平日・ずらさないを選べます。') +
-        H('もう一つの給料日', '「＋ もう一つの給料日を追加」で、たとえば25日始まりのほかに1日始まり（月末締め）の分も見られます。2つの締め日のうち、近いほうまでで判定します。') +
+      if (t === 'books') return ['帳簿・' + PW(), H('' + PW() + '（期間の始まり）', '' + PW() + 'の前日が締め日になり、締め日までの引落で不足と余りを判定します。収支も' + PW() + 'から区切ります。' + PW() + 'が土日・祝日のときに、前の平日・後ろの平日・ずらさないを選べます。') +
+        H('もう一つの' + PW() + '', '「＋ もう一つの' + PW() + 'を追加」で、たとえば25日始まりのほかに1日始まり（月末締め）の分も見られます。2つの締め日のうち、近いほうまでで判定します。') +
         H('帳簿', '家族のお金なども、人ごとに別の帳簿で管理できます。口座・支出・収入・残高は帳簿ごとに別々です。2冊目からはプレミアムです。')];
       return ['口座の残高', H('残高を入れる', '口座ごとの金額を押すと、その場で残高を入れ直せます。通帳やネットバンキングの今の残高を入れてください。') +
         H('残高移動', '右上の「残高移動」で、口座から口座へ実際に移したお金を記録できます。両方の残高が書きかわります。手数料も記録できます。') +
@@ -454,7 +458,7 @@
     if (pg === 'income') return ['収入', H('収入の登録', '給料などの収入を登録すると、入金日を表示します。ボーナスのような年に何回かの収入や、1回だけの臨時収入も登録できます。') +
       H('入金する口座', '口座を選んでおくと、入金日に自動でその口座の残高へ足します。') +
       H('金額が変わる収入', '変動の収入は「○月分」を選んで金額を入れ、「登録」を押します。入金日のあとに金額を直すと、口座の残高も差の分だけ直ります。')];
-    if (pg === 'flow' || pg === 'history') return ['収支', H('グラフ', '給料日ごとの収入（緑）と支出（赤）が並びます。棒を押すと、その期間の内訳と差し引きが見られます。') +
+    if (pg === 'flow' || pg === 'history') return ['収支', H('グラフ', '' + PW() + 'ごとの収入（緑）と支出（赤）が並びます。棒を押すと、その期間の内訳と差し引きが見られます。') +
       H('明細の修正・追加', '済みの行を押すと、実際の金額に直せます。「＋ 記録を追加」で、登録していない支出も記録できます。') +
       H('書き出し', 'CSVで書き出すと、Excelで開けます（プレミアム）。')];
     if (pg === 'settings') {
@@ -474,10 +478,10 @@
   function showHelp(key) {
     const fbBtn = '<button class="fbopen" data-act="feedback">ご意見・ご要望を送る ›</button>';
     if (!state) { confirmSheet('使い方', helpHTML(), null, null); const fb0 = $('#modal [data-act="feedback"]'); if (fb0) fb0.addEventListener('click', openFeedback); return; }
-    const k = HELP_KEYS.some(x => x[0] === key) ? key : helpKeyNow();
-    const name = HELP_KEYS.find(x => x[0] === k)[1];
+    const k = HELP_KEYS().some(x => x[0] === key) ? key : helpKeyNow();
+    const name = HELP_KEYS().find(x => x[0] === k)[1];
     const main0 = k === 'etc' ? helpHTML().replace(fbBtn, '') : '<div class="help">' + pageHelp(k)[1] + '</div>';
-    const toc = '<div class="helptoc"><div class="ht-h">ほかのページの使い方</div>' + HELP_KEYS.filter(x => x[0] !== k).map(x => '<button type="button" data-help="' + x[0] + '"><span>' + esc(x[1]) + '</span><span class="ht-ar" aria-hidden="true">›</span></button>').join('') + '</div>';
+    const toc = '<div class="helptoc"><div class="ht-h">ほかのページの使い方</div>' + HELP_KEYS().filter(x => x[0] !== k).map(x => '<button type="button" data-help="' + x[0] + '"><span>' + esc(x[1]) + '</span><span class="ht-ar" aria-hidden="true">›</span></button>').join('') + '</div>';
     confirmSheet('使い方', '<div class="help">' + fbBtn + '</div>' + main0 + toc, null, null);
     const h = $('#mt'); if (h) { h.classList.add('helptitle'); h.insertAdjacentHTML('beforeend', '<span class="phelp-k">' + esc(name) + '</span>'); }
     const fb = $('#modal [data-act="feedback"]'); if (fb) fb.addEventListener('click', openFeedback);
@@ -1044,8 +1048,8 @@
         '<text x="' + cx + '" y="' + (H - B + 15) + '" class="fg-lab" text-anchor="middle">' + md(d.from) + '</text>' +
         '<text x="' + cx + '" y="' + (H - B + 28) + '" class="fg-sub" text-anchor="middle">' + (d.off === 0 ? '今回' : d.off === -1 ? '前回' : d.off === 1 ? '次回' : '') + '</text></g>';
     });
-    g += '<text x="' + (L - 2) + '" y="' + (H - B + 15) + '" class="fg-ax fg-axlab" text-anchor="end">給料日</text>';
-    const svg = '<svg class="flowchart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="給料日ごとの収入と支出">' + g + '</svg>';
+    g += '<text x="' + (L - 2) + '" y="' + (H - B + 15) + '" class="fg-ax fg-axlab" text-anchor="end">' + PW() + '</text>';
+    const svg = '<svg class="flowchart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + PW() + 'ごとの収入と支出">' + g + '</svg>';
     const d = data.find(x => x.off === flowSel) || data.find(x => x.off === 0);
     const neg = d.diff < 0;
     const side = flowSide === 'in' ? 'in' : 'out';
@@ -1055,7 +1059,7 @@
       const sub = side === 'in' ? (x.past ? '入金済み' : '予定') : esc(x.account || '') + (x.past ? '・引落済み' : '');
       return '<' + (id ? 'button' : 'div') + ' class="fd-row' + (x.past ? ' past' : '') + '"' + id + '><span class="fd-d">' + md(isoToObj(x.date)) + '</span><span class="fd-n">' + esc(x.name) + '<small>' + sub + '</small></span><span class="num">' + (x.amount == null ? '<span class="flag">未入力</span>' : nf.format(x.amount) + '円') + '</span></' + (id ? 'button' : 'div') + '>'; }).join('');
     const sideTab = (k, label, v, miss) => '<button class="fd-tab' + (side === k ? ' on' : '') + '" data-fside="' + k + '" aria-pressed="' + (side === k) + '"><span class="k"><i class="sw ' + k + '"></i>' + label + '</span><span class="v num">' + nf.format(v) + '<small>円</small></span>' + (miss ? '<span class="flag">金額未入力 ' + miss + '件</span>' : '') + '</button>';
-    const detail = '<div class="flowdet"><div class="fd-h"><b>' + md(d.from) + '〜' + md(d.to) + '</b><span class="sub">（' + md(d.from) + '給料日から）</span></div>' +
+    const detail = '<div class="flowdet"><div class="fd-h"><b>' + md(d.from) + '〜' + md(d.to) + '</b><span class="sub">（' + md(d.from) + PW() + 'から）</span></div>' +
       '<div class="fd-grid">' + sideTab('in', '収入', d.income, d.incomeMissing) + sideTab('out', '支出', d.expense, d.unentered) +
       '<div class="' + (neg ? 'neg' : 'pos') + '"><span class="k">差し引き</span><span class="v num">' + (neg ? '−' : '＋') + nf.format(Math.abs(d.diff)) + '<small>円</small></span></div></div>' +
       (d.noRecord || d.noIncRecord ? '<p class="sub" style="margin:0">この期間は' + (d.noRecord && d.noIncRecord ? '引き落としと収入' : d.noRecord ? '引き落とし' : '収入') + 'の記録がないため、0円になっています。</p>' : '') +
@@ -1368,7 +1372,7 @@
   }
 
   const STABS = [['backup', '保存'], ['notify', '通知'], ['view', '表示']];
-  const BTABS = [['bal', '残高'], ['acc', '口座の登録'], ['books', '帳簿・給料日']];
+  const BTABS_BASE = [['bal', '残高'], ['acc', '口座の登録'], ['books', '帳簿・給料日']];
   function settingsHTML() {
     const TABS = STABS;
     const st = TABS.some(t => t[0] === meta.stab) ? meta.stab : TABS[0][0];
@@ -1379,10 +1383,11 @@
   }
   /** 下のタブ「口座」：上の切り替え（残高｜口座の登録｜帳簿・給料日） */
   function accountPageHTML(r) {
+    const BTABS = BTABS_BASE.map(t => t[0] === 'books' ? ['books', '帳簿・' + PW()] : t);
     const st = BTABS.some(t => t[0] === meta.btab) ? meta.btab : 'bal';
     const seg = segOf(BTABS, st, 'btab');
     if (st === 'bal') return seg + balancePageHTML(r);
-    return seg + '<section id="sec-settings" aria-label="' + (st === 'acc' ? '口座の登録' : '帳簿・給料日') + '"><div class="stab-body">' + settingsBody(st) + '</div></section>';
+    return seg + '<section id="sec-settings" aria-label="' + (st === 'acc' ? '口座の登録' : '帳簿・' + PW()) + '"><div class="stab-body">' + settingsBody(st) + '</div></section>';
   }
   function settingsBody(st) {
     let body = '';
@@ -1398,18 +1403,19 @@
     const sh = (id, v) => shiftSelect(id, v, '休日のとき').replace(SHIFT_LABEL.after, '後ろ（翌営業日）').replace(SHIFT_LABEL.before, '前（前営業日）');
     const sOpts = sel => { let o = ''; for (let i = 1; i <= 31; i++) o += '<option value="' + i + '"' + (i === sel ? ' selected' : '') + '>毎月' + i + '日</option>'; return o; };
     const T0 = today(), nc = C.nextClosing(T0, cs.d1), ns = C.addDays({ y: nc.y, m: nc.m, d: nc.d }, 1);
-    const closeCard = '<div class="card form closecard" id="closecard"><div class="shead">給料日（期間の始まり）<span class="sub">帳簿「' + esc(curBook() ? curBook().name : '') + '」の設定です。給料日の前日が締め日になり、締め日までの引落で不足と余りを判定します。収支も給料日から区切ります</span></div>' +
-      '<div class="dl"><b>給料日</b><label>日付<select id="close-day">' + sOpts(cs.d1.start || 11) + '</select></label>' +
-      '<div class="sshift"><span class="k">給料日が土日・祝日のとき</span><input type="hidden" id="close-shift" value="' + cs.d1.shift + '"><div class="seg">' + [['before', '前の平日'], ['after', '後ろの平日'], ['none', 'ずらさない']].map(x => '<button type="button" data-sshift="' + x[0] + '" class="' + (cs.d1.shift === x[0] ? 'on' : '') + '" aria-pressed="' + (cs.d1.shift === x[0]) + '">' + x[1] + '</button>').join('') + '</div></div>' +
-      '<span class="sub">次の締め日：' + md(nc) + '（' + C.WD[C.weekday(nc)] + '）／次の給料日：' + md(ns) + '（' + C.WD[C.weekday(ns)] + '）</span></div>' +
+    const closeCard = '<div class="card form closecard" id="closecard"><div class="shead">' + PW() + '（期間の始まり）<span class="sub">帳簿「' + esc(curBook() ? curBook().name : '') + '」の設定です。' + PW() + 'の前日が締め日になり、締め日までの引落で不足と余りを判定します。収支も' + PW() + 'から区切ります</span></div>' +
+      '<div class="dl"><span class="k">呼び方</span><div class="seg paylab">' + PAY_LABELS.map(x => '<button type="button" data-paylabel="' + x + '" class="' + (PW() === x ? 'on' : '') + '" aria-pressed="' + (PW() === x) + '">' + x + '</button>').join('') + '</div><span class="sub">年金で暮らしている人の帳簿は「年金の日」にすると分かりやすくなります</span></div>' +
+      '<div class="dl"><b>' + PW() + '</b><label>日付<select id="close-day">' + sOpts(cs.d1.start || 11) + '</select></label>' +
+      '<div class="sshift"><span class="k">' + PW() + 'が土日・祝日のとき</span><input type="hidden" id="close-shift" value="' + cs.d1.shift + '"><div class="seg">' + [['before', '前の平日'], ['after', '後ろの平日'], ['none', 'ずらさない']].map(x => '<button type="button" data-sshift="' + x[0] + '" class="' + (cs.d1.shift === x[0] ? 'on' : '') + '" aria-pressed="' + (cs.d1.shift === x[0]) + '">' + x[1] + '</button>').join('') + '</div></div>' +
+      '<span class="sub">次の締め日：' + md(nc) + '（' + C.WD[C.weekday(nc)] + '）／次の' + PW() + '：' + md(ns) + '（' + C.WD[C.weekday(ns)] + '）</span></div>' +
       (cs.d2
         ? (() => { const st2 = cs.d2.start || (cs.d2.day === 'end' ? 1 : Math.min(31, cs.d2.day + 1)); const nc2 = C.nextClosing(T0, cs.d2), ns2 = C.addDays({ y: nc2.y, m: nc2.m, d: nc2.d }, 1);
-            return '<div class="dl"><div class="dlhead"><b>もう一つの給料日</b><button class="small danger" data-act="close2-off">外す</button></div>' +
-              '<span class="sub">給料日の前日がもう一つの締め日です。2つの締め日のうち、近いほうまでで不足と余りを判定します</span>' +
+            return '<div class="dl"><div class="dlhead"><b>もう一つの' + PW() + '</b><button class="small danger" data-act="close2-off">外す</button></div>' +
+              '<span class="sub">' + PW() + 'の前日がもう一つの締め日です。2つの締め日のうち、近いほうまでで不足と余りを判定します</span>' +
               '<label>日付<select id="close2-day">' + sOpts(st2) + '</select></label>' +
-              '<div class="sshift"><span class="k">給料日が土日・祝日のとき</span><input type="hidden" id="close2-shift" value="' + cs.d2.shift + '"><div class="seg">' + [['before', '前の平日'], ['after', '後ろの平日'], ['none', 'ずらさない']].map(x => '<button type="button" data-sshift2="' + x[0] + '" class="' + (cs.d2.shift === x[0] ? 'on' : '') + '" aria-pressed="' + (cs.d2.shift === x[0]) + '">' + x[1] + '</button>').join('') + '</div></div>' +
-              '<span class="sub">次の締め日：' + md(nc2) + '（' + C.WD[C.weekday(nc2)] + '）／次の給料日：' + md(ns2) + '（' + C.WD[C.weekday(ns2)] + '）</span></div>'; })()
-        : '<div class="dl"><button class="small" data-act="close2-on">＋ もう一つの給料日を追加</button><span class="sub">例：25日始まりのほかに、1日始まり（月末締め）の分も見ておきたいとき</span></div>') + '</div>';
+              '<div class="sshift"><span class="k">' + PW() + 'が土日・祝日のとき</span><input type="hidden" id="close2-shift" value="' + cs.d2.shift + '"><div class="seg">' + [['before', '前の平日'], ['after', '後ろの平日'], ['none', 'ずらさない']].map(x => '<button type="button" data-sshift2="' + x[0] + '" class="' + (cs.d2.shift === x[0] ? 'on' : '') + '" aria-pressed="' + (cs.d2.shift === x[0]) + '">' + x[1] + '</button>').join('') + '</div></div>' +
+              '<span class="sub">次の締め日：' + md(nc2) + '（' + C.WD[C.weekday(nc2)] + '）／次の' + PW() + '：' + md(ns2) + '（' + C.WD[C.weekday(ns2)] + '）</span></div>'; })()
+        : '<div class="dl"><button class="small" data-act="close2-on">＋ もう一つの' + PW() + 'を追加</button><span class="sub">例：25日始まりのほかに、1日始まり（月末締め）の分も見ておきたいとき</span></div>') + '</div>';
     if (st === 'books') body = body + closeCard;
     return body;
   }
@@ -1864,13 +1870,14 @@
         const p = { startDay: sd, startShift: sh0, closeDay: sd === 1 ? 'end' : sd - 1, closeShift: sh0 };
         if ($('#close2-day')) { const s2 = Number($('#close2-day').value); p.close2Start = s2; p.close2Day = s2 === 1 ? 'end' : s2 - 1; p.close2Shift = validShift($('#close2-shift').value, 'none'); }
         setS(p);
-        toast('給料日：' + state.settings.startDay + '日・休みなら' + { before: '前の平日', after: '後ろの平日', none: 'ずらさない' }[state.settings.startShift] + '（締め日はその前日）' + (state.settings.close2On ? '／もう一つの給料日：' + state.settings.close2Start + '日' : ''));
+        toast(PW() + '：' + state.settings.startDay + '日・休みなら' + { before: '前の平日', after: '後ろの平日', none: 'ずらさない' }[state.settings.startShift] + '（締め日はその前日）' + (state.settings.close2On ? '／もう一つの給料日：' + state.settings.close2Start + '日' : ''));
       };
       main.querySelectorAll('[data-sshift]').forEach(b => b.addEventListener('click', () => { $('#close-shift').value = b.dataset.sshift; upd(); }));
+      main.querySelectorAll('[data-paylabel]').forEach(b => b.addEventListener('click', () => { state.settings.payLabel = b.dataset.paylabel; save(); renderKeep(); toast('呼び方を「' + b.dataset.paylabel + '」にしました'); }));
       main.querySelectorAll('[data-sshift2]').forEach(b => b.addEventListener('click', () => { $('#close2-shift').value = b.dataset.sshift2; upd(); }));
       ['#close-day', '#close-shift', '#close2-day', '#close2-shift'].forEach(id => { const el = $(id); if (el) el.addEventListener('change', upd); });
       const on = main.querySelector('[data-act="close2-on"]'); if (on) on.addEventListener('click', () => { const s2 = cur().d2saved.start || 1; setS({ close2On: true, close2Start: s2, close2Day: s2 === 1 ? 'end' : s2 - 1 }); toast('もう一つの給料日を追加しました（' + s2 + '日始まり）'); });
-      const off = main.querySelector('[data-act="close2-off"]'); if (off) off.addEventListener('click', () => { setS({ close2On: false }); toast('もう一つの給料日を外しました'); });
+      const off = main.querySelector('[data-act="close2-off"]'); if (off) off.addEventListener('click', () => { setS({ close2On: false }); toast('もう一つの' + PW() + 'を外しました'); });
     }
     main.querySelectorAll('[data-stab]').forEach(b => b.addEventListener('click', () => { meta.stab = b.dataset.stab; meta.reorder = null; saveMeta(); renderAll(); window.scrollTo(0, 0); }));
     main.querySelectorAll('[data-btab]').forEach(b => b.addEventListener('click', () => { meta.btab = b.dataset.btab; meta.reorder = null; saveMeta(); renderAll(); window.scrollTo(0, 0); }));
