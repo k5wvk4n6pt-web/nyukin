@@ -1865,7 +1865,7 @@
       const dv = v => v === 'end' ? 'end' : Number(v);
       const lab = d => d === 'end' ? '月末' : d + '日';
       const cur = () => C.closeSettings(state);
-      const setS = (patch) => { const c0 = cur(); state.settings = Object.assign({ startDay: c0.d1.start, startShift: c0.d1.shift, closeDay: c0.d1.day, closeShift: c0.d1.shift, close2On: !!c0.d2, close2Day: c0.d2saved.day, close2Shift: c0.d2saved.shift, close2Start: c0.d2saved.start || null }, patch); save(); renderKeep(); };
+      const setS = (patch) => { const c0 = cur(); state.settings = Object.assign({ payLabel: PW(), startDay: c0.d1.start, startShift: c0.d1.shift, closeDay: c0.d1.day, closeShift: c0.d1.shift, close2On: !!c0.d2, close2Day: c0.d2saved.day, close2Shift: c0.d2saved.shift, close2Start: c0.d2saved.start || null }, patch); save(); renderKeep(); };
       const upd = () => {
         const sd = Number(cd.value), sh0 = validShift($('#close-shift').value, 'after');
         const p = { startDay: sd, startShift: sh0, closeDay: sd === 1 ? 'end' : sd - 1, closeShift: sh0 };
