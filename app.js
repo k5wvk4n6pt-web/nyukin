@@ -2098,7 +2098,13 @@
       const cb = row.querySelector('[data-act="calc"]');
       if (cb) cb.addEventListener('click', () => openCalc(amt, it.name));
       const ms = row.querySelector('[data-f="month"]');
-      if (ms) ms.addEventListener('change', e => { if (!e.target.value) return; it.month = e.target.value; touch(it, row); save(); renderKeep(); toast('「' + it.name + '」：' + Number(it.month.split('-')[1]) + '月分の金額にしました'); });
+      if (ms) ms.addEventListener('change', e => {
+        if (!e.target.value) return;
+        // 引き落とし日をもう過ぎた月を選んだときは、収支の記録として金額を入れてもらう（選び直すと金額が消えてしまうのを防ぐ）
+        const lateO = pastOccOfMonth(it, e.target.value);
+        if (lateO) { e.target.value = it.month || ''; openLateAmount(it, lateO, e.target.value); return; }
+        it.month = e.target.value; touch(it, row); save(); renderKeep(); toast('「' + it.name + '」：' + Number(it.month.split('-')[1]) + '月分の金額にしました');
+      });
       const ds = row.querySelector('select[id^="day-"]');
       if (ds) ds.addEventListener('change', e => { setDay(it, e.target.value); touch(it, row); save(); renderKeep(); });
       const di = row.querySelector('[data-f="date"]');
@@ -2646,6 +2652,37 @@
    * ・月が決まっていない項目は、次の引落の月にする（金額はそのまま）
    * ・選んだ月の引落が済んだら、次の月に進めて金額を空にする（済んだ分は記録に残っている）。0円はそのまま引き継ぐ
    */
+  /** 変動費の「○月分」の引き落とし日が、もう過ぎているならその回（過ぎていなければ null） */
+  function pastOccOfMonth(it, ym) {
+    const T = today();
+    const os = C.occurrencesIn(it, C.addDays(T, -400), C.addDays(T, -1), false);
+    for (const o of os) { const n0 = o.orig || o; const n = it.nm ? C.addMonth(n0.y, n0.m, -it.nm) : n0; if (n.y + '-' + String(n.m).padStart(2, '0') === ym) return o; }
+    return null;
+  }
+  /** 過ぎた月の金額を、収支の記録として入れる（残高は変えない） */
+  function openLateAmount(it, o, keepYm) {
+    const iso = isoOf(o); state.history = state.history || [];
+    const h0 = state.history.find(h => h.src === it.id && h.date === iso);
+    const ym = (() => { const n0 = o.orig || o; const n = it.nm ? C.addMonth(n0.y, n0.m, -it.nm) : n0; return n.m; })();
+    const m = $('#modal');
+    m.innerHTML = '<div class="sheet form" role="dialog" aria-modal="true" aria-labelledby="mt"><h2 id="mt">' + esc(it.name) + '（' + ym + '月分）</h2>' +
+      '<p class="sub" style="margin:0">' + ym + '月分は ' + mdw(isoToObj(iso)) + ' にもう引き落とし日を過ぎています。金額は収支の記録として残します（口座の残高は変わりません）。</p>' +
+      '<label>引き落とされた金額<input class="amount wide" id="la-amt" inputmode="numeric" enterkeyhint="done" autocomplete="off" value="' + yenTxt(h0 ? h0.amount : null) + '" placeholder="未入力"></label>' +
+      '<div class="btnrow"><button id="mCancel">やめる</button><button id="mOk" class="primary">記録する</button></div></div>';
+    m.hidden = false;
+    const close = () => { m.hidden = true; m.innerHTML = ''; };
+    $('#mCancel').onclick = close; m.onclick = e => { if (e.target === m) close(); };
+    const inp = $('#la-amt'); setTimeout(() => { try { inp.focus(); } catch (e) {} }, 50);
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') $('#mOk').click(); });
+    $('#mOk').onclick = () => {
+      const v = parseAmount(inp.value);
+      if (Number.isNaN(v)) { toast('金額は数字で入力してください'); return; }
+      if (h0) { h0.amount = v; h0.edited = true; }
+      else state.history.push({ id: uid('h'), date: iso, name: it.name, account: it.account, amount: v, kind: '変動費', src: it.id, auto: false, edited: true });
+      save(); close(); renderKeep();
+      toast('「' + it.name + '」の' + ym + '月分を' + (v == null ? '未入力' : '¥' + nf.format(v)) + 'で記録しました（今の「' + (keepYm ? Number(keepYm.slice(5)) + '月分' : '') + '」はそのままです）');
+    };
+  }
   function rollVariable() {
     if (!state) return;
     const T = today(); let changed = 0;
