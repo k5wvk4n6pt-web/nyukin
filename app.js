@@ -1055,7 +1055,12 @@
     const side = flowSide === 'in' ? 'in' : 'out';
     const tIso = isoToday();
     const lst = (side === 'in' ? d.incItems : d.items).slice().sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
-    const rowsH = lst.map(x => { const id = x.rid ? ' data-rid="' + esc(x.rid) + '"' : x.hid ? ' data-hid="' + esc(x.hid) + '"' : '';
+    const rowsH = lst.map(x => {
+      // 済みの行は記録を直す。これからの行も押せる（変動費・1回のみはその場で金額、固定費は固定費のページ、収入は収入のページ）
+      const id = x.rid ? ' data-rid="' + esc(x.rid) + '"' : x.hid ? ' data-hid="' + esc(x.hid) + '"'
+        : side === 'in' ? (x.past ? '' : ' data-fgo="income"')
+        : x.src && x.kind === 'fixed' ? ' data-fgo="fixed"'
+        : x.src && x.ed ? ' data-samt="' + esc(x.src) + '" data-sdate="' + esc(x.date) + '"' : '';
       const sub = side === 'in' ? (x.past ? '入金済み' : '予定') : esc(x.account || '') + (x.past ? '・引落済み' : '');
       return '<' + (id ? 'button' : 'div') + ' class="fd-row' + (x.past ? ' past' : '') + '"' + id + '><span class="fd-d">' + md(isoToObj(x.date)) + '</span><span class="fd-n">' + esc(x.name) + '<small>' + sub + '</small></span><span class="num">' + (x.amount == null ? '<span class="flag">未入力</span>' : nf.format(x.amount) + '円') + '</span></' + (id ? 'button' : 'div') + '>'; }).join('');
     const sideTab = (k, label, v, miss) => '<button class="fd-tab' + (side === k ? ' on' : '') + '" data-fside="' + k + '" aria-pressed="' + (side === k) + '"><span class="k"><i class="sw ' + k + '"></i>' + label + '</span><span class="v num">' + nf.format(v) + '<small>円</small></span>' + (miss ? '<span class="flag">金額未入力 ' + miss + '件</span>' : '') + '</button>';
@@ -1063,7 +1068,7 @@
       '<div class="fd-grid">' + sideTab('in', '収入', d.income, d.incomeMissing) + sideTab('out', '支出', d.expense, d.unentered) +
       '<div class="' + (neg ? 'neg' : 'pos') + '"><span class="k">差し引き</span><span class="v num">' + (neg ? '−' : '＋') + nf.format(Math.abs(d.diff)) + '<small>円</small></span></div></div>' +
       (d.noRecord || d.noIncRecord ? '<p class="sub" style="margin:0">この期間は' + (d.noRecord && d.noIncRecord ? '引き落としと収入' : d.noRecord ? '引き落とし' : '収入') + 'の記録がないため、0円になっています。</p>' : '') +
-      '<div class="fd-lh"><span><b>' + (side === 'in' ? '収入' : '支出') + 'の明細</b><span class="sub">' + lst.length + '件' + (lst.some(x => x.past) ? '・済みの行は押すと直せます' : '') + '</span></span><button class="small primary" data-act="frec-add">＋ 記録を追加</button></div>' +
+      '<div class="fd-lh"><span><b>' + (side === 'in' ? '収入' : '支出') + 'の明細</b><span class="sub">' + lst.length + '件' + (rowsH.indexOf('<button') >= 0 ? '・押すと入力・訂正' : '') + '</span></span><button class="small primary" data-act="frec-add">＋ 記録を追加</button></div>' +
       (rowsH ? '<div class="fd-list">' + rowsH + '</div>' : '<p class="sub" style="margin:0">この期間の' + (side === 'in' ? '収入' : '支出') + 'はありません。</p>') +
       '<div class="fd-tools">' + (side === 'in' ? '<button class="small" data-act="frec-back">' + proMark() + '登録している収入を記録にまとめて反映</button>' : '') + '<button class="small" data-act="frec-csv">' + proMark() + 'CSVで書き出す</button></div></div>';
     return '<section class="flowcard"><div class="fg-legend"><span><i class="sw in"></i>収入</span><span><i class="sw out"></i>支出</span><span class="sub">棒を押すと内訳</span></div>' + svg + detail +
@@ -1175,6 +1180,11 @@
     main.querySelectorAll('[data-act="frec-csv"]').forEach(b => b.addEventListener('click', () => openCsvSheet(flowSide === 'in' ? 'in' : 'out', fd)));
     main.querySelectorAll('#flowBox [data-rid]').forEach(b => b.addEventListener('click', () => openIncEdit(b.dataset.rid)));
     main.querySelectorAll('#flowBox [data-hid]').forEach(b => b.addEventListener('click', () => openHistEdit(b.dataset.hid)));
+    main.querySelectorAll('#flowBox [data-samt]').forEach(b => b.addEventListener('click', () => openSchedAmount(b.dataset.samt, b.dataset.sdate)));
+    main.querySelectorAll('#flowBox [data-fgo]').forEach(b => b.addEventListener('click', () => {
+      const g = b.dataset.fgo; meta.page = g; meta.reorder = null; saveMeta(); renderAll(); window.scrollTo(0, 0);
+      toast(g === 'fixed' ? '固定費は毎月の金額なので、ここで直します' : '収入の金額はここで入れます');
+    }));
     main.querySelectorAll('[data-flow]').forEach(g => {
       const go = () => { flowSel = Number(g.dataset.flow); const fb = $('#flowBox'); if (fb) { fb.innerHTML = flowHTML(); bindFlow(); } };
       g.addEventListener('click', go); g.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
