@@ -919,7 +919,11 @@ body.pg-variable .fab.add, body.pg-fixed .fab.add, #sec-variable .section-head b
 .qbtn { display: grid; justify-items: center; gap: 8px; padding: 14px 4px 12px; border-radius: 18px; border: 1px solid var(--line); background: var(--surface); box-shadow: var(--card-shadow); color: var(--navy); font-size: 12.5px; font-weight: 700; min-height: 0; }
 .qbtn svg { width: 40px; height: 40px; }
 .qbtn span { white-space: nowrap; letter-spacing: -.02em; }
-.qbtn.on { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
+/* 選んでいるボタン：アプリの色でぬりつぶし、下に三角を付けて「この下が開いている」と分かるように */
+.qbtn { position: relative; }
+.qbtn.on { border-color: var(--accent); background: var(--accent); color: var(--surface); box-shadow: 0 8px 18px color-mix(in srgb, var(--accent) 28%, transparent); }
+.qbtn.on svg { background: var(--surface); border-radius: 50%; padding: 6px; box-sizing: border-box; }
+.qbtn.on::after { content: ""; position: absolute; left: 50%; bottom: -8px; width: 16px; height: 16px; background: var(--accent); border-radius: 3px; transform: translateX(-50%) rotate(45deg); }
 .nearlist { display: grid; gap: 8px; }
 .nhead { display: flex; align-items: center; justify-content: space-between; }
 .nhead h2 { margin: 0; font-size: 18px; color: var(--navy); }
