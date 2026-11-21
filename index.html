@@ -1279,6 +1279,12 @@ input[type="date"]::-webkit-date-and-time-value, input[type="month"]::-webkit-da
 .balrow .bv { font-weight: 800; font-size: 16px; color: var(--navy); white-space: nowrap; }
 .balrow .bv.none { color: var(--warn); font-size: 13px; }
 .balrow input.amount { width: 100%; text-align: right; font-weight: 800; }
+.balrow:has(.calcbtn) { grid-template-columns: 26px minmax(0, 1fr) minmax(0, 142px) 40px; gap: 6px; }
+.balrow:has(.calcbtn) input.amount { font-size: 15px; padding-left: 8px; }
+.balrow:has(.calcbtn) svg { width: 26px; }
+.balrow:has(.calcbtn) .bn { font-size: 15px; }
+.balrow .calcbtn { width: 40px; min-width: 40px; min-height: 40px; padding: 0; display: grid; place-items: center; border-radius: 10px; border: 0; background: var(--accent-soft); color: var(--accent); }
+.balrow .calcbtn:active { filter: brightness(.94); }
 .totalcard, :root[data-color] .totalcard { background: var(--surface); }
 .totalcard::after { display: none !important; }
 .pphead .xmove { margin-left: auto; min-height: 32px; padding: 4px 12px; font-size: 12px; }

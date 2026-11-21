@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   const C = window.KCalc;
-  const APP_VERSION = '2026.11.21c';
+  const APP_VERSION = '2026.11.21d';
   /** ファイルの一部だけが新しい（アップロード漏れ・古いキャッシュ）と計算が合わなくなるので知らせる */
   /** 古いままのファイル名（なければ空）。native.js は中身が変わったときだけ気にする */
   function staleFiles() {
@@ -635,7 +635,7 @@
     const hide = !!meta.hideTotal;
     return '<section class="ballist" aria-label="口座ごとの残高">' + list.map((b, i) => '<div class="balrow" data-row="' + esc(b.name) + '">' + ICON.bank(BANK_COLORS[i % BANK_COLORS.length]) +
       '<label class="bn" for="bl-' + esc(b.name) + '">' + esc(b.name) + (b.excluded ? '<small>合計に含めない</small>' : '') + '</label>' +
-      (hide ? '<span class="bv num">¥ •••••</span>' : '<input class="amount' + (b.balance == null ? ' empty' : '') + '" id="bl-' + esc(b.name) + '" data-bal="' + esc(b.name) + '" inputmode="numeric" enterkeyhint="done" autocomplete="off" placeholder="未入力" value="' + (b.balance == null ? '' : yenTxt(b.balance)) + '">') + '</div>').join('') +
+      (hide ? '<span class="bv num">¥ •••••</span>' : '<input class="amount' + (b.balance == null ? ' empty' : '') + '" id="bl-' + esc(b.name) + '" data-bal="' + esc(b.name) + '" inputmode="numeric" enterkeyhint="done" autocomplete="off" placeholder="未入力" value="' + (b.balance == null ? '' : yenTxt(b.balance)) + '"><button type="button" class="calcbtn" data-balcalc="' + esc(b.name) + '" aria-label="' + esc(b.name) + 'の残高を電卓で計算">' + CALC_ICON + '</button>') + '</div>').join('') +
       '</section><p class="sub" style="margin:0">' + (hide ? '残高を入れ直すときは「残高を表示」を押してください。' : '金額を押すと、その場で残高を入れ直せます。') + '</p>';
   }
   function bindBalList() {
@@ -644,6 +644,8 @@
       const name = el.dataset.bal; const b = state.balances[name] || (state.balances[name] = { amount: null, updatedAt: null });
       el.addEventListener('input', () => onAmountInput(el, () => b.amount, v => { b.amount = v; b.updatedAt = new Date().toISOString(); }));
       el.addEventListener('blur', () => { const v = parseAmount(el.value); if (!Number.isNaN(v)) el.value = yenTxt(v); });
+      const cb = el.parentNode.querySelector('[data-balcalc]');
+      if (cb) cb.addEventListener('click', () => { openCalc(el, name + 'の残高'); const ok = $('#mOk'); if (ok) ok.addEventListener('click', () => setTimeout(() => el.dispatchEvent(new Event('blur')), 0)); });
     });
   }
   /** 口座タブの「残高」を開いて、その口座の行を見せる（入金が必要な口座を押したとき） */
