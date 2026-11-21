@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   const C = window.KCalc;
-  const APP_VERSION = '2026.11.21';
+  const APP_VERSION = '2026.11.21b';
   /** ファイルの一部だけが新しい（アップロード漏れ・古いキャッシュ）と計算が合わなくなるので知らせる */
   /** 古いままのファイル名（なければ空）。native.js は中身が変わったときだけ気にする */
   function staleFiles() {
@@ -1566,7 +1566,7 @@
         '<input class="amount' + (i.amount == null ? ' empty' : '') + '" inputmode="numeric" enterkeyhint="done" autocomplete="off" id="incamt-' + id + '" data-inc="' + id + '" value="' + yenTxt(i.amount) + '" placeholder="未入力" aria-label="' + esc(i.name) + 'の金額">' +
           '<button type="button" class="calcbtn" data-act="inccalc" aria-label="' + esc(i.name) + 'を電卓で計算">' + CALC_ICON + '</button></div>' +
         // 年金（2か月に1回）を1か月分にする
-        (PW() === '年金の日' ? '<div class="inc-half"><button type="button" class="small" data-act="inchalf">2か月分を1か月分にする（÷2）</button></div>' : '') +
+        (PW() === '年金の日' || /年金/.test(i.name) ? '<div class="inc-half"><button type="button" class="small" data-act="inchalf">2か月分を1か月分にする（÷2）</button></div>' : '') +
         '<div class="row-sub"><span class="ikchip k-' + k + '">' + KL[k] + '</span>' + (i.vary ? '<span class="ikchip est">変動</span>' : '') +
         (k === 'once' ? '<input class="text datein" type="date" id="incdate-' + id + '" value="' + esc(i.date) + '" aria-label="入金日">'
           : (k === 'months' ? '<span class="imons">' + i.months.join('・') + '月</span>' : '') + daySelect('incday-' + id, i.day)) + '</div>' +
