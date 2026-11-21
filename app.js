@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   const C = window.KCalc;
-  const APP_VERSION = '2026.11.18';
+  const APP_VERSION = '2026.11.21';
   /** ファイルの一部だけが新しい（アップロード漏れ・古いキャッシュ）と計算が合わなくなるので知らせる */
   /** 古いままのファイル名（なければ空）。native.js は中身が変わったときだけ気にする */
   function staleFiles() {
@@ -995,6 +995,21 @@
   let flowSel = 0; // 0=今回の締め期間、-1=前回…
   const FLOW_TO = 1;
   const flowFrom = () => proActive() ? -5 : -2; // 無料は直近3期間まで（それより前はプレミアム）
+  /** 収入の記録をどの締め期間に数えるか：「いつの分」を入金日の月とちがう月にしたら、その月の入金日で数える */
+  function incEffDate(h) {
+    if (!h.forM) return h.date;
+    const i = (state.income || []).find(x => x.id === h.src) || (state.income || []).find(x => x.name === h.name);
+    const off = i ? (i.forOff || 0) : 0;
+    if (forYm(h.date, off) === h.forM) return h.date;
+    const [fy, fm] = h.forM.split('-').map(Number); const t = fy * 12 + (fm - 1) + off, y = Math.floor(t / 12), m = t % 12 + 1;
+    if (i && i.day != null && !i.date) return isoOf(C.actual(i, y, m, true));
+    const dd = Math.min(Number(h.date.slice(8, 10)), new Date(y, m, 0).getDate());
+    return y + '-' + String(m).padStart(2, '0') + '-' + String(dd).padStart(2, '0');
+  }
+  /** 今日からあとの入金予定に、もう記録（日付を動かした記録・先に入れた記録）があるか */
+  function recCovers(recs, i, d, tIso) {
+    return recs.some(h => (h.src === i.id || h.name === i.name) && (h.odate === d || (h.date === d && (h.date >= tIso)) || (i.vary && h.forM && h.edited && h.forM === forYm(d, i.forOff || 0)) || (h.edited && h.date >= tIso && ymOf(h.date) === d.slice(0, 7) && !i.vary)));
+  }
   /** 1つの締め期間の収支。過ぎた日は記録した金額、今日以降は登録内容から */
   function flowData(off, rng) {
     const T = today(), tIso = isoOf(T);
@@ -1023,12 +1038,18 @@
     const pastOnly = toIso < tIso;
     // 収入：過ぎた日は「収入の記録」、今日からあとは登録している収入
     let income = 0, incomeMissing = 0, incRecorded = false; const incItems = [];
-    for (const h of state.incHistory || []) { if (h.date < fIso || h.date > toIso || h.date >= tIso) continue; incRecorded = true; incItems.push({ name: h.name + (h.forM ? '（' + forLab(h.forM) + '）' : ''), date: h.date, amount: h.amount, past: true, rid: h.id }); if (h.amount == null) incomeMissing++; else income += h.amount; }
+    const recs = state.incHistory || [];
+    for (const h of recs) { const ed = incEffDate(h); if (ed < fIso || ed > toIso || (h.date >= tIso && !h.edited)) continue; incRecorded = true; incItems.push({ name: h.name + (h.forM ? '（' + forLab(h.forM) + '）' : ''), date: h.date, amount: h.amount, past: true, rid: h.id }); if (h.amount == null) incomeMissing++; else income += h.amount; }
     if (toIso >= tIso) {
       const from = fIso > tIso ? cy.from : T;
-      for (const i of state.income || []) { if (i.hidden) continue; for (const o of C.occurrencesIn(i, from, cy.to, true)) { incItems.push({ name: i.name, date: isoOf(o), amount: i.amount == null ? null : Number(i.amount), past: false }); if (i.amount == null) incomeMissing++; else income += Number(i.amount); } }
+      for (const i of state.income || []) { if (i.hidden) continue; for (const o of C.occurrencesIn(i, from, cy.to, true)) { if (recCovers(recs, i, isoOf(o), tIso)) continue; incItems.push({ name: i.name, date: isoOf(o), amount: i.amount == null ? null : Number(i.amount), past: false }); if (i.amount == null) incomeMissing++; else income += Number(i.amount); } }
     }
     return { off, from: cy.from, to: cy.to, income, incomeMissing, expense, unentered, items, incItems, diff: income - expense, noRecord: pastOnly && !recorded, noIncRecord: pastOnly && !incRecorded };
+  }
+  /** その日を含む締め期間を表示する */
+  function flowGoTo(iso) {
+    const T = today();
+    for (let o = flowFrom(); o <= FLOW_TO; o++) { const cy = C.cycle(state, T, o); if (isoOf(cy.from) <= iso && iso <= isoOf(cy.to)) { flowSel = o; return; } }
   }
   function flowHTML() {
     const FROM = flowFrom(); if (flowSel < FROM) flowSel = 0;
@@ -2790,9 +2811,9 @@
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { toast('日付を選んでください'); return; }
       let adj = 0;
       const forM = $('#ri-for-wrap').hidden ? null : ($('#ri-for').value || null);
-      if (h) { if (v !== h.amount) { adj = incAdjust(h, v); h.est = false; } Object.assign(h, { name, amount: v, date, edited: true, forM: forM || (forM === null && $('#ri-for-wrap').hidden ? h.forM : null) }); }
+      if (h) { if (v !== h.amount) { adj = incAdjust(h, v); h.est = false; } if (date !== h.date && !h.odate) h.odate = h.date; Object.assign(h, { name, amount: v, date, edited: true, forM: forM || (forM === null && $('#ri-for-wrap').hidden ? h.forM : null) }); }
       else (state.incHistory = state.incHistory || []).push({ id: uid('r'), date, name, amount: v, src: pi ? pi.id : null, auto: false, edited: false, forM });
-      histMonth = ymOf(date); save(); close(); renderKeep(); toast(h ? '記録を直しました' + (adj ? '（' + h.account + ' 残高 ' + (adj > 0 ? '＋' : '−') + nf.format(Math.abs(adj)) + '円）' : '') : '記録を追加しました');
+      histMonth = ymOf(date); flowGoTo(incEffDate(h || state.incHistory[state.incHistory.length - 1])); save(); close(); renderKeep(); toast(h ? '記録を直しました' + (adj ? '（' + h.account + ' 残高 ' + (adj > 0 ? '＋' : '−') + nf.format(Math.abs(adj)) + '円）' : '') : '記録を追加しました');
     };
   }
   function incBackPlan(ym, months) {
@@ -2866,7 +2887,7 @@
     state.incHistory = state.incHistory || [];
     const start = state.incUntil ? isoOf(C.addDays(isoToObj(state.incUntil), 1)) : state.incSince;
     if (start > todayIso) return;
-    const have = new Set(state.incHistory.map(h => h.date + '|' + h.name));
+    const have = new Set(state.incHistory.map(h => h.date + '|' + h.name).concat(state.incHistory.filter(h => h.odate).map(h => h.odate + '|' + h.name)));
     for (const i of state.income || []) {
       if (i.hidden) continue;
       for (const o of C.occurrencesIn(i, isoToObj(start), isoToObj(todayIso), true)) {
