@@ -1544,6 +1544,8 @@
         '<div class="row-main"><span class="row-name">' + esc(i.name) + '</span>' +
         '<input class="amount' + (i.amount == null ? ' empty' : '') + '" inputmode="numeric" enterkeyhint="done" autocomplete="off" id="incamt-' + id + '" data-inc="' + id + '" value="' + yenTxt(i.amount) + '" placeholder="未入力" aria-label="' + esc(i.name) + 'の金額">' +
           '<button type="button" class="calcbtn" data-act="inccalc" aria-label="' + esc(i.name) + 'を電卓で計算">' + CALC_ICON + '</button></div>' +
+        // 年金（2か月に1回）を1か月分にする
+        (PW() === '年金の日' ? '<div class="inc-half"><button type="button" class="small" data-act="inchalf">2か月分を1か月分にする（÷2）</button></div>' : '') +
         '<div class="row-sub"><span class="ikchip k-' + k + '">' + KL[k] + '</span>' + (i.vary ? '<span class="ikchip est">変動</span>' : '') +
         (k === 'once' ? '<input class="text datein" type="date" id="incdate-' + id + '" value="' + esc(i.date) + '" aria-label="入金日">'
           : (k === 'months' ? '<span class="imons">' + i.months.join('・') + '月</span>' : '') + daySelect('incday-' + id, i.day)) + '</div>' +
@@ -2143,6 +2145,14 @@
       // 電卓（年金を1/2にして入れるときなど）
       const icb = el.id.startsWith('incamt-') && row && row.querySelector('[data-act="inccalc"]');
       if (icb) icb.addEventListener('click', () => openCalc(el, inc.name, reg ? '（「登録」を押すと保存されます）' : ''));
+      const ihb = el.id.startsWith('incamt-') && row && row.querySelector('[data-act="inchalf"]');
+      if (ihb) ihb.addEventListener('click', () => {
+        const v = parseAmount(el.value);
+        if (v == null || Number.isNaN(v) || v <= 0) { toast('先に2か月分の金額を入れてください'); try { el.focus(); } catch (e) {} return; }
+        const h = Math.round(v / 2);
+        el.value = String(h); el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('blur'));
+        toast('¥' + nf.format(v) + ' を2か月に分けて、1か月 ¥' + nf.format(h) + ' にしました' + (reg ? '（「登録」を押すと保存されます）' : ''));
+      });
       if (reg) el.addEventListener('change', () => { const v = parseAmount(el.value); if (!Number.isNaN(v) && v !== inc.amount) toast('「登録」を押すと保存されます'); });
       if (reg) reg.addEventListener('click', () => { // 変動の収入：何月分として金額を登録
         const v = parseAmount(el.value); const ym = row.querySelector('[data-incmonth]').value;
