@@ -2153,14 +2153,17 @@
         const apply = () => { el.value = String(h); el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('blur')); };
         if (incKind(inc) === 'months') {
           // 偶数月だけ入る形のままだと、半分にしても次の月に収入が出ない → 毎月入る形に変えて、毎月同じ金額にする
-          confirmSheet('毎月に分けて計算しますか？', '<p style="margin:0">「' + esc(inc.name) + '」は ' + inc.months.join('・') + '月 に入る形になっています。<br>毎月 ' + (inc.day === 'end' ? '月末' : inc.day + '日') + ' に <b>¥' + nf.format(h) + '</b> ずつ入る形に変えると、次の月にも同じ金額の収入が入ります。</p>', '毎月に分ける', () => {
-            inc.months = []; inc.amount = h; if (inc.vary && reg) { const ym = row.querySelector('[data-incmonth]').value; inc.month = ym; }
-            save(); renderKeep(); toast('「' + inc.name + '」を毎月 ¥' + nf.format(h) + ' にしました。次の月からも同じ金額が入ります');
+          confirmSheet('毎月に分けて計算しますか？', '<p style="margin:0">「' + esc(inc.name) + '」は ' + inc.months.join('・') + '月 に入る形になっています。<br>毎月 ' + (inc.day === 'end' ? '月末' : inc.day + '日') + ' に <b>¥' + nf.format(h) + '</b> ずつ入る形（金額は変動）に変えると、次の月にも同じ金額で計算します。<br>次の年金が届いたら、その金額を入れてまた「÷2」を押してください。</p>', '毎月に分ける', () => {
+            // 年金は支払いごとに金額が変わるので「変動」にして、今月分として登録する
+            inc.months = []; inc.amount = h; inc.vary = true;
+            inc.month = reg ? row.querySelector('[data-incmonth]').value : (inc.month || forYm(isoToday(), inc.forOff || 0));
+            save(); renderKeep(); toast('「' + inc.name + '」を毎月 ¥' + nf.format(h) + '（変動）にしました。次の月も同じ金額で計算します');
           });
           return;
         }
         apply();
-        toast('1か月 ¥' + nf.format(h) + ' にしました。' + (reg ? '「登録」を押すと、' : '') + '次の月からも同じ金額が入ります');
+        if (reg) { reg.click(); setTimeout(() => toast('1か月 ¥' + nf.format(h) + ' で登録しました。次の月も同じ金額で計算します（次の年金が届いたら、その金額でまた÷2してください）'), 50); return; }
+        toast('1か月 ¥' + nf.format(h) + ' にしました。次の月からも同じ金額で計算します');
       });
       if (reg) el.addEventListener('change', () => { const v = parseAmount(el.value); if (!Number.isNaN(v) && v !== inc.amount) toast('「登録」を押すと保存されます'); });
       if (reg) reg.addEventListener('click', () => { // 変動の収入：何月分として金額を登録
