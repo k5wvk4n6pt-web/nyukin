@@ -2150,8 +2150,17 @@
         const v = parseAmount(el.value);
         if (v == null || Number.isNaN(v) || v <= 0) { toast('先に2か月分の金額を入れてください'); try { el.focus(); } catch (e) {} return; }
         const h = Math.round(v / 2);
-        el.value = String(h); el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('blur'));
-        toast('¥' + nf.format(v) + ' を2か月に分けて、1か月 ¥' + nf.format(h) + ' にしました' + (reg ? '（「登録」を押すと保存されます）' : ''));
+        const apply = () => { el.value = String(h); el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('blur')); };
+        if (incKind(inc) === 'months') {
+          // 偶数月だけ入る形のままだと、半分にしても次の月に収入が出ない → 毎月入る形に変えて、毎月同じ金額にする
+          confirmSheet('毎月に分けて計算しますか？', '<p style="margin:0">「' + esc(inc.name) + '」は ' + inc.months.join('・') + '月 に入る形になっています。<br>毎月 ' + (inc.day === 'end' ? '月末' : inc.day + '日') + ' に <b>¥' + nf.format(h) + '</b> ずつ入る形に変えると、次の月にも同じ金額の収入が入ります。</p>', '毎月に分ける', () => {
+            inc.months = []; inc.amount = h; if (inc.vary && reg) { const ym = row.querySelector('[data-incmonth]').value; inc.month = ym; }
+            save(); renderKeep(); toast('「' + inc.name + '」を毎月 ¥' + nf.format(h) + ' にしました。次の月からも同じ金額が入ります');
+          });
+          return;
+        }
+        apply();
+        toast('1か月 ¥' + nf.format(h) + ' にしました。' + (reg ? '「登録」を押すと、' : '') + '次の月からも同じ金額が入ります');
       });
       if (reg) el.addEventListener('change', () => { const v = parseAmount(el.value); if (!Number.isNaN(v) && v !== inc.amount) toast('「登録」を押すと保存されます'); });
       if (reg) reg.addEventListener('click', () => { // 変動の収入：何月分として金額を登録
