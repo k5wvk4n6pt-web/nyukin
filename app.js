@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   const C = window.KCalc;
-  const APP_VERSION = '2026.11.21d';
+  const APP_VERSION = '2026.11.21e';
   /** ファイルの一部だけが新しい（アップロード漏れ・古いキャッシュ）と計算が合わなくなるので知らせる */
   /** 古いままのファイル名（なければ空）。native.js は中身が変わったときだけ気にする */
   function staleFiles() {
@@ -645,7 +645,7 @@
       el.addEventListener('input', () => onAmountInput(el, () => b.amount, v => { b.amount = v; b.updatedAt = new Date().toISOString(); }));
       el.addEventListener('blur', () => { const v = parseAmount(el.value); if (!Number.isNaN(v)) el.value = yenTxt(v); });
       const cb = el.parentNode.querySelector('[data-balcalc]');
-      if (cb) cb.addEventListener('click', () => { openCalc(el, name + 'の残高'); const ok = $('#mOk'); if (ok) ok.addEventListener('click', () => setTimeout(() => el.dispatchEvent(new Event('blur')), 0)); });
+      if (cb) cb.addEventListener('click', () => openCalc(el, name + 'の残高'));
     });
   }
   /** 口座タブの「残高」を開いて、その口座の行を見せる（入金が必要な口座を押したとき） */
@@ -1355,7 +1355,7 @@
       return '<div class="row' + (ended ? ' ended' : '') + '" data-kind="' + kind + '" data-id="' + esc(it.id) + '">' +
         '<div class="row-main"><span class="row-name">' + esc(it.name) + '</span>' +
         '<input class="amount' + (it.amount == null ? ' empty' : '') + '" inputmode="numeric" enterkeyhint="done" autocomplete="off" id="amt-' + esc(it.id) + '" data-f="amount" value="' + yenTxt(it.amount) + '" placeholder="未入力" aria-label="' + esc(it.name) + 'の金額">' +
-        (kind !== 'fixed' ? '<button type="button" class="calcbtn" data-act="calc" aria-label="' + esc(it.name) + 'を電卓で計算">' + CALC_ICON + '</button>' : '') + '</div>' +
+        '<button type="button" class="calcbtn" data-act="calc" aria-label="' + esc(it.name) + 'を電卓で計算">' + CALC_ICON + '</button>' + '</div>' +
         '<div class="row-sub">' + (kind === 'once' ? '<span class="ikchip k-once">1回のみ</span><input class="text datein" type="date" id="date-' + esc(it.id) + '" data-f="date" value="' + esc(it.date) + '" aria-label="引落日">' : daySelect('day-' + esc(it.id), it.day, it.nm, true)) + (kind === 'variable' ? monthSelect('mon-' + esc(it.id), it) : '') + acctSelect('acc-' + esc(it.id), it.account) +
         '</div>' +
         ((it.memo || it.end) ? '<div class="memo">' + (it.end ? (ended ? '終了しました（' : '終了予定 ') + it.end.replace('-', '/') + (ended ? '）' : '') + (it.memo ? '　' : '') : '') + esc(it.memo) + '</div>' : '') +
@@ -2346,8 +2346,14 @@
     let v = n2[0]; for (let i = 0; i < o2.length; i++) v = o2[i] === '+' ? v + n2[i + 1] : v - n2[i + 1];
     return Math.round(v * 1e6) / 1e6;
   }
+  /** 電卓を出す場所：記録の追加などの画面の上に重ねるときは、別の入れ物を使う */
+  function calcLayer(inp) {
+    if (!inp.closest('#modal')) return $('#modal');
+    let m2 = $('#modal2'); if (!m2) { m2 = document.createElement('div'); m2.id = 'modal2'; m2.className = 'modal'; m2.hidden = true; m2.style.zIndex = '60'; $('#modal').after(m2); }
+    return m2;
+  }
   function openCalc(inp, name, hint) {
-    const m = $('#modal');
+    const m = calcLayer(inp);
     const cur = parseAmount(inp.value);
     let toks = (cur != null && !Number.isNaN(cur)) ? [String(cur)] : [];
     let fresh = toks.length > 0; // 最初の数字は打つと置きかわる
@@ -2360,11 +2366,11 @@
     const close = () => { m.hidden = true; m.innerHTML = ''; };
     const result = () => calcEval(toks);
     const draw = () => {
-      $('#cExpr').textContent = toks.length ? toks.map(x => OPS[x] ? ' ' + OPS[x] + ' ' : (x.indexOf('.') >= 0 ? x : nf.format(Number(x)))).join('') : '0';
-      const v = result(); const r = $('#cRes');
+      m.querySelector('#cExpr').textContent = toks.length ? toks.map(x => OPS[x] ? ' ' + OPS[x] + ' ' : (x.indexOf('.') >= 0 ? x : nf.format(Number(x)))).join('') : '0';
+      const v = result(); const r = m.querySelector('#cRes');
       if (v == null) { r.textContent = toks.length ? '計算できません' : '0円'; r.classList.toggle('bad', !!toks.length); }
       else { const y = Math.round(v); r.textContent = '= ' + nf.format(y) + '円' + (y !== v ? '（四捨五入）' : ''); r.classList.toggle('bad', y < 0); }
-      const ok = $('#mOk'); const y = v == null ? null : Math.round(v);
+      const ok = m.querySelector('#mOk'); const y = v == null ? null : Math.round(v);
       ok.disabled = toks.length > 0 && (y == null || y < 0);
     };
     const press = k => {
@@ -2384,9 +2390,9 @@
       draw();
     };
     m.querySelector('.calc-keys').addEventListener('click', e => { const b = e.target.closest('[data-k]'); if (b) press(b.dataset.k); });
-    $('#mCancel').onclick = close;
+    m.querySelector('#mCancel').onclick = close;
     m.onclick = e => { if (e.target === m) close(); };
-    $('#mOk').onclick = () => {
+    m.querySelector('#mOk').onclick = () => {
       const v = result(); const y = toks.length ? (v == null ? null : Math.round(v)) : null;
       if (toks.length && (y == null || y < 0)) return;
       close();
@@ -3414,10 +3420,20 @@
   function addClear(inp) {
     if (inp._clr || !inp.isConnected) return;
     inp._clr = true;
+    const needCalc = !inp.hasAttribute('data-nocalc') && !inp.parentNode.querySelector('.calcbtn');
     const wrap = document.createElement('span'); wrap.className = 'amtwrap';
     // 幅の指定は入れ物に引き継ぐ
     if (inp.classList.contains('wide')) wrap.classList.add('wide');
     inp.parentNode.insertBefore(wrap, inp); wrap.appendChild(inp);
+    if (needCalc) { // 金額欄にはどこでも電卓を付ける
+      let host = wrap;
+      if (inp.classList.contains('wide')) { host = document.createElement('span'); host.className = 'amtcalc'; wrap.parentNode.insertBefore(host, wrap); host.appendChild(wrap); }
+      const cb = document.createElement('button'); cb.type = 'button'; cb.className = 'calcbtn'; cb.setAttribute('aria-label', '電卓で計算'); cb.innerHTML = CALC_ICON;
+      host === wrap ? wrap.after(cb) : host.appendChild(cb);
+      cb.addEventListener('click', e => { e.preventDefault(); e.stopPropagation();
+        const lab = inp.closest('label'); const nm = inp.getAttribute('aria-label') || (lab ? (lab.childNodes[0] && lab.childNodes[0].textContent || '').trim() : '') || '金額';
+        openCalc(inp, nm.replace(/の金額$/, '')); });
+    }
     const btn = document.createElement('button');
     btn.type = 'button'; btn.className = 'clr'; btn.setAttribute('aria-label', '金額を消す'); btn.textContent = '×';
     wrap.appendChild(btn);

@@ -591,6 +591,10 @@ body { padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 170px); }
 .amtwrap .clr { display: none; position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 28px; height: 28px; min-height: 0; padding: 0; border-radius: 50%; border: 0; background: color-mix(in srgb, var(--muted) 28%, transparent); color: var(--surface); font-size: 16px; font-weight: 900; line-height: 28px; }
 .amtwrap.has .clr { display: block; }
 .amtwrap .clr:active { background: var(--muted); }
+.amtcalc { display: flex; align-items: center; gap: 8px; width: 100%; }
+.amtcalc > .amtwrap { flex: 1 1 auto; }
+.amtcalc .calcbtn, .bank-foot .calcbtn, .income-row .calcbtn { flex: 0 0 auto; width: 40px; min-width: 40px; min-height: 40px; padding: 0; display: grid; place-items: center; border-radius: 10px; border: 0; background: var(--accent-soft); color: var(--accent); }
+.amtcalc .calcbtn:active, .bank-foot .calcbtn:active, .income-row .calcbtn:active { filter: brightness(.94); }
 .row-main .amtwrap { width: 140px; flex: 0 0 auto; }
 .row-main .calcbtn { flex: 0 0 auto; width: 40px; min-width: 40px; min-height: 40px; padding: 0; display: grid; place-items: center; border-radius: 10px; border: 0; background: var(--accent-soft); color: var(--accent); }
 .row-main .calcbtn:active { filter: brightness(.94); }
