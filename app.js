@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   const C = window.KCalc;
-  const APP_VERSION = '2026.11.21f';
+  const APP_VERSION = '2026.11.21g';
   /** ファイルの一部だけが新しい（アップロード漏れ・古いキャッシュ）と計算が合わなくなるので知らせる */
   /** 古いままのファイル名（なければ空）。native.js は中身が変わったときだけ気にする */
   function staleFiles() {
@@ -175,8 +175,8 @@
   /** 読み込んだデータの形をそろえる。おかしな値があれば例外 */
   /** 期間の始まりの呼び方（帳簿ごと）：給料日／年金の日／収入日 */
   const PAY_LABELS = ['給料日', '年金の日', '収入日', '月初'];
-  function PWg() { return PW() === '月初' ? '月' : PW(); } // 「○○ごと」の言い方（月初なら「月ごと」）
-  function PW() { const v = state && state.settings && state.settings.payLabel; return PAY_LABELS.includes(v) ? v : '給料日'; }
+  function PWg() { const c = C.closeSettings(state).d1; return c && c.start === 1 ? '月' : '開始日'; } // 「○○ごと」の言い方（1日始まりなら「月ごと」）
+  function PW() { return '開始日'; } // 期間の始まりの呼び方（給料日・年金の日などの呼び分けはやめて「開始日」にそろえる）
   function normalize(d) {
     if (!d || d.app !== 'kakeibo' || !Array.isArray(d.accounts) || !Array.isArray(d.variable) || !Array.isArray(d.fixed)) throw new Error('入金準備帳のデータではありません');
     const item = (x, fixed) => {
@@ -318,7 +318,7 @@
   function welcomeHTML() {
     return '<section class="welcome">' +
       '<h2>はじめに</h2>' +
-      '<p>口座ごとに「次の締め日（初期設定は給料日の25日始まりで、締め日は毎月24日。変更できます）までに、いくら入れておけばよいか」を計算するアプリです。給料日や引落日が休日に当たる場合のずれも計算します。</p>' +
+      '<p>口座ごとに「次の締め日（初期設定は25日始まりで、締め日は毎月24日。変更できます）までに、いくら入れておけばよいか」を計算するアプリです。給料日や引落日が休日に当たる場合のずれも計算します。</p>' +
       '<p class="sub" style="margin:0">入力した内容はこの端末の中だけに保存され、外部には送信しません。ログインも不要です。</p>' +
       '<div class="btnrow col"><button class="primary" data-act="start-empty">空の状態ではじめる</button>' +
       '<button data-act="start-sample">サンプルデータで試してみる</button>' +
@@ -407,13 +407,13 @@
   function helpHTML() {
     return '<div class="help"><button class="fbopen" data-act="feedback">ご意見・ご要望を送る ›</button>' +
       '<h3>できること</h3><p>登録した毎月の引落をもとに、口座ごとに「締め日までに必要な金額」を計算します。残高を入力すると、不足している口座と余っている口座がわかります。</p>' +
-      '<h3>締め日と期間</h3><p>初めは25日始まり（締め日は毎月24日）で、確認日から次の締め日までの引落で不足と余りを判定します。1日始まり（月末締め）など、もう一つの区切りも見たいときは「口座 → 帳簿・給料日」で「＋ もう一つの給料日を追加」を押すと、2つの締め日（それぞれの給料日の前日）のうち、近いほうまでの引落で不足と余りを判定します。給料日はどちらも1〜31日と、土日・祝日に当たったときの扱い（前の平日・後ろの平日・ずらさない）を選べます。確認日（今日）から次の締め日までの引落で、不足と余りを判定します。</p>' +
+      '<h3>締め日と期間</h3><p>初めは25日始まり（締め日は毎月24日）で、確認日から次の締め日までの引落で不足と余りを判定します。1日始まり（月末締め）など、もう一つの区切りも見たいときは「口座 → 帳簿・開始日」で「＋ もう一つの開始日を追加」を押すと、2つの締め日（それぞれの開始日の前日）のうち、近いほうまでの引落で不足と余りを判定します。開始日はどちらも1〜31日と、土日・祝日に当たったときの扱い（前の平日・後ろの平日・ずらさない）を選べます。確認日（今日）から次の締め日までの引落で、不足と余りを判定します。</p>' +
       '<h3>休日のずれ</h3><p>土日・祝日・年末年始（12/31〜1/3）に当たる日は、項目ごとに「後ろにずらす／前にずらす／ずらさない」を選べます。初期値は、支出が後ろ（翌営業日）、収入が前（前営業日）です。</p>' +
       '<h3>表示モード</h3><p>標準はライトモード（明るい表示）です。「設定 → 表示」で、ライトモード・ダークモード・自動（iPhoneの設定に合わせる）を選べます。</p>' +
-      '<h3>移動と追加</h3><p>下のタブは「引落・支出・口座・収入・収支」です。口座のページは上の「残高｜口座の登録｜帳簿・給料日」で切り替えます。保存・通知・表示の設定は右上の歯車から開きます。支出のページは上の「変動費｜固定費」で切り替えます。口座タブの「残高」で残高を入れ直したり、口座間で移したりできます。下のタブで今のページをもう一度押すか、右下の「↑」で一番上に戻れます。支出のページでは、右下の「＋」や見出しの「＋ 追加」から、ページを移らずに追加できます。「追加して続ける」で何件も続けて入れられます。</p>' +
-      '<h3>帳簿</h3><p>家族のお金なども、人ごとに別の帳簿で管理できます。帳簿が2つ以上あると画面上に名前が並び、タップで切り替わります。帳簿の追加は「口座 → 帳簿・給料日」からできます。バックアップは全部の帳簿をまとめて保存します。</p>' +
+      '<h3>移動と追加</h3><p>下のタブは「引落・支出・口座・収入・収支」です。口座のページは上の「残高｜口座の登録｜帳簿・開始日」で切り替えます。保存・通知・表示の設定は右上の歯車から開きます。支出のページは上の「変動費｜固定費」で切り替えます。口座タブの「残高」で残高を入れ直したり、口座間で移したりできます。下のタブで今のページをもう一度押すか、右下の「↑」で一番上に戻れます。支出のページでは、右下の「＋」や見出しの「＋ 追加」から、ページを移らずに追加できます。「追加して続ける」で何件も続けて入れられます。</p>' +
+      '<h3>帳簿</h3><p>家族のお金なども、人ごとに別の帳簿で管理できます。帳簿が2つ以上あると画面上に名前が並び、タップで切り替わります。帳簿の追加は「口座 → 帳簿・開始日」からできます。バックアップは全部の帳簿をまとめて保存します。</p>' +
       '<h3>口座間の移動</h3><p>不足している口座の「ほかの口座から移す」は、その口座へ入れる移動です。それ以外の口座の「ほかの口座へ移す」は、その口座から出す移動です。ほかの帳簿の口座（自分 → 母など）や、非表示の口座とも移動できます。「ほかの口座から移す」や口座タブの「残高移動」で、実際に移したお金を記録すると、両方の残高が書きかわります。不足している口座から開くと、不足額が最初から入ります。手数料は「移動元から別に引く」か「移す金額から引く」を選べ、口座の組み合わせごとに前回の手数料を覚えます。間違えたときは、両方の口座の残高を入れ直してください。</p>' +
-      '<h3>収支</h3><p>下のタブの「収支」で、給料日ごとの収入・支出・差し引きがグラフで見られます。引落日が来た分はそのときの金額で自動で残ります。月ごとの合計・先月との差・口座ごとの合計が見られ、実際の金額と違うときは押して直せます。CSVで書き出すとExcelで開けます。</p>' +
+      '<h3>収支</h3><p>下のタブの「収支」で、開始日ごとの収入・支出・差し引きがグラフで見られます。引落日が来た分はそのときの金額で自動で残ります。月ごとの合計・先月との差・口座ごとの合計が見られ、実際の金額と違うときは押して直せます。CSVで書き出すとExcelで開けます。</p>' +
       '<h3>プレミアム（iPhoneアプリ版・買い切り）</h3><p>「設定 → 表示」でアプリの色を選べます（ブルー・ピンク・グリーン・パープル・オレンジ）。アプリの色に合わせて、画面上のロゴとホーム画面のアイコンも同じ色になります（アイコンを変えたくないときは、スイッチでオフにできます）。</p>' +
         '<h3>引落前のお知らせ（プレミアム）</h3><p>iPhoneアプリ版のプレミアムでは、「設定 → 通知」で、引落日の当日・前日・2日前などに通知でお知らせできます（時刻も選べます）。通知の予約はiPhoneの中だけで行い、外部には送りません。ロック画面に金額を出したくないときは「金額も表示する」をオフにしてください。Webアプリ版では通知は届きません。</p>' +
         '<h3>電卓</h3><p>変動費・1回のみの引落の金額欄の右にある電卓のボタンで、明細の合計などをその場で計算できます。入っている金額から計算が始まり、「この金額にする」でそのまま金額欄に入ります（小数は四捨五入します）。</p>' +
@@ -454,7 +454,7 @@
         H('帳簿', '家族のお金なども、人ごとに別の帳簿で管理できます。口座・支出・収入・残高は帳簿ごとに別々です。2冊目からはプレミアムです。')];
       return ['口座の残高', H('残高を入れる', '口座ごとの金額を押すと、その場で残高を入れ直せます。通帳やネットバンキングの今の残高を入れてください。') +
         H('残高移動', '右上の「残高移動」で、口座から口座へ実際に移したお金を記録できます。両方の残高が書きかわります。手数料も記録できます。') +
-        H('上の切り替え', '「口座の登録」で口座の追加・名前の変更・グループを、「帳簿・給料日」で給料日（締め日）や帳簿を設定します。')];
+        H('上の切り替え', '「口座の登録」で口座の追加・名前の変更・グループを、「帳簿・開始日」で開始日（締め日）や帳簿を設定します。')];
     }
     if (pg === 'income') return ['収入', H('収入の登録', '給料などの収入を登録すると、入金日を表示します。ボーナスのような年に何回かの収入や、1回だけの臨時収入も登録できます。') +
       H('入金する口座', '口座を選んでおくと、入金日に自動でその口座の残高へ足します。') +
@@ -1093,7 +1093,7 @@
         '<text x="' + cx + '" y="' + (H - B + 15) + '" class="fg-lab" text-anchor="middle">' + md(d.from) + '</text>' +
         '<text x="' + cx + '" y="' + (H - B + 28) + '" class="fg-sub" text-anchor="middle">' + (d.off === 0 ? '今回' : d.off === -1 ? '前回' : d.off === 1 ? '次回' : '') + '</text></g>';
     });
-    g += '<text x="' + (L - 2) + '" y="' + (H - B + 15) + '" class="fg-ax fg-axlab" text-anchor="end">' + (PW() === '月初' ? '' : PW()) + '</text>';
+    g += '<text x="' + (L - 2) + '" y="' + (H - B + 15) + '" class="fg-ax fg-axlab" text-anchor="end">' + '開始日' + '</text>';
     const svg = '<svg class="flowchart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + PWg() + 'ごとの収入と支出">' + g + '</svg>';
     const d = data.find(x => x.off === flowSel) || data.find(x => x.off === 0);
     const neg = d.diff < 0;
@@ -1109,7 +1109,7 @@
       const sub = side === 'in' ? (x.past ? '入金済み' : '予定') : esc(x.account || '') + (x.past ? '・引落済み' : '');
       return '<' + (id ? 'button' : 'div') + ' class="fd-row' + (x.past ? ' past' : '') + '"' + id + '><span class="fd-d">' + md(isoToObj(x.date)) + '</span><span class="fd-n">' + esc(x.name) + '<small>' + sub + '</small></span><span class="num">' + (x.amount == null ? '<span class="flag">未入力</span>' : nf.format(x.amount) + '円') + '</span></' + (id ? 'button' : 'div') + '>'; }).join('');
     const sideTab = (k, label, v, miss) => '<button class="fd-tab' + (side === k ? ' on' : '') + '" data-fside="' + k + '" aria-pressed="' + (side === k) + '"><span class="k"><i class="sw ' + k + '"></i>' + label + '</span><span class="v num">' + nf.format(v) + '<small>円</small></span>' + (miss ? '<span class="flag">金額未入力 ' + miss + '件</span>' : '') + '</button>';
-    const detail = '<div class="flowdet"><div class="fd-h"><b>' + md(d.from) + '〜' + md(d.to) + '</b><span class="sub">（' + md(d.from) + (PW() === '月初' ? '' : PW()) + 'から）</span></div>' +
+    const detail = '<div class="flowdet"><div class="fd-h"><b>' + md(d.from) + '〜' + md(d.to) + '</b><span class="sub">（' + md(d.from) + 'から）</span></div>' +
       '<div class="fd-grid">' + sideTab('in', '収入', d.income, d.incomeMissing) + sideTab('out', '支出', d.expense, d.unentered) +
       '<div class="' + (neg ? 'neg' : 'pos') + '"><span class="k">差し引き</span><span class="v num">' + (neg ? '−' : '＋') + nf.format(Math.abs(d.diff)) + '<small>円</small></span></div></div>' +
       (d.noRecord || d.noIncRecord ? '<p class="sub" style="margin:0">この期間は' + (d.noRecord && d.noIncRecord ? '引き落としと収入' : d.noRecord ? '引き落とし' : '収入') + 'の記録がないため、0円になっています。</p>' : '') +
@@ -1456,12 +1456,10 @@
     const cs = C.closeSettings(state);
     const dayOpts = sel => { let o = ''; for (let i = 1; i <= 28; i++) o += '<option value="' + i + '"' + (i === sel ? ' selected' : '') + '>毎月' + i + '日</option>'; return o + '<option value="end"' + (sel === 'end' ? ' selected' : '') + '>毎月 月末</option>'; };
     const sh = (id, v) => shiftSelect(id, v, '休日のとき').replace(SHIFT_LABEL.after, '後ろ（翌営業日）').replace(SHIFT_LABEL.before, '前（前営業日）');
-    const sOpts = sel => { let o = ''; for (let i = 1; i <= 31; i++) o += '<option value="' + i + '"' + (i === sel ? ' selected' : '') + '>毎月' + i + '日</option>'; return o; };
+    const sOpts = sel => { let o = ''; for (let i = 1; i <= 31; i++) o += '<option value="' + i + '"' + (i === sel ? ' selected' : '') + '>毎月' + i + '日' + (i === 1 ? '（1日〜月末）' : '') + '</option>'; return o; };
     const T0 = today(), nc = C.nextClosing(T0, cs.d1), ns = C.addDays({ y: nc.y, m: nc.m, d: nc.d }, 1);
     const closeCard = '<div class="card form closecard" id="closecard"><div class="shead">' + (PW() === '月初' ? '期間の区切り（月初）<span class="sub">帳簿「' + esc(curBook() ? curBook().name : '') + '」の設定です。毎月1日〜月末で区切り、月末までの引落で不足と余りを判定します。収支も月ごとに区切ります</span>' : PW() + '（期間の始まり）<span class="sub">帳簿「' + esc(curBook() ? curBook().name : '') + '」の設定です。' + PW() + 'の前日が締め日になり、締め日までの引落で不足と余りを判定します。収支も' + PW() + 'から区切ります</span>') + '</div>' +
-      '<div class="dl"><span class="k">呼び方</span><div class="seg paylab">' + PAY_LABELS.map(x => '<button type="button" data-paylabel="' + x + '" class="' + (PW() === x ? 'on' : '') + '" aria-pressed="' + (PW() === x) + '">' + x + '</button>').join('') + '</div><span class="sub">年金で暮らしている人の帳簿は「年金の日」、カレンダーの月（1日〜月末）で見たいときは「月初」にしてください</span></div>' +
-      (PW() === '月初' ? '<div class="dl"><b>毎月1日〜月末</b><span class="sub">カレンダーの月で区切ります。締め日は月末です（次の締め日：' + md(nc) + '）。給料日などで区切るときは、上の呼び方を選び直してください</span></div>' : '') +
-      '<div class="dl"' + (PW() === '月初' ? ' hidden' : '') + '><b>' + PW() + '</b><label>日付<select id="close-day">' + sOpts(cs.d1.start || 11) + '</select></label>' +
+      '<div class="dl"><b>' + PW() + '</b><label>日付<select id="close-day">' + sOpts(cs.d1.start || 11) + '</select></label>' +
       '<div class="sshift"><span class="k">' + PW() + 'が土日・祝日のとき</span><input type="hidden" id="close-shift" value="' + cs.d1.shift + '"><div class="seg">' + [['before', '前の平日'], ['after', '後ろの平日'], ['none', 'ずらさない']].map(x => '<button type="button" data-sshift="' + x[0] + '" class="' + (cs.d1.shift === x[0] ? 'on' : '') + '" aria-pressed="' + (cs.d1.shift === x[0]) + '">' + x[1] + '</button>').join('') + '</div></div>' +
       '<span class="sub">次の締め日：' + md(nc) + '（' + C.WD[C.weekday(nc)] + '）／次の' + PW() + '：' + md(ns) + '（' + C.WD[C.weekday(ns)] + '）</span></div>' +
       (cs.d2
@@ -1927,11 +1925,12 @@
       const cur = () => C.closeSettings(state);
       const setS = (patch) => { const c0 = cur(); state.settings = Object.assign({ payLabel: PW(), prevStart: state.settings.prevStart || null, prevShift: state.settings.prevShift || null, startDay: c0.d1.start, startShift: c0.d1.shift, closeDay: c0.d1.day, closeShift: c0.d1.shift, close2On: !!c0.d2, close2Day: c0.d2saved.day, close2Shift: c0.d2saved.shift, close2Start: c0.d2saved.start || null }, patch); save(); renderKeep(); };
       const upd = () => {
-        const sd = Number(cd.value), sh0 = validShift($('#close-shift').value, 'after');
+        const sd = Number(cd.value); let sh0 = validShift($('#close-shift').value, 'after');
+        if (sd === 1 && cur().d1.start !== 1) sh0 = 'none'; // 1日始まり（カレンダーの月）は、休日でもずらさない
         const p = { startDay: sd, startShift: sh0, closeDay: sd === 1 ? 'end' : sd - 1, closeShift: sh0 };
         if ($('#close2-day')) { const s2 = Number($('#close2-day').value); p.close2Start = s2; p.close2Day = s2 === 1 ? 'end' : s2 - 1; p.close2Shift = validShift($('#close2-shift').value, 'none'); }
         setS(p);
-        toast(PW() + '：' + state.settings.startDay + '日・休みなら' + { before: '前の平日', after: '後ろの平日', none: 'ずらさない' }[state.settings.startShift] + '（締め日はその前日）' + (state.settings.close2On ? '／もう一つの給料日：' + state.settings.close2Start + '日' : ''));
+        toast(PW() + '：' + state.settings.startDay + '日・休みなら' + { before: '前の平日', after: '後ろの平日', none: 'ずらさない' }[state.settings.startShift] + '（締め日はその前日）' + (state.settings.close2On ? '／もう一つの開始日：' + state.settings.close2Start + '日' : ''));
       };
       main.querySelectorAll('[data-sshift]').forEach(b => b.addEventListener('click', () => { $('#close-shift').value = b.dataset.sshift; upd(); }));
       main.querySelectorAll('[data-paylabel]').forEach(b => b.addEventListener('click', () => {
