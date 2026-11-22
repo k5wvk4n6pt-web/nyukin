@@ -12,7 +12,7 @@ workflows:
         distribution_type: app_store
         bundle_identifier: com.k5wvk4n6pt.nyukinnavi
       node: 20
-      xcode: latest
+      xcode: 27.0  # iOS 27 SDK（2027年4月からの必須要件に対応）
       cocoapods: default
     scripts:
       - name: 部品のインストール
