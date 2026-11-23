@@ -2,7 +2,7 @@
 (function () {
   'use strict';
   const C = window.KCalc;
-  const APP_VERSION = '2026.11.21g';
+  const APP_VERSION = '2026.11.24';
   /** ファイルの一部だけが新しい（アップロード漏れ・古いキャッシュ）と計算が合わなくなるので知らせる */
   /** 古いままのファイル名（なければ空）。native.js は中身が変わったときだけ気にする */
   function staleFiles() {
@@ -1389,7 +1389,7 @@
         '<div class="list">' + rowsOnce + '<div class="add"><button class="ghost" data-act="add" data-kind="once">＋ 1回のみの引落を追加</button></div></div>' + hid + past + '</section>';
     }
     return '<section id="sec-' + kind + '" aria-label="' + title + '">' + headHTML(title, '登録' + (visible.length + onceVis.length) + '件', kind, kind) +
-      '<p class="sub" style="margin:-4px 0 10px">' + lead + '</p>' +
+      '<p class="sub" style="margin:-4px 0 10px">' + lead + '</p>' + outSumHTML(kind) +
       '<div class="list">' + rows + '<div class="add"><button class="ghost" data-act="add" data-kind="' + kind + '">＋ ' + title + 'を追加</button></div></div>' + hid + (withOnce ? past : '') + '</section>';
   }
 
@@ -1398,6 +1398,22 @@
   function hideBtn(isHidden, act) { return '<button class="small' + (isHidden ? ' primary' : '') + '" data-act="' + act + '">' + (isHidden ? '表示する' : '非表示') + '</button>'; }
 
   /* 見出し＋並び替えボタン */
+  /** 支出ページ：固定費・変動費の合計（非表示・終了した項目は入れない。変動費は今入っている金額で） */
+  function outSum(kind) {
+    const T = today(); let sum = 0, n = 0, miss = 0;
+    for (const it of state[kind] || []) {
+      if (it.hidden || (kind === 'fixed' && it.end && !C.activeIn(it, T.y, T.m))) continue;
+      if (it.amount == null) miss++; else { sum += Number(it.amount); n++; }
+    }
+    return { sum, n, miss };
+  }
+  function outSumHTML(kind) {
+    const f = outSum('fixed'), v = outSum('variable'), me = kind === 'fixed' ? f : v;
+    const missTxt = me.miss ? '<small>金額未入力 ' + me.miss + '件は入っていません</small>' : '';
+    return '<div class="outsum"><div class="os-main"><span>' + (kind === 'fixed' ? '固定費' : '変動費') + 'の合計' + missTxt + '</span><b class="num">¥' + nf.format(me.sum) + '</b></div>' +
+      '<div class="os-all"><span>固定費 ¥' + nf.format(f.sum) + ' ＋ 変動費 ¥' + nf.format(v.sum) + '</span><b class="num">合わせて ¥' + nf.format(f.sum + v.sum) + '</b></div>' +
+      (kind === 'variable' ? '<p class="os-note">変動費は、いま入っている金額（各行の「○月分」）の合計です。1回のみの引落は入っていません</p>' : '<p class="os-note">終了した項目と非表示の項目は入っていません</p>') + '</div>';
+  }
   function headHTML(title, note, group, addKind) {
     const on = meta.reorder === group;
     return '<div class="section-head"><h2>' + title + '</h2><span class="head-right"><span class="sub">' + note + '</span>' +
